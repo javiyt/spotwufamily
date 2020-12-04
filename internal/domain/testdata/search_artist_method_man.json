@@ -1,0 +1,330 @@
+{
+  "artists": {
+    "href": "https://api.spotify.com/v1/search?query=method+man&type=artist&offset=0&limit=20",
+    "items": [
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/4VmEWwd8y9MCLwexFMdpwt"
+        },
+        "followers": {
+          "href": null,
+          "total": 1279425
+        },
+        "genres": [
+          "east coast hip hop",
+          "gangster rap",
+          "hardcore hip hop",
+          "hip hop",
+          "rap",
+          "southern hip hop"
+        ],
+        "href": "https://api.spotify.com/v1/artists/4VmEWwd8y9MCLwexFMdpwt",
+        "id": "4VmEWwd8y9MCLwexFMdpwt",
+        "images": [
+          {
+            "height": 1000,
+            "url": "https://i.scdn.co/image/85fc66422f44f641ba86e39107c290fb9e9ea7b2",
+            "width": 1000
+          },
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/60f9c445b2ad379840fa1144faeb0f869cf39dd0",
+            "width": 640
+          },
+          {
+            "height": 200,
+            "url": "https://i.scdn.co/image/7388f3fe941fb23f8e63d7be8ec02ab105e56dc1",
+            "width": 200
+          },
+          {
+            "height": 64,
+            "url": "https://i.scdn.co/image/d5640f1379fe80f81d2d53f77f61771679c173e3",
+            "width": 64
+          }
+        ],
+        "name": "Method Man",
+        "popularity": 69,
+        "type": "artist",
+        "uri": "spotify:artist:4VmEWwd8y9MCLwexFMdpwt"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/4oqUAf7FBhm9k7J7u5wSqu"
+        },
+        "followers": {
+          "href": null,
+          "total": 9
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/4oqUAf7FBhm9k7J7u5wSqu",
+        "id": "4oqUAf7FBhm9k7J7u5wSqu",
+        "images": [],
+        "name": "Method Man A.K.A. Johnny Blaze",
+        "popularity": 15,
+        "type": "artist",
+        "uri": "spotify:artist:4oqUAf7FBhm9k7J7u5wSqu"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/4gz5nI6bSVIoWRB4feBEh2"
+        },
+        "followers": {
+          "href": null,
+          "total": 11
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/4gz5nI6bSVIoWRB4feBEh2",
+        "id": "4gz5nI6bSVIoWRB4feBEh2",
+        "images": [],
+        "name": "Method Man & Rik'y Waters",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:4gz5nI6bSVIoWRB4feBEh2"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/6PEig2cDSfRZnvfL9YPYJs"
+        },
+        "followers": {
+          "href": null,
+          "total": 21
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/6PEig2cDSfRZnvfL9YPYJs",
+        "id": "6PEig2cDSfRZnvfL9YPYJs",
+        "images": [],
+        "name": "Method Man Presents Street Life Feat. Method Man",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:6PEig2cDSfRZnvfL9YPYJs"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/2GaipE82CaSmSc9XlyU9g8"
+        },
+        "followers": {
+          "href": null,
+          "total": 19
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/2GaipE82CaSmSc9XlyU9g8",
+        "id": "2GaipE82CaSmSc9XlyU9g8",
+        "images": [],
+        "name": "Method Man Presents: Street Life feat. Method Man",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:2GaipE82CaSmSc9XlyU9g8"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/0eW7AwywGyTxfkvMQDGQ19"
+        },
+        "followers": {
+          "href": null,
+          "total": 1244
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/0eW7AwywGyTxfkvMQDGQ19",
+        "id": "0eW7AwywGyTxfkvMQDGQ19",
+        "images": [],
+        "name": "Method man e redman",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:0eW7AwywGyTxfkvMQDGQ19"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/2LS7yRSjWg6Q2o8GQJEmDX"
+        },
+        "followers": {
+          "href": null,
+          "total": 20
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/2LS7yRSjWg6Q2o8GQJEmDX",
+        "id": "2LS7yRSjWg6Q2o8GQJEmDX",
+        "images": [],
+        "name": "Method Man feat. Streetlife",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:2LS7yRSjWg6Q2o8GQJEmDX"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/7zXfUuIWPs35lCsVg5NsPv"
+        },
+        "followers": {
+          "href": null,
+          "total": 156
+        },
+        "genres": [
+          "slow game",
+          "west coast trap"
+        ],
+        "href": "https://api.spotify.com/v1/artists/7zXfUuIWPs35lCsVg5NsPv",
+        "id": "7zXfUuIWPs35lCsVg5NsPv",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/ab67616d0000b273d2701656a91392eb6c6d408d",
+            "width": 640
+          },
+          {
+            "height": 300,
+            "url": "https://i.scdn.co/image/ab67616d00001e02d2701656a91392eb6c6d408d",
+            "width": 300
+          },
+          {
+            "height": 64,
+            "url": "https://i.scdn.co/image/ab67616d00004851d2701656a91392eb6c6d408d",
+            "width": 64
+          }
+        ],
+        "name": "Erick Sermon, Snoop Dogg & Method Man",
+        "popularity": 3,
+        "type": "artist",
+        "uri": "spotify:artist:7zXfUuIWPs35lCsVg5NsPv"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/5Ne4McXkVCppxwmdCK4YoJ"
+        },
+        "followers": {
+          "href": null,
+          "total": 20
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/5Ne4McXkVCppxwmdCK4YoJ",
+        "id": "5Ne4McXkVCppxwmdCK4YoJ",
+        "images": [],
+        "name": "House Gang Feat. Carlton Fisk, La Banger & Method Man",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:5Ne4McXkVCppxwmdCK4YoJ"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/6ilV5DCHOt4ElKAJW1lfHH"
+        },
+        "followers": {
+          "href": null,
+          "total": 249
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/6ilV5DCHOt4ElKAJW1lfHH",
+        "id": "6ilV5DCHOt4ElKAJW1lfHH",
+        "images": [],
+        "name": "Redman & Method Man",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:6ilV5DCHOt4ElKAJW1lfHH"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/50IwO7dOIVsOK24YutWipz"
+        },
+        "followers": {
+          "href": null,
+          "total": 9
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/50IwO7dOIVsOK24YutWipz",
+        "id": "50IwO7dOIVsOK24YutWipz",
+        "images": [],
+        "name": "Method Man Presents Street Life Feat. Killa Sin",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:50IwO7dOIVsOK24YutWipz"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/54ePhthd2zNue17Ul5sQbC"
+        },
+        "followers": {
+          "href": null,
+          "total": 9
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/54ePhthd2zNue17Ul5sQbC",
+        "id": "54ePhthd2zNue17Ul5sQbC",
+        "images": [],
+        "name": "Anthony Acid feat Method Man",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:54ePhthd2zNue17Ul5sQbC"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/1eL4U3cqNp3P69ocOHWtuU"
+        },
+        "followers": {
+          "href": null,
+          "total": 14
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/1eL4U3cqNp3P69ocOHWtuU",
+        "id": "1eL4U3cqNp3P69ocOHWtuU",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/ab67616d0000b2737b4d5b3dd46d78b1bc87ec80",
+            "width": 640
+          },
+          {
+            "height": 300,
+            "url": "https://i.scdn.co/image/ab67616d00001e027b4d5b3dd46d78b1bc87ec80",
+            "width": 300
+          },
+          {
+            "height": 64,
+            "url": "https://i.scdn.co/image/ab67616d000048517b4d5b3dd46d78b1bc87ec80",
+            "width": 64
+          }
+        ],
+        "name": "Mandy Meadows and the Madness Method",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:1eL4U3cqNp3P69ocOHWtuU"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/44MOgJDnzIWiad6R75NVED"
+        },
+        "followers": {
+          "href": null,
+          "total": 10
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/44MOgJDnzIWiad6R75NVED",
+        "id": "44MOgJDnzIWiad6R75NVED",
+        "images": [],
+        "name": "The Cover Girls Featuring Method Man & Redman",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:44MOgJDnzIWiad6R75NVED"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/5ATWPvzMVQ8dB5hzqyWTqE"
+        },
+        "followers": {
+          "href": null,
+          "total": 14
+        },
+        "genres": [],
+        "href": "https://api.spotify.com/v1/artists/5ATWPvzMVQ8dB5hzqyWTqE",
+        "id": "5ATWPvzMVQ8dB5hzqyWTqE",
+        "images": [],
+        "name": "Method Man Presents Street Life Feat. Inspectah Deck",
+        "popularity": 0,
+        "type": "artist",
+        "uri": "spotify:artist:5ATWPvzMVQ8dB5hzqyWTqE"
+      }
+    ],
+    "limit": 20,
+    "next": null,
+    "offset": 0,
+    "previous": null,
+    "total": 15
+  }
+}

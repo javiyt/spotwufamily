@@ -2,22 +2,8 @@ package domain
 
 import (
 	"fmt"
-	"log"
-
 	"github.com/zmb3/spotify"
 )
-
-type SearchArtistError struct {
-	artist string
-}
-
-func NewSearchArtistError(artist string) SearchArtistError {
-	return SearchArtistError{artist: artist}
-}
-
-func (s SearchArtistError) Error() string {
-	return fmt.Sprintf("Error searching for artist %s", s.artist)
-}
 
 type SearchService interface {
 	GetArtists([]string) []Artist
@@ -32,12 +18,22 @@ func NewSearchArtists(c spotify.Client) *SearchArtists {
 }
 
 func (s SearchArtists) GetArtists(list []string) ([]Artist, error) {
-	artist := make([]Artist, 0, len(list))
-	for i := range list {
-		search, err := s.c.Search("method man", spotify.SearchTypeArtist)
-		if err != nil {
+	artists := make([]Artist, 0)
 
+	for i := range list {
+		search, err := s.c.Search(list[i], spotify.SearchTypeArtist)
+		if err != nil {
+			return nil, fmt.Errorf("error %w searching for artist %s", err, list[i])
 		}
 
+		for j := range search.Artists.Artists {
+			image := ""
+			if len(search.Artists.Artists[j].Images) > 0 {
+				image = search.Artists.Artists[j].Images[0].URL
+			}
+			artists = append(artists, NewArtist(search.Artists.Artists[j].ID.String(),search.Artists.Artists[j].Name, image))
+		}
 	}
+
+	return artists, nil
 }

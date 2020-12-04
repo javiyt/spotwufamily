@@ -1,8 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"context"
-	"fmt"
+	"github.com/javiyt/spotwufamily/internal/domain"
 	"log"
 	"os"
 
@@ -11,16 +12,41 @@ import (
 )
 
 func main() {
-	config := &clientcredentials.Config{
+	token, err := (&clientcredentials.Config{
 		ClientID:     os.Getenv("SPOTIFY_ID"),
 		ClientSecret: os.Getenv("SPOTIFY_SECRET"),
 		TokenURL:     spotify.TokenURL,
-	}
-	token, err := config.Token(context.Background())
+	}).Token(context.Background())
 	if err != nil {
 		log.Fatalf("couldn't get token: %v", err)
 	}
 
-	client := spotify.Authenticator{}.NewClient(token)
+	s := domain.NewSearchArtists(spotify.Authenticator{}.NewClient(token))
 
+	l, err := readFile()
+	if err != nil {
+		panic(err)
+	}
+
+	_, _ = s.GetArtists(l)
+}
+
+func readFile() ([]string, error) {
+	f, err := os.Open("data/groups.txt")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	scanner := bufio.NewScanner(f)
+	l := make([]string, 0)
+	for scanner.Scan() {
+		l = append(l, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return l, nil
 }
