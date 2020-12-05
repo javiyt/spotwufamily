@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+
 	"github.com/zmb3/spotify"
 )
 
@@ -31,7 +32,8 @@ func (s SearchArtists) GetArtists(list []string) ([]Artist, error) {
 			if len(search.Artists.Artists[j].Images) > 0 {
 				image = search.Artists.Artists[j].Images[0].URL
 			}
-			artists = append(artists, NewArtist(search.Artists.Artists[j].ID.String(),search.Artists.Artists[j].Name, image))
+
+			artists = append(artists, NewArtist(search.Artists.Artists[j].ID.String(), search.Artists.Artists[j].Name, image))
 		}
 	}
 

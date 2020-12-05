@@ -1,13 +1,14 @@
 package domain_test
 
 import (
+	"io/ioutil"
+	"net/http"
+	"testing"
+
 	"github.com/jarcoal/httpmock"
 	"github.com/javiyt/spotwufamily/internal/domain"
 	"github.com/stretchr/testify/require"
 	"github.com/zmb3/spotify"
-	"io/ioutil"
-	"net/http"
-	"testing"
 )
 
 func TestSearchArtists_GetArtists(t *testing.T) {
