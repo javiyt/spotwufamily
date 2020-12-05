@@ -1,0 +1,27 @@
+# golangci.com configuration
+# https://github.com/golangci/golangci/wiki/Configuration
+service:
+  golangci-lint-version: 1.33.x # use the fixed version to not introduce new linters unexpectedly
+
+run:
+  tests: false
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0
+
+  misspell:
+    locale: US
+  gocritic: # go-critic docs: https://go-critic.github.io/overview.html
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+
+linters: # List of available linters: https://github.com/golangci/golangci-lint#enabled-by-default-linters
+  enable-all: true
+  disable:
+    - gci
+    - exhaustivestruct

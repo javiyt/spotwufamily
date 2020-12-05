@@ -10,7 +10,7 @@ func NewArtist(id, name, image string) Artist {
 	return Artist{id: id, name: name, image: image}
 }
 
-func (a Artist) Id() string {
+func (a Artist) ID() string {
 	return a.id
 }
 
