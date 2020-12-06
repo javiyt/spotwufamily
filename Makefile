@@ -26,7 +26,7 @@ lint:
 
 test:
 	@echo "Running tests..."
-	@go run gotest.tools/gotestsum
+	@go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 	@echo "Tests finished"
 
 check: lint test
