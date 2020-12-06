@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/javiyt/spotwufamily/internal/infrastructure"
+
 	"github.com/javiyt/spotwufamily/internal/domain"
 
 	"github.com/zmb3/spotify"
@@ -23,7 +25,7 @@ func main() {
 		log.Fatalf("couldn't get token: %v", err)
 	}
 
-	s := domain.NewSearchArtists(spotify.Authenticator{}.NewClient(token))
+	s := domain.NewSearchArtists(infrastructure.NewArtistHTTPRepository(spotify.Authenticator{}.NewClient(token)))
 
 	l, err := readFile()
 	if err != nil {
