@@ -1,13 +1,17 @@
 language: go
-
 go:
   - 1.15.x
-
 before_install:
   - go mod vendor
-
 before_script:
   - make generate
-
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+addons:
+  sonarcloud:
+    organization: javiyt
+    token:
+      secure: RndRs+yTxPb33xf5EyKcl2ApmzNHQ1qrOY/Su07lIcTapeMfzmbqNTwhC8BB+fbpe/STImqaLfEsnEuFyLMtwYTqVLWLo/6Uar7Xz2up9qhFNZhRFJgMm6EPGmNQWBUN0F94HgzG0tK/8vpNPsShWmykxSlhqKcxFTy72oJea9JMVBuNLGXwH/8kMzl+60JdeQqJJeKfQ++82fCL4J3nJm+gnBaV1oHA1yqYmChmi5uKs0jGRLjQgO/1Fatp972s6kRLo87XCMnmDWYJJgP/iFJmI7Gu7Cn20beUbNOxqX/Jdj4HlDN8T70rHrIKNCkj0IZjQ5LulbYxHdR7OqK39/kvuvr3jWxy2MPG+EVMERiFtITC5eNzervI7h0FErdyPcmlJYkrwGZ/eqLBwJwt3HGgMn4muNoq9GRBqHBsf6F+r+XGkMPe6GlqCqpXaU2H9DnzPMgFwPKm4H2YDwqI+WGAp5FjKJbdipcn7RSqgJoXMQKZs+pMuTIRfE2CWbnN2qkDg3rni+rhlf1ESUB7efCNKePJBzBf/fmTzOybF2JfpZyookBw94nj4mRw4844ivMjhlICC/vc75XsyPFQ6mOEuxocLsPiGCaJJZiVN0TSnjrJuAXV9Min00Y4P6ScmQecy9KE5uhUJjiau5AErNI2GPMd+j0eG+ZFCv4qBs8=
+script:
+  - make check
+  - sonar-scanner
