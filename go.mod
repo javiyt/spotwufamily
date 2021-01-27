@@ -3,7 +3,7 @@ module github.com/javiyt/spotwufamily
 go 1.15
 
 require (
-	github.com/golangci/golangci-lint v1.35.2
+	github.com/golangci/golangci-lint v1.36.0
 	github.com/jarcoal/httpmock v1.0.7
 	github.com/stretchr/testify v1.7.0
 	github.com/vektra/mockery/v2 v2.6.0
