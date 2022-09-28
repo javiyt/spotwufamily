@@ -9,5 +9,5 @@ require (
 	github.com/vektra/mockery/v2 v2.14.0
 	github.com/zmb3/spotify v0.0.0-20200814173021-9bec46940cc0
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
-	mvdan.cc/gofumpt v0.3.1
+	mvdan.cc/gofumpt v0.4.0
 )
