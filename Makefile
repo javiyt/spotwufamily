@@ -26,7 +26,7 @@ lint:
 
 test:
 	@echo "Running tests..."
-	@go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+	@go test -timeout 10s -race -count 5 -coverprofile=coverage.txt -covermode=atomic -shuffle on ./...
 	@echo "Tests finished"
 
 check: lint test
