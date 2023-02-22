@@ -16,7 +16,7 @@ generate:
 
 format:
 	@echo "Applying format..."
-	@go run mvdan.cc/gofumpt -d -s -w {cmd,internal}
+	@go run mvdan.cc/gofumpt -d -w {cmd,internal}
 	@echo "Format applied"
 
 lint:
@@ -26,7 +26,7 @@ lint:
 
 test:
 	@echo "Running tests..."
-	@go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+	@go test -timeout 10s -race -count 5 -coverprofile=coverage.txt -covermode=atomic -shuffle on ./...
 	@echo "Tests finished"
 
 check: lint test

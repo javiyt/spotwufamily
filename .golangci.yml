@@ -1,27 +1,25 @@
-# golangci.com configuration
-# https://github.com/golangci/golangci/wiki/Configuration
-service:
-  golangci-lint-version: 1.33.x # use the fixed version to not introduce new linters unexpectedly
-
 run:
-  tests: false
+  issues-exit-code: 1
+  skip-dirs-use-default: true
+  skip-files:
+    - ".*_string\\.go$"
+    - ".*_easyjson\\.go$"
+    - "wire_gen.go"
 
-linters-settings:
-  govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0
+  modules-download-mode: vendor
+  allow-parallel-runners: false
 
-  misspell:
-    locale: US
-  gocritic: # go-critic docs: https://go-critic.github.io/overview.html
-    enabled-tags:
-      - performance
-      - style
-      - experimental
 
-linters: # List of available linters: https://github.com/golangci/golangci-lint#enabled-by-default-linters
+output:
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true
+
+linters:
   enable-all: true
   disable:
+    - paralleltest
     - gci
-    - exhaustivestruct
+    - nolintlint
+  fast: true
