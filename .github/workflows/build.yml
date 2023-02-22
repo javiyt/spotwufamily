@@ -1,11 +1,41 @@
 name: Build
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    types: [opened, synchronize, reopened]
+on: [ push, pull_request ]
 jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [1.20.x]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3.5.0
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Test
+        run: make test
+      - name: Upload report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          verbose: true
+          files: coverage.txt
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3.5.0
+        with:
+          go-version: 1.20.0
+      - uses: actions/checkout@v3
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3.4.0
+        with:
+          version: v1.51.0
+          skip-pkg-cache: true
+          skip-go-installation: true
+          skip-build-cache: true
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
