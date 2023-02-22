@@ -16,7 +16,7 @@ generate:
 
 format:
 	@echo "Applying format..."
-	@go run mvdan.cc/gofumpt -d -s -w {cmd,internal}
+	@go run mvdan.cc/gofumpt -d -w {cmd,internal}
 	@echo "Format applied"
 
 lint:
