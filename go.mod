@@ -6,7 +6,7 @@ require (
 	github.com/golangci/golangci-lint v1.52.2
 	github.com/jarcoal/httpmock v1.3.0
 	github.com/stretchr/testify v1.8.2
-	github.com/vektra/mockery/v2 v2.23.2
+	github.com/vektra/mockery/v2 v2.24.0
 	github.com/zmb3/spotify v1.3.0
 	golang.org/x/oauth2 v0.7.0
 	mvdan.cc/gofumpt v0.5.0
@@ -170,7 +170,6 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/exp/typeparams v0.0.0-20230224173230-c95f2b4c22f2 // indirect
 	golang.org/x/mod v0.10.0 // indirect
