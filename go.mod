@@ -6,7 +6,7 @@ require (
 	github.com/golangci/golangci-lint v1.53.2
 	github.com/jarcoal/httpmock v1.3.0
 	github.com/stretchr/testify v1.8.4
-	github.com/vektra/mockery/v2 v2.29.0
+	github.com/vektra/mockery/v2 v2.30.1
 	github.com/zmb3/spotify v1.3.0
 	golang.org/x/oauth2 v0.9.0
 	mvdan.cc/gofumpt v0.5.0
@@ -121,7 +121,6 @@ require (
 	github.com/nunnatsa/ginkgolinter v0.12.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polyfloyd/go-errorlint v1.4.2 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect
