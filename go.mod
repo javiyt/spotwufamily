@@ -6,7 +6,7 @@ require (
 	github.com/golangci/golangci-lint v1.53.3
 	github.com/jarcoal/httpmock v1.3.0
 	github.com/stretchr/testify v1.8.4
-	github.com/vektra/mockery/v2 v2.30.16
+	github.com/vektra/mockery/v2 v2.30.17
 	github.com/zmb3/spotify v1.3.0
 	golang.org/x/oauth2 v0.10.0
 	mvdan.cc/gofumpt v0.5.0
