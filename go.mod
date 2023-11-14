@@ -6,7 +6,7 @@ require (
 	github.com/golangci/golangci-lint v1.54.2
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/stretchr/testify v1.8.4
-	github.com/vektra/mockery/v2 v2.33.2
+	github.com/vektra/mockery/v2 v2.37.0
 	github.com/zmb3/spotify v1.3.0
 	golang.org/x/oauth2 v0.12.0
 	mvdan.cc/gofumpt v0.5.0
@@ -85,6 +85,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
+	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jgautheron/goconst v1.5.1 // indirect
