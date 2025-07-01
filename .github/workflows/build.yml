@@ -4,7 +4,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.20.x]
+        go-version: [1.24]
     runs-on: ubuntu-latest
     steps:
       - name: Install Go
@@ -31,7 +31,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5.0.0
         with:
-          go-version: 1.20.0
+          go-version: 1.24
       - uses: actions/checkout@v4
       - name: Install modules
         run: go mod vendor
