@@ -1,6 +1,6 @@
 module github.com/javiyt/spotwufamily
 
-go 1.18
+go 1.23
 
 require (
 	github.com/golangci/golangci-lint v1.55.2
