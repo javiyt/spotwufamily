@@ -8,7 +8,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/vektra/mockery/v2 v2.53.5
 	github.com/zmb3/spotify v1.3.0
-	golang.org/x/oauth2 v0.31.0
+	golang.org/x/oauth2 v0.32.0
 	mvdan.cc/gofumpt v0.9.1
 )
 
