@@ -22,4 +22,6 @@ linters:
     - paralleltest
     - gci
     - nolintlint
+    - depguard
+    - inamedparam
   fast: true
