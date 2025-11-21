@@ -2,6 +2,7 @@
 
 package domain
 
+// ArtistRepository defines operations to search artists from a backing store or API.
 type ArtistRepository interface {
 	SearchArtist(name string) ([]Artist, error)
 }

@@ -1,8 +1,8 @@
 package infrastructure_test
 
 import (
-	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
@@ -15,10 +15,11 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 	client := &http.Client{}
 
 	httpmock.ActivateNonDefault(client)
+
 	defer httpmock.DeactivateAndReset()
 
 	sc := spotify.NewClient(client)
-	ar := infrastructure.NewArtistHTTPRepository(sc)
+	repoHTTP := infrastructure.NewArtistHTTPRepository(sc)
 
 	t.Run("it should fail when API endpoint not found", func(t *testing.T) {
 		httpmock.RegisterResponder(
@@ -27,14 +28,14 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 			httpmock.NewStringResponder(http.StatusNotFound, ""),
 		)
 
-		artists, err := ar.SearchArtist("notfound")
+		artists, err := repoHTTP.SearchArtist("notfound")
 
 		require.EqualError(t, err, "error spotify: HTTP 404: Not Found (body empty) searching for artist notfound")
 		require.Nil(t, artists)
 	})
 
 	t.Run("it should not fail when artist not found", func(t *testing.T) {
-		bytes, err := ioutil.ReadFile("testdata/search_artist_non_existing.json")
+		bytes, err := os.ReadFile("testdata/search_artist_non_existing.json")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -45,14 +46,14 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 			httpmock.NewStringResponder(http.StatusOK, string(bytes)),
 		)
 
-		artists, err := ar.SearchArtist("itdoesnotexist")
+		artists, err := repoHTTP.SearchArtist("itdoesnotexist")
 
 		require.NoError(t, err)
 		require.Empty(t, artists)
 	})
 
 	t.Run("it should be possible to get all artists", func(t *testing.T) {
-		bytes, err := ioutil.ReadFile("testdata/search_artist_method_man.json")
+		bytes, err := os.ReadFile("testdata/search_artist_method_man.json")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -63,7 +64,7 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 			httpmock.NewStringResponder(http.StatusOK, string(bytes)),
 		)
 
-		artists, err := ar.SearchArtist("method man")
+		artists, err := repoHTTP.SearchArtist("method man")
 
 		require.NoError(t, err)
 		require.Len(t, artists, 15)

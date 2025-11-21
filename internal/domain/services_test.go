@@ -8,39 +8,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSearchArtists_GetArtists(t *testing.T) {
-	r := new(domain.MockArtistRepository)
+var errAPITesting = errors.New("API testing error")
 
-	s := domain.NewSearchArtists(r)
+func TestSearchArtists_GetArtists(t *testing.T) {
+	repo := new(domain.MockArtistRepository)
+
+	svc := domain.NewSearchArtists(repo)
 
 	t.Run("it fails when couldn't find any artist", func(t *testing.T) {
-		r.On("SearchArtist", "errored").
+		repo.On("SearchArtist", "errored").
 			Once().
-			Return(nil, errors.New("API testing error"))
+			Return(nil, errAPITesting)
 
-		artists, err := s.GetArtists([]string{"errored"})
+		artists, err := svc.GetArtists([]string{"errored"})
 
 		require.EqualError(t, err, "error API testing error searching for artist errored")
 		require.Nil(t, artists)
-		r.AssertExpectations(t)
+		repo.AssertExpectations(t)
 	})
 
 	t.Run("it should return all artists found", func(t *testing.T) {
-		r.On("SearchArtist", "one").
+		repo.On("SearchArtist", "one").
 			Once().
 			Return([]domain.Artist{
 				domain.NewArtist("8xGQDuKe5y", "one", "https://image.cdn/4856820220"),
 				domain.NewArtist("exmyl4Qaip", "one & third", ""),
 			}, nil)
-		r.On("SearchArtist", "two").
+		repo.On("SearchArtist", "two").
 			Once().
 			Return([]domain.Artist{domain.NewArtist("c4iGhUEijM", "second", "https://image.cdn/8249544919")}, nil)
 
-		artists, err := s.GetArtists([]string{"one", "two"})
+		artists, err := svc.GetArtists([]string{"one", "two"})
 
 		require.NoError(t, err)
 		require.Len(t, artists, 3)
 
-		r.AssertExpectations(t)
+		repo.AssertExpectations(t)
 	})
 }

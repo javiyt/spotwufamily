@@ -1,3 +1,4 @@
+// Package infrastructure provides implementations of domain repositories.
 package infrastructure
 
 import (
@@ -7,26 +8,32 @@ import (
 	"github.com/zmb3/spotify"
 )
 
+// ArtistProxyRepository delegates artist lookups to an HTTP repository.
 type ArtistProxyRepository struct {
 	rH ArtistHTTPRepository
 }
 
+// NewArtistProxyRepository constructs a new ArtistProxyRepository.
 func NewArtistProxyRepository(rH ArtistHTTPRepository) *ArtistProxyRepository {
 	return &ArtistProxyRepository{rH: rH}
 }
 
+// SearchArtist looks up artists by name using the underlying HTTP repository.
 func (a *ArtistProxyRepository) SearchArtist(name string) ([]domain.Artist, error) {
 	return a.rH.SearchArtist(name)
 }
 
+// ArtistHTTPRepository performs lookups against the Spotify HTTP API.
 type ArtistHTTPRepository struct {
 	c spotify.Client
 }
 
+// NewArtistHTTPRepository constructs a new ArtistHTTPRepository.
 func NewArtistHTTPRepository(c spotify.Client) *ArtistHTTPRepository {
 	return &ArtistHTTPRepository{c: c}
 }
 
+// SearchArtist queries Spotify for artists by name and converts results to domain.Artist.
 func (a *ArtistHTTPRepository) SearchArtist(name string) ([]domain.Artist, error) {
 	artists := make([]domain.Artist, 0)
 
@@ -35,17 +42,17 @@ func (a *ArtistHTTPRepository) SearchArtist(name string) ([]domain.Artist, error
 		return nil, fmt.Errorf("error %w searching for artist %s", err, name)
 	}
 
-	for j := range search.Artists.Artists {
+	for idx := range search.Artists.Artists {
 		image := ""
-		if len(search.Artists.Artists[j].Images) > 0 {
-			image = search.Artists.Artists[j].Images[0].URL
+		if len(search.Artists.Artists[idx].Images) > 0 {
+			image = search.Artists.Artists[idx].Images[0].URL
 		}
 
 		artists = append(
 			artists,
 			domain.NewArtist(
-				search.Artists.Artists[j].ID.String(),
-				search.Artists.Artists[j].Name,
+				search.Artists.Artists[idx].ID.String(),
+				search.Artists.Artists[idx].Name,
 				image,
 			),
 		)
