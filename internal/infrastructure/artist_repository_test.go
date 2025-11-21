@@ -18,7 +18,7 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	sc := spotify.NewClient(client)
-	ar := infrastructure.NewArtistHTTPRepository(sc)
+	repoHTTP := infrastructure.NewArtistHTTPRepository(sc)
 
 	t.Run("it should fail when API endpoint not found", func(t *testing.T) {
 		httpmock.RegisterResponder(
@@ -27,7 +27,7 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 			httpmock.NewStringResponder(http.StatusNotFound, ""),
 		)
 
-		artists, err := ar.SearchArtist("notfound")
+		artists, err := repoHTTP.SearchArtist("notfound")
 
 		require.EqualError(t, err, "error spotify: HTTP 404: Not Found (body empty) searching for artist notfound")
 		require.Nil(t, artists)
@@ -45,7 +45,7 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 			httpmock.NewStringResponder(http.StatusOK, string(bytes)),
 		)
 
-		artists, err := ar.SearchArtist("itdoesnotexist")
+		artists, err := repoHTTP.SearchArtist("itdoesnotexist")
 
 		require.NoError(t, err)
 		require.Empty(t, artists)
@@ -63,7 +63,7 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 			httpmock.NewStringResponder(http.StatusOK, string(bytes)),
 		)
 
-		artists, err := ar.SearchArtist("method man")
+		artists, err := repoHTTP.SearchArtist("method man")
 
 		require.NoError(t, err)
 		require.Len(t, artists, 15)

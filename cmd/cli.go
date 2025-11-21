@@ -26,34 +26,34 @@ func main() {
 		log.Fatalf("couldn't get token: %v", err)
 	}
 
-	s := domain.NewSearchArtists(infrastructure.NewArtistHTTPRepository(spotify.Authenticator{}.NewClient(token)))
+	searchSvc := domain.NewSearchArtists(infrastructure.NewArtistHTTPRepository(spotify.Authenticator{}.NewClient(token)))
 
-	l, err := readFile()
+	lines, err := readFile()
 	if err != nil {
 		panic(err)
 	}
 
-	_, _ = s.GetArtists(l)
+	_, _ = searchSvc.GetArtists(lines)
 }
 
 func readFile() ([]string, error) {
-	f, err := os.Open("data/groups.txt")
+	file, err := os.Open("data/groups.txt")
 	if err != nil {
 		return nil, fmt.Errorf("error %w reading file", err)
 	}
 
-	defer func() { _ = f.Close() }()
+	defer func() { _ = file.Close() }()
 
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(file)
 
-	l := make([]string, 0)
+	lines := make([]string, 0)
 	for scanner.Scan() {
-		l = append(l, scanner.Text())
+		lines = append(lines, scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error %w reading file", err)
 	}
 
-	return l, nil
+	return lines, nil
 }

@@ -42,17 +42,17 @@ func (a *ArtistHTTPRepository) SearchArtist(name string) ([]domain.Artist, error
 		return nil, fmt.Errorf("error %w searching for artist %s", err, name)
 	}
 
-	for j := range search.Artists.Artists {
+	for idx := range search.Artists.Artists {
 		image := ""
-		if len(search.Artists.Artists[j].Images) > 0 {
-			image = search.Artists.Artists[j].Images[0].URL
+		if len(search.Artists.Artists[idx].Images) > 0 {
+			image = search.Artists.Artists[idx].Images[0].URL
 		}
 
 		artists = append(
 			artists,
 			domain.NewArtist(
-				search.Artists.Artists[j].ID.String(),
-				search.Artists.Artists[j].Name,
+				search.Artists.Artists[idx].ID.String(),
+				search.Artists.Artists[idx].Name,
 				image,
 			),
 		)
