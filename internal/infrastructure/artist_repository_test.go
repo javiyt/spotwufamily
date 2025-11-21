@@ -15,6 +15,7 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 	client := &http.Client{}
 
 	httpmock.ActivateNonDefault(client)
+
 	defer httpmock.DeactivateAndReset()
 
 	sc := spotify.NewClient(client)
