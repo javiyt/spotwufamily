@@ -40,8 +40,6 @@ linters:
     - godot
     - godox
     - err113
-    - gofmt
-    - gofumpt
     - goheader
     - goimports
     - gomnd
