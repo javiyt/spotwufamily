@@ -41,7 +41,6 @@ linters:
     - godox
     - err113
     - goheader
-    - goimports
     - gomnd
     - gomoddirectives
     - gomodguard
@@ -84,7 +83,6 @@ linters:
     - usestdlibvars
     - varnamelen
     - wastedassign
-    - whitespace
     - wrapcheck
     - wsl
     - zerologlint
