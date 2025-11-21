@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var errAPITesting = errors.New("API testing error")
+
 func TestSearchArtists_GetArtists(t *testing.T) {
 	r := new(domain.MockArtistRepository)
 
@@ -16,7 +18,7 @@ func TestSearchArtists_GetArtists(t *testing.T) {
 	t.Run("it fails when couldn't find any artist", func(t *testing.T) {
 		r.On("SearchArtist", "errored").
 			Once().
-			Return(nil, errors.New("API testing error"))
+			Return(nil, errAPITesting)
 
 		artists, err := s.GetArtists([]string{"errored"})
 

@@ -1,8 +1,8 @@
 package infrastructure_test
 
 import (
-	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
@@ -34,7 +34,7 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 	})
 
 	t.Run("it should not fail when artist not found", func(t *testing.T) {
-		bytes, err := ioutil.ReadFile("testdata/search_artist_non_existing.json")
+		bytes, err := os.ReadFile("testdata/search_artist_non_existing.json")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +52,7 @@ func TestArtistHTTPRepository_SearchArtist(t *testing.T) {
 	})
 
 	t.Run("it should be possible to get all artists", func(t *testing.T) {
-		bytes, err := ioutil.ReadFile("testdata/search_artist_method_man.json")
+		bytes, err := os.ReadFile("testdata/search_artist_method_man.json")
 		if err != nil {
 			t.Fatal(err)
 		}

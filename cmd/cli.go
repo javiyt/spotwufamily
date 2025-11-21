@@ -1,3 +1,4 @@
+// Package main implements the CLI for the spotwufamily tool.
 package main
 
 import (
