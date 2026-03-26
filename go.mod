@@ -1,6 +1,6 @@
 module github.com/javiyt/spotwufamily
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/golangci/golangci-lint v1.64.8
@@ -8,7 +8,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/vektra/mockery/v2 v2.53.6
 	github.com/zmb3/spotify v1.3.0
-	golang.org/x/oauth2 v0.35.0
+	golang.org/x/oauth2 v0.36.0
 	mvdan.cc/gofumpt v0.9.2
 )
 
