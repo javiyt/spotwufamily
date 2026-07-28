@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+owner_repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+pr_number="${PR_NUMBER:?PR_NUMBER is required}"
+expected_author="${EXPECTED_AUTHOR:-}"
+expected_branch_prefix="${EXPECTED_BRANCH_PREFIX:-automation/catalog-sync-}"
+
+allowed_regex='^(data/catalog\.db|data/catalog\.snapshot\.sql|site/data/generated/.*|site/static/search-index\.json)$'
+blocked_regex='^(\.github/|cmd/|internal/|scripts/|migrations/|site/layouts/|site/assets/|site/hugo\.yaml|Makefile$|go\.mod$|go\.sum$|data/artists\.yaml$)'
+
+pr_json="$(gh api "repos/${owner_repo}/pulls/${pr_number}")"
+author="$(jq -r '.user.login' <<<"${pr_json}")"
+head_ref="$(jq -r '.head.ref' <<<"${pr_json}")"
+head_repo_full_name="$(jq -r '.head.repo.full_name' <<<"${pr_json}")"
+base_ref="$(jq -r '.base.ref' <<<"${pr_json}")"
+mergeable_state="$(jq -r '.mergeable_state // ""' <<<"${pr_json}")"
+
+if [[ "${head_repo_full_name}" != "${owner_repo}" ]]; then
+  echo "Refusing to review PR from fork: ${head_repo_full_name}" >&2
+  exit 1
+fi
+
+if [[ "${base_ref}" != "main" ]]; then
+  echo "Refusing to review PR targeting ${base_ref}" >&2
+  exit 1
+fi
+
+if [[ -n "${expected_author}" && "${author}" != "${expected_author}" ]]; then
+  echo "Refusing to review PR author ${author}; expected ${expected_author}" >&2
+  exit 1
+fi
+
+if [[ "${head_ref}" != "${expected_branch_prefix}"* ]]; then
+  echo "Refusing to review branch ${head_ref}" >&2
+  exit 1
+fi
+
+labels="$(gh api "repos/${owner_repo}/issues/${pr_number}/labels" --jq '.[].name')"
+grep -qx 'automation' <<<"${labels}" || { echo "Missing automation label" >&2; exit 1; }
+grep -qx 'catalog-update' <<<"${labels}" || { echo "Missing catalog-update label" >&2; exit 1; }
+grep -qx 'spotify' <<<"${labels}" || { echo "Missing spotify label" >&2; exit 1; }
+
+files="$(gh api --paginate "repos/${owner_repo}/pulls/${pr_number}/files" --jq '.[].filename')"
+if [[ -z "${files}" ]]; then
+  echo "No files changed" >&2
+  exit 1
+fi
+
+while IFS= read -r file; do
+  [[ -n "${file}" ]] || continue
+  if [[ "${file}" =~ ${blocked_regex} ]]; then
+    echo "Blocked path changed: ${file}" >&2
+    exit 1
+  fi
+  if ! [[ "${file}" =~ ${allowed_regex} ]]; then
+    echo "Path is not allowlisted: ${file}" >&2
+    exit 1
+  fi
+done <<<"${files}"
+
+changed_count="$(wc -l <<<"${files}" | tr -d ' ')"
+if [[ "${changed_count}" -gt 2000 ]]; then
+  echo "Refusing unusually large PR: ${changed_count} files" >&2
+  exit 1
+fi
+
+reviews="$(gh api "repos/${owner_repo}/pulls/${pr_number}/reviews" --jq '.[].state')"
+if grep -qx 'CHANGES_REQUESTED' <<<"${reviews}"; then
+  echo "Refusing to approve PR with requested changes" >&2
+  exit 1
+fi
+
+combined="$(gh api "repos/${owner_repo}/commits/$(jq -r '.head.sha' <<<"${pr_json}")/status" --jq '.state')"
+if [[ "${combined}" == "failure" || "${combined}" == "error" ]]; then
+  echo "Commit status is ${combined}" >&2
+  exit 1
+fi
+
+echo "Catalog PR guard passed. mergeable_state=${mergeable_state}"

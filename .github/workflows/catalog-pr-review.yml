@@ -1,0 +1,51 @@
+name: Catalog PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+  checks: read
+  statuses: read
+
+jobs:
+  guarded-approval:
+    name: guarded-catalog-approval
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    env:
+      CATALOG_REVIEW_APP_ID: ${{ secrets.CATALOG_REVIEW_APP_ID }}
+      CATALOG_REVIEW_APP_PRIVATE_KEY: ${{ secrets.CATALOG_REVIEW_APP_PRIVATE_KEY }}
+    steps:
+      - name: Create review GitHub App token
+        id: review-token
+        if: ${{ env.CATALOG_REVIEW_APP_ID != '' && env.CATALOG_REVIEW_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ env.CATALOG_REVIEW_APP_ID }}
+          private-key: ${{ env.CATALOG_REVIEW_APP_PRIVATE_KEY }}
+
+      - name: Checkout trusted scripts
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          sparse-checkout: |
+            scripts/automation/catalog-review-guard.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Run guarded approval checks
+        env:
+          GH_TOKEN: ${{ steps.review-token.outputs.token || secrets.CATALOG_REVIEW_TOKEN || github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_AUTHOR: ${{ secrets.CATALOG_SYNC_EXPECTED_AUTHOR }}
+          EXPECTED_BRANCH_PREFIX: "automation/catalog-sync-"
+        run: bash scripts/automation/catalog-review-guard.sh
+
+      - name: Approve catalog PR
+        env:
+          GH_TOKEN: ${{ steps.review-token.outputs.token || secrets.CATALOG_REVIEW_TOKEN || github.token }}
+        run: gh pr review "${{ github.event.pull_request.number }}" --approve --body "Approved generated catalog data-only update after guarded path and metadata checks."

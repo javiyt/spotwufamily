@@ -13,7 +13,7 @@ The v2 direction is:
 
 ## Current Status
 
-Phase 3 is in progress. The project now has the CLI skeleton, editorial YAML catalog validation, `groups.txt` import support, artist-resolution reports, a `net/http` Spotify client, CI, and architecture documentation. SQLite, Hugo and GitHub Pages automation are planned next phases.
+The current build has the CLI, editorial YAML validation, Spotify sync, SQLite persistence, deterministic exports, a Hugo site, CI, GitHub Pages deployment, and guarded catalog automation.
 
 ## Commands
 
@@ -41,7 +41,7 @@ The project follows a pragmatic hexagonal architecture:
 - Domain: catalog rules and validation.
 - Application: explicit use cases.
 - Ports: defined by application needs.
-- Adapters: CLI, YAML, future Spotify, SQLite and JSON export.
+- Adapters: CLI, YAML, Spotify, SQLite, JSON export and Hugo build orchestration.
 
 See [docs/architecture.md](docs/architecture.md).
 
