@@ -48,6 +48,9 @@ jobs:
       - name: Build Hugo site
         run: go run ./cmd/spotwufamily site build
 
+      - name: Audit end-to-end
+        run: go run ./cmd/spotwufamily audit
+
       - name: Test
         run: go test ./...
 

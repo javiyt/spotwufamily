@@ -2,7 +2,7 @@
 
 The catalog database lives at `data/catalog.db` and is versioned in Git.
 
-Planned constraints:
+Constraints:
 
 - SQL migrations live in `migrations/`.
 - `PRAGMA foreign_keys = ON`.

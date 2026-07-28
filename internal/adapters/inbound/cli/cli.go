@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
@@ -44,7 +45,9 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		return executeSync(ctx, args[1:], stdout, stderr, store)
 	case "export":
 		return executeExport(ctx, args[1:], stdout, stderr)
-	case "audit", "build":
+	case "audit":
+		return executeAudit(ctx, args[1:], stdout, stderr, store)
+	case "build":
 		return notImplemented(stderr, args[0])
 	case "db":
 		return executeDB(ctx, args[1:], stdout, stderr)
@@ -265,6 +268,220 @@ func printSyncReport(stdout io.Writer, report catalogsync.Report) {
 		report.Stats.ArtistAlbumsUpserted,
 		report.Stats.ArtistTracksUpserted,
 	)
+}
+
+type auditOptions struct {
+	catalogPath     string
+	dbPath          string
+	snapshotPath    string
+	outputDir       string
+	staticDir       string
+	siteSource      string
+	siteDestination string
+	skipSite        bool
+	skipGitDiff     bool
+}
+
+func executeAudit(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		printAuditHelp(stdout)
+		return 0
+	}
+
+	options, err := parseAuditOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: %v\n", err)
+		return 2
+	}
+
+	if issues, err := artists.NewValidateCatalog(store).Run(ctx, options.catalogPath); err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: validate catalog: %v\n", err)
+		return 1
+	} else if len(issues) > 0 {
+		for _, issue := range issues {
+			_, _ = fmt.Fprintf(stderr, "- %s\n", issue.Error())
+		}
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "audit: catalog ok (%s)\n", options.catalogPath)
+
+	database, err := sqliteadapter.Open(options.dbPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: open database: %v\n", err)
+		return 1
+	}
+	defer func() { _ = database.Close() }()
+
+	migrations, err := sqliteadapter.EmbeddedMigrations()
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: load migrations: %v\n", err)
+		return 1
+	}
+	report, err := database.Verify(ctx, migrations)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: verify database: %v\n", err)
+		return 1
+	}
+	if err := verifySnapshotFreshness(ctx, database, options.snapshotPath); err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: %v\n", err)
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "audit: database ok (%d migrations)\n", report.Migrations)
+
+	exportReport, err := catalogexport.NewExportCatalog(database, filesystem.NewWriter()).Run(ctx, catalogexport.Options{
+		OutputDir: options.outputDir,
+		StaticDir: options.staticDir,
+	})
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: export catalog: %v\n", err)
+		return 1
+	}
+	if err := verifyExportArtifacts(options); err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: %v\n", err)
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "audit: export ok (artists=%d albums=%d tracks=%d files_written=%d files_kept=%d)\n",
+		exportReport.Artists,
+		exportReport.Albums,
+		exportReport.Tracks,
+		exportReport.FilesWritten,
+		exportReport.FilesKept,
+	)
+
+	if !options.skipGitDiff {
+		if err := verifyGeneratedGitDiff(ctx, options); err != nil {
+			_, _ = fmt.Fprintf(stderr, "audit: %v\n", err)
+			return 1
+		}
+		_, _ = fmt.Fprintln(stdout, "audit: generated git diff ok")
+	}
+
+	if !options.skipSite {
+		if code := executeSite(ctx, []string{"build", "--source", options.siteSource, "--destination", options.siteDestination}, stdout, stderr); code != 0 {
+			return code
+		}
+		_, _ = fmt.Fprintf(stdout, "audit: site build ok (%s)\n", options.siteDestination)
+	}
+
+	_, _ = fmt.Fprintln(stdout, "audit: ok")
+	return 0
+}
+
+func parseAuditOptions(args []string) (auditOptions, error) {
+	options := auditOptions{
+		catalogPath:     defaultCatalogPath,
+		dbPath:          defaultDatabasePath,
+		snapshotPath:    defaultSnapshotPath,
+		outputDir:       defaultExportOutputDir,
+		staticDir:       defaultExportStaticDir,
+		siteSource:      "site",
+		siteDestination: "/tmp/spotwufamily-site",
+	}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return auditOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+		case "--db":
+			i++
+			if i >= len(args) {
+				return auditOptions{}, fmt.Errorf("--db requires a value")
+			}
+			options.dbPath = args[i]
+		case "--snapshot":
+			i++
+			if i >= len(args) {
+				return auditOptions{}, fmt.Errorf("--snapshot requires a value")
+			}
+			options.snapshotPath = args[i]
+		case "--output":
+			i++
+			if i >= len(args) {
+				return auditOptions{}, fmt.Errorf("--output requires a value")
+			}
+			options.outputDir = args[i]
+		case "--static":
+			i++
+			if i >= len(args) {
+				return auditOptions{}, fmt.Errorf("--static requires a value")
+			}
+			options.staticDir = args[i]
+		case "--site-source":
+			i++
+			if i >= len(args) {
+				return auditOptions{}, fmt.Errorf("--site-source requires a value")
+			}
+			options.siteSource = args[i]
+		case "--site-destination":
+			i++
+			if i >= len(args) {
+				return auditOptions{}, fmt.Errorf("--site-destination requires a value")
+			}
+			options.siteDestination = args[i]
+		case "--skip-site":
+			options.skipSite = true
+		case "--skip-git-diff":
+			options.skipGitDiff = true
+		default:
+			return auditOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+
+	return options, nil
+}
+
+func verifySnapshotFreshness(ctx context.Context, database *sqliteadapter.Database, snapshotPath string) error {
+	generated, err := database.Snapshot(ctx)
+	if err != nil {
+		return fmt.Errorf("generate snapshot: %w", err)
+	}
+	current, err := os.ReadFile(snapshotPath)
+	if err != nil {
+		return fmt.Errorf("read snapshot %s: %w", snapshotPath, err)
+	}
+	if !bytes.Equal(generated, current) {
+		return fmt.Errorf("snapshot is out of date: %s", snapshotPath)
+	}
+	return nil
+}
+
+func verifyExportArtifacts(options auditOptions) error {
+	required := []string{
+		filepath.Join(options.outputDir, "catalog-summary.json"),
+		filepath.Join(options.outputDir, "artists", "index.json"),
+		filepath.Join(options.outputDir, "albums", "index.json"),
+		filepath.Join(options.outputDir, "tracks", "index.json"),
+		filepath.Join(options.staticDir, "search-index.json"),
+	}
+	for _, path := range required {
+		if info, err := os.Stat(path); err != nil {
+			return fmt.Errorf("missing export artifact %s: %w", path, err)
+		} else if info.IsDir() {
+			return fmt.Errorf("export artifact is a directory: %s", path)
+		}
+	}
+	return nil
+}
+
+func verifyGeneratedGitDiff(ctx context.Context, options auditOptions) error {
+	if _, err := os.Stat(".git"); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("stat .git: %w", err)
+	}
+
+	cmd := exec.CommandContext(ctx, "git", "diff", "--exit-code", "--", options.outputDir, filepath.Join(options.staticDir, "search-index.json"))
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("generated files differ from Git: %s", strings.TrimSpace(output.String()))
+	}
+	return nil
 }
 
 type exportOptions struct {
@@ -774,7 +991,6 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  export")
 	_, _ = fmt.Fprintln(w, "  site build")
 	_, _ = fmt.Fprintln(w, "  audit")
-	_, _ = fmt.Fprintln(w, "  build")
 }
 
 func printArtistsHelp(w io.Writer) {
@@ -796,6 +1012,10 @@ func printExportHelp(w io.Writer) {
 
 func printSiteHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "usage: spotwufamily site build [--source site] [--destination /tmp/spotwufamily-site]")
+}
+
+func printAuditHelp(w io.Writer) {
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily audit [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql] [--output site/data/generated] [--static site/static] [--site-source site] [--site-destination /tmp/spotwufamily-site] [--skip-site] [--skip-git-diff]")
 }
 
 func printDBHelp(w io.Writer) {

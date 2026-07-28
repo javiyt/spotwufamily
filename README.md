@@ -31,6 +31,7 @@ go run ./cmd/spotwufamily sync --dry-run
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily sync --artist wu-tang-clan
 go run ./cmd/spotwufamily export
 go run ./cmd/spotwufamily site build
+go run ./cmd/spotwufamily audit
 make ci
 ```
 
@@ -120,4 +121,7 @@ go run ./cmd/spotwufamily site build
 - [Database](docs/database.md)
 - [Spotify](docs/spotify.md)
 - [Automation](docs/automation.md)
+- [Operations](docs/operations.md)
+- [Security](docs/security.md)
+- [End-to-end verification](docs/e2e.md)
 - [Catalog policy](docs/catalog-policy.md)

@@ -51,4 +51,4 @@ db-rebuild:
 site-build:
 	go run $(CLI) site build
 
-ci: format validate db-verify export site-build test lint build
+ci: format validate db-verify export site-build audit test lint build

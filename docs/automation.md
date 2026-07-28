@@ -36,3 +36,5 @@ The sync identity and review identity must be separate GitHub Apps or bot creden
 - `data/catalog.snapshot.sql`
 - `site/data/generated/**`
 - `site/static/search-index.json`
+
+See [Security](security.md) and [End-to-end verification](e2e.md) for the approval and release checklist.
