@@ -1,0 +1,1123 @@
+# Generated from data/groups.txt.
+# Spotify IDs are intentionally empty until each entry is resolved and reviewed.
+# Entries remain disabled so validation can reject accidental syncs without a Spotify ID.
+# `roles` preserves cases where an entry appeared in more than one section of the TXT.
+
+version: 1
+
+artists:
+  - slug: wu-tang-clan
+    name: 'Wu-Tang Clan'
+    spotify_id: ""
+    category: core
+    roles: [core]
+    aliases:
+      - 'Wu Tang Clan'
+    enabled: false
+    editorial_order: 1
+    notes: ""
+
+  - slug: wu-tang-killa-beez
+    name: 'Wu-Tang Killa Beez'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 2
+    notes: ""
+
+  - slug: 1-4-0-productions
+    name: '1.4.0. Productions'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 3
+    notes: ""
+
+  - slug: a-i-g
+    name: 'A.I.G.'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 4
+    notes: ""
+
+  - slug: achozen
+    name: 'Achozen'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 5
+    notes: ""
+
+  - slug: american-cream-team
+    name: 'American Cream Team'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 6
+    notes: ""
+
+  - slug: black-knights
+    name: 'Black Knights'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 7
+    notes: ""
+
+  - slug: hat-2-da-back-productions
+    name: 'Hat 2 Da Back Productions'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 8
+    notes: ""
+
+  - slug: black-market-militia
+    name: 'Black Market Militia'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 9
+    notes: ""
+
+  - slug: brooklyn-zu
+    name: 'Brooklyn Zu'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 10
+    notes: ""
+
+  - slug: c-c-f-division
+    name: 'C.C.F. Division'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 11
+    notes: ""
+
+  - slug: da-manchuz
+    name: 'Da Manchuz'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 12
+    notes: ""
+
+  - slug: deadly-venoms
+    name: 'Deadly Venoms'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 13
+    notes: ""
+
+  - slug: gp-wu
+    name: 'GP Wu'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 14
+    notes: ""
+
+  - slug: gravediggaz
+    name: 'Gravediggaz'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 15
+    notes: ""
+
+  - slug: harlem-6
+    name: 'Harlem 6'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 16
+    notes: ""
+
+  - slug: hillside-scramblers
+    name: 'Hillside Scramblers'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 17
+    notes: ""
+
+  - slug: house-gang
+    name: 'House Gang'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 18
+    notes: ""
+
+  - slug: ice-water-inc
+    name: 'Ice Water Inc.'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 19
+    notes: ""
+
+  - slug: k-g-b
+    name: 'K.G.B.'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 20
+    notes: ""
+
+  - slug: killarmy
+    name: 'Killarmy'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 21
+    notes: ""
+
+  - slug: maccabeez
+    name: 'Maccabeez'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 22
+    notes: ""
+
+  - slug: m-m-o
+    name: 'M.M.O.'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 23
+    notes: ""
+
+  - slug: northstar
+    name: 'Northstar'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 24
+    notes: ""
+
+  - slug: orphanage
+    name: 'Orphanage'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 25
+    notes: ""
+
+  - slug: royal-fam
+    name: 'Royal Fam'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 26
+    notes: ""
+
+  - slug: school-of-the-gifted
+    name: 'School of the Gifted'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 27
+    notes: ""
+
+  - slug: stone-mecca
+    name: 'Stone Mecca'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 28
+    notes: ""
+
+  - slug: sunz-of-man
+    name: 'Sunz of Man'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 29
+    notes: ""
+
+  - slug: tha-beggas
+    name: 'Tha Beggas'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 30
+    notes: ""
+
+  - slug: theodore-unit
+    name: 'Theodore Unit'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 31
+    notes: ""
+
+  - slug: t-m-f
+    name: 'T.M.F.'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 32
+    notes: ""
+
+  - slug: two-on-da-road
+    name: 'Two On Da Road'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 33
+    notes: ""
+
+  - slug: universal-zu-disciplez
+    name: 'Universal Zu Disciplez'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 34
+    notes: ""
+
+  - slug: wu-syndicate
+    name: 'Wu-Syndicate'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 35
+    notes: ""
+
+  - slug: yellow-jacketz
+    name: 'Yellow Jacketz'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 36
+    notes: ""
+
+  - slug: zu-ninjaz
+    name: 'Zu Ninjaz'
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 37
+    notes: ""
+
+  - slug: 9th-prince
+    name: '9th Prince'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 38
+    notes: ""
+
+  - slug: 12-o-clock
+    name: "12 O'Clock"
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 39
+    notes: ""
+
+  - slug: armel
+    name: 'Armel'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 40
+    notes: ""
+
+  - slug: beretta-9
+    name: 'Beretta 9'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 41
+    notes: ""
+
+  - slug: bronze-nazareth
+    name: 'Bronze Nazareth'
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+      - producer
+    aliases: []
+    enabled: false
+    editorial_order: 42
+    notes: ""
+
+  - slug: buddha-monk
+    name: 'Buddha Monk'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 43
+    notes: ""
+
+  - slug: cilvaringz
+    name: 'Cilvaringz'
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+      - producer
+    aliases: []
+    enabled: false
+    editorial_order: 44
+    notes: ""
+
+  - slug: darkim-be-allah
+    name: 'Darkim Be Allah'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 45
+    notes: ""
+
+  - slug: dj-ace-nyc
+    name: 'DJ ACE NYC'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 46
+    notes: ""
+
+  - slug: dom-pachino
+    name: 'Dom Pachino'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 47
+    notes: ""
+
+  - slug: don-staten
+    name: 'Don Staten'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 48
+    notes: ""
+
+  - slug: dr-ama-aka-dark-skinned-assassin
+    name: 'Dr. Ama Aka Dark Skinned Assassin'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases:
+      - 'Dr. Ama'
+      - 'Dark Skinned Assassin'
+    enabled: false
+    editorial_order: 49
+    notes: ""
+
+  - slug: dreddy-krueger
+    name: 'Dreddy Krueger'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 50
+    notes: ""
+
+  - slug: dungeon-masta
+    name: 'Dungeon Masta'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 51
+    notes: ""
+
+  - slug: free-murda
+    name: 'Free Murda'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 52
+    notes: ""
+
+  - slug: hanz-on
+    name: 'Hanz On'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 53
+    notes: ""
+
+  - slug: hell-razah
+    name: 'Hell Razah'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 54
+    notes: ""
+
+  - slug: intell
+    name: 'Intell'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 55
+    notes: ""
+
+  - slug: islord
+    name: 'Islord'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 56
+    notes: ""
+
+  - slug: killah-priest
+    name: 'Killah Priest'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 57
+    notes: ""
+
+  - slug: killa-sin
+    name: 'Killa Sin'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 58
+    notes: ""
+
+  - slug: krumbsnatcha
+    name: 'Krumbsnatcha'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 59
+    notes: ""
+
+  - slug: la-the-darkman
+    name: 'LA the Darkman'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases:
+      - 'La the Darkman'
+    enabled: false
+    editorial_order: 60
+    notes: ""
+
+  - slug: lord-superb
+    name: 'Lord Superb'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 61
+    notes: ""
+
+  - slug: lounge-lo
+    name: 'Lounge Lo'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 62
+    notes: ""
+
+  - slug: piro
+    name: 'PiRo'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 63
+    notes: ""
+
+  - slug: popa-wu
+    name: 'Popa Wu'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 64
+    notes: ""
+
+  - slug: prodigal-sunn
+    name: 'Prodigal Sunn'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 65
+    notes: ""
+
+  - slug: redman
+    name: 'Redman'
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+      - collaborator
+    aliases: []
+    enabled: false
+    editorial_order: 66
+    notes: ""
+
+  - slug: remedy
+    name: 'Remedy'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 67
+    notes: ""
+
+  - slug: sav-killz
+    name: 'Sav Killz'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 68
+    notes: ""
+
+  - slug: shabazz-the-disciple
+    name: 'Shabazz the Disciple'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 69
+    notes: ""
+
+  - slug: shaka-amazulu-the-7th
+    name: 'Shaka Amazulu the 7th'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 70
+    notes: ""
+
+  - slug: shyheim
+    name: 'Shyheim'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 71
+    notes: ""
+
+  - slug: silkski
+    name: 'Silkski'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 72
+    notes: ""
+
+  - slug: solomon-childs
+    name: 'Solomon Childs'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 73
+    notes: ""
+
+  - slug: streetlife
+    name: 'Streetlife'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 74
+    notes: ""
+
+  - slug: sun-god
+    name: 'Sun God'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 75
+    notes: ""
+
+  - slug: timbo-king
+    name: 'Timbo King'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 76
+    notes: ""
+
+  - slug: truvillain
+    name: 'TrūVillain'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases:
+      - 'TruVillain'
+    enabled: false
+    editorial_order: 77
+    notes: ""
+
+  - slug: warcloud
+    name: 'Warcloud'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 78
+    notes: ""
+
+  - slug: young-justice
+    name: 'Young Justice'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 79
+    notes: ""
+
+  - slug: young-dirty-bastard
+    name: 'Young Dirty Bastard'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 80
+    notes: ""
+
+  - slug: allah-real
+    name: 'Allah Real'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 81
+    notes: ""
+
+  - slug: blue-raspberry
+    name: 'Blue Raspberry'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 82
+    notes: ""
+
+  - slug: jamie-sommers
+    name: 'Jamie Sommers'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 83
+    notes: ""
+
+  - slug: makeba-mooncycle
+    name: 'Makeba Mooncycle'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 84
+    notes: ""
+
+  - slug: suga-bang-bang
+    name: 'Suga Bang Bang'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 85
+    notes: ""
+
+  - slug: tash-mahogany
+    name: 'Tash Mahogany'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 86
+    notes: ""
+
+  - slug: tekitha
+    name: 'Tekitha'
+    spotify_id: ""
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 87
+    notes: ""
+
+  - slug: 4th-disciple
+    name: '4th Disciple'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases: []
+    enabled: false
+    editorial_order: 88
+    notes: ""
+
+  - slug: arabian-knight
+    name: 'Arabian Knight'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases: []
+    enabled: false
+    editorial_order: 89
+    notes: ""
+
+  - slug: john-the-baptist-aka-bapgod
+    name: 'John the Baptist AKA BAPGOD'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases:
+      - 'John the Baptist'
+      - 'BAPGOD'
+    enabled: false
+    editorial_order: 90
+    notes: ""
+
+  - slug: mathematics
+    name: 'Mathematics'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases: []
+    enabled: false
+    editorial_order: 91
+    notes: ""
+
+  - slug: popsoundz
+    name: 'Popsoundz'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases: []
+    enabled: false
+    editorial_order: 92
+    notes: ""
+
+  - slug: rns
+    name: 'RNS'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases: []
+    enabled: false
+    editorial_order: 93
+    notes: ""
+
+  - slug: su-preme
+    name: 'Su-Preme'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases: []
+    enabled: false
+    editorial_order: 94
+    notes: ""
+
+  - slug: true-master
+    name: 'True Master'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases: []
+    enabled: false
+    editorial_order: 95
+    notes: ""
+
+  - slug: y-kim-the-illfigure
+    name: 'Y-Kim the Illfigure'
+    spotify_id: ""
+    category: producer
+    roles: [producer]
+    aliases: []
+    enabled: false
+    editorial_order: 96
+    notes: ""
+
+  - slug: nas
+    name: 'Nas'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 97
+    notes: ""
+
+  - slug: mobb-deep
+    name: 'Mobb Deep'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 98
+    notes: ""
+
+  - slug: the-l-o-x
+    name: 'The L.O.X.'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases:
+      - 'The LOX'
+      - 'LOX'
+    enabled: false
+    editorial_order: 99
+    notes: ""
+
+  - slug: az
+    name: 'AZ'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 100
+    notes: ""
+
+  - slug: busta-rhymes
+    name: 'Busta Rhymes'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 101
+    notes: ""
+
+  - slug: kool-g-rap
+    name: 'Kool G Rap'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 102
+    notes: ""
+
+  - slug: mf-doom
+    name: 'MF DOOM'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 103
+    notes: ""
+
+  - slug: easy-mo-bee
+    name: 'Easy Mo Bee'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 104
+    notes: ""
+
+  - slug: pete-rock
+    name: 'Pete Rock'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 105
+    notes: ""
+
+  - slug: kanye-west
+    name: 'Kanye West'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 106
+    notes: ""
+
+  - slug: dj-muggs
+    name: 'DJ Muggs'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 107
+    notes: ""
+
+  - slug: b-nasty
+    name: 'B-Nasty'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 108
+    notes: ""
+
+  - slug: dj-symphony
+    name: 'DJ Symphony'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 109
+    notes: ""
+
+  - slug: j-love
+    name: 'J-Love'
+    spotify_id: ""
+    category: collaborator
+    roles: [collaborator]
+    aliases: []
+    enabled: false
+    editorial_order: 110
+    notes: ""
+

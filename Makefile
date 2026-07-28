@@ -1,32 +1,41 @@
-.ONESHELL:
+.PHONY: setup format lint test test-race validate sync export build serve audit db-verify ci
 
-SHELL := /bin/bash
-.SHELLFLAGS := -ec
+CLI := ./cmd/spotwufamily
 
-.PHONY: default
-default: check ;
-
-export GOFLAGS=-mod=vendor
-
-generate:
-	@echo "Generating mock files..."
-	@find . -name "mock_*.go" -delete
-	@go generate ./...
-	@echo "Mock files generated"
+setup:
+	go mod download
 
 format:
-	@echo "Applying format..."
-	@go run mvdan.cc/gofumpt -d -w {cmd,internal}
-	@echo "Format applied"
+	gofmt -w cmd internal
 
 lint:
-	@echo "Running linter over project..."
-	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run
-	@echo "Linter finished"
+	go vet ./...
 
 test:
-	@echo "Running tests..."
-	@go test -timeout 10s -race -count 5 -coverprofile=coverage.txt -covermode=atomic -shuffle on ./internal/...
-	@echo "Tests finished"
+	go test ./...
 
-check: lint test
+test-race:
+	go test -race ./...
+
+validate:
+	go run $(CLI) artists validate
+
+sync:
+	go run $(CLI) sync
+
+export:
+	go run $(CLI) export
+
+build:
+	go build $(CLI)
+
+serve:
+	@echo "Hugo site is planned for a later phase."
+
+audit:
+	go run $(CLI) audit
+
+db-verify:
+	go run $(CLI) db verify
+
+ci: format validate test lint build

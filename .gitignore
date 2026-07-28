@@ -18,5 +18,9 @@ vendor/
 
 coverage.txt
 
+data/catalog.db-wal
+data/catalog.db-shm
+data/catalog.db-journal
+
 mock_*.go
 coverage.txt
