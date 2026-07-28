@@ -1,17 +1,40 @@
 # Spotify
 
-The Spotify integration will use the official Spotify Web API over `net/http`.
+The Spotify integration uses the official Spotify Web API over `net/http`.
 
 Expected secrets:
 
 - `SPOTIFY_CLIENT_ID`
 - `SPOTIFY_CLIENT_SECRET`
 
-The client will use Client Credentials, inject `http.Client` for tests, follow pagination, honor `Retry-After`, and avoid real API calls in unit tests or CI.
+The client uses Client Credentials, injects `http.Client` for tests, follows pagination, honors `Retry-After`, retries 429 and temporary 5xx responses, and avoids real API calls in unit tests or CI.
+
+Implemented endpoints:
+
+- `POST https://accounts.spotify.com/api/token`
+- `GET /v1/search?type=artist`
+- `GET /v1/artists/{id}`
+- `GET /v1/artists/{id}/albums`
+- `GET /v1/albums/{id}`
+- `GET /v1/albums/{id}/tracks`
+- `GET /v1/tracks?ids=...`
+
+References:
+
+- Client Credentials Flow: https://developer.spotify.com/documentation/web-api/tutorials/client-credentials-flow
+- Search endpoint: https://developer.spotify.com/documentation/web-api/reference/search
+- Rate limits and `Retry-After`: https://developer.spotify.com/documentation/web-api/concepts/rate-limits
 
 ## Artist Resolution
 
-Phase 2 includes the domain/application side of resolution without calling Spotify:
+Artist resolution can use Spotify directly:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  go run ./cmd/spotwufamily artists resolve --non-interactive --report resolve.md
+```
+
+For deterministic local testing, it can still use a local JSON candidate file:
 
 ```bash
 go run ./cmd/spotwufamily artists resolve --non-interactive --candidates candidates.json --report resolve.md
@@ -35,4 +58,4 @@ Candidate JSON shape:
 }
 ```
 
-The phase 3 HTTP adapter will implement the same search port using Spotify.
+The JSON adapter is only for offline reports and tests.

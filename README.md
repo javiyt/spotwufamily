@@ -13,7 +13,7 @@ The v2 direction is:
 
 ## Current Status
 
-Phase 2 is in progress. The project now has the CLI skeleton, editorial YAML catalog validation, `groups.txt` import support, offline artist-resolution reports, CI, and architecture documentation. The real Spotify HTTP adapter, SQLite, Hugo and GitHub Pages automation are planned next phases.
+Phase 3 is in progress. The project now has the CLI skeleton, editorial YAML catalog validation, `groups.txt` import support, artist-resolution reports, a `net/http` Spotify client, CI, and architecture documentation. SQLite, Hugo and GitHub Pages automation are planned next phases.
 
 ## Commands
 
@@ -21,6 +21,7 @@ Phase 2 is in progress. The project now has the CLI skeleton, editorial YAML cat
 go run ./cmd/spotwufamily version
 go run ./cmd/spotwufamily artists validate
 go run ./cmd/spotwufamily artists import-groups
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --report resolve.md
 go run ./cmd/spotwufamily artists resolve --non-interactive --candidates candidates.json --report resolve.md
 make ci
 ```
@@ -46,7 +47,7 @@ Run:
 go run ./cmd/spotwufamily artists validate
 ```
 
-The non-interactive resolver currently accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access. The phase 3 Spotify adapter will provide the same candidate-search port.
+The non-interactive resolver uses Spotify when credentials are present. It also accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access.
 
 ## Documentation
 

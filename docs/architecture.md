@@ -20,6 +20,7 @@ Current phase:
 - Application contains `artists validate`, `artists import-groups` and non-interactive `artists resolve` reports.
 - YAML is an outbound adapter.
 - Local JSON candidate files are a temporary outbound adapter for offline resolution reports.
+- Spotify is an outbound `net/http` adapter behind the candidate-search port and exposes catalog-fetching methods for later sync work.
 - CLI composition lives at the inbound edge.
 
 Planned phases add Spotify, SQLite, export, Hugo and automation without making domain packages depend on those technologies.

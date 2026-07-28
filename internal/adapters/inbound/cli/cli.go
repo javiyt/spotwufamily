@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/jsoncandidates"
+	spotifyadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/spotify"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 )
@@ -91,7 +92,7 @@ func executeArtists(ctx context.Context, args []string, stdout, stderr io.Writer
 
 func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve --non-interactive --candidates candidates.json [--report report.md] [--catalog data/artists.yaml]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve --non-interactive [--candidates candidates.json] [--report report.md] [--catalog data/artists.yaml] [--market ES]")
 		return 0
 	}
 
@@ -104,12 +105,8 @@ func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io
 		_, _ = fmt.Fprintln(stderr, "interactive artist resolution is planned after the Spotify adapter is available")
 		return 2
 	}
-	if options.candidatesPath == "" {
-		_, _ = fmt.Fprintln(stderr, "artists resolve: --candidates is required until the Spotify adapter is implemented")
-		return 2
-	}
 
-	searcher, err := jsoncandidates.NewSearcher(options.candidatesPath)
+	searcher, err := resolveSearcher(options)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
 		return 1
@@ -142,6 +139,7 @@ type resolveOptions struct {
 	catalogPath    string
 	candidatesPath string
 	reportPath     string
+	market         string
 	nonInteractive bool
 }
 
@@ -170,12 +168,41 @@ func parseResolveOptions(args []string) (resolveOptions, error) {
 				return resolveOptions{}, fmt.Errorf("--report requires a value")
 			}
 			options.reportPath = args[i]
+		case "--market":
+			i++
+			if i >= len(args) {
+				return resolveOptions{}, fmt.Errorf("--market requires a value")
+			}
+			options.market = args[i]
 		default:
 			return resolveOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
 	}
 
 	return options, nil
+}
+
+func resolveSearcher(options resolveOptions) (artists.CandidateSearcher, error) {
+	if options.candidatesPath != "" {
+		return jsoncandidates.NewSearcher(options.candidatesPath)
+	}
+
+	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
+	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		return nil, fmt.Errorf("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required when --candidates is not provided")
+	}
+
+	market := options.market
+	if market == "" {
+		market = os.Getenv("SPOTIFY_MARKET")
+	}
+
+	return spotifyadapter.NewClient(spotifyadapter.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Market:       market,
+	})
 }
 
 func executeArtistsValidate(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
