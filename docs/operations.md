@@ -28,6 +28,15 @@ go run ./cmd/spotwufamily artists validate
 
 Review `resolve.md` for skipped or ambiguous entries before manually editing YAML.
 
+If an artist is skipped because candidates are ambiguous, use interactive mode:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  go run ./cmd/spotwufamily artists resolve
+```
+
+Select the candidate number to write its Spotify ID to YAML, `s` to skip, or `q` to save and stop.
+
 Manual sync for one reviewed artist:
 
 ```bash

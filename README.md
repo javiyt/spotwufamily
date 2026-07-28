@@ -23,6 +23,7 @@ go run ./cmd/spotwufamily artists validate
 go run ./cmd/spotwufamily artists import-groups
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --report resolve.md
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve
 go run ./cmd/spotwufamily artists resolve --non-interactive --candidates data/artist-candidates.example.json --report resolve.md
 go run ./cmd/spotwufamily db migrate
 go run ./cmd/spotwufamily db verify
@@ -71,6 +72,13 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
 ```
 
 By default, `--apply` only writes matches scoring at least `95` with a score gap of at least `10` over the next candidate. It leaves artists disabled; use `--enable-applied` only after deciding that resolved artists should be included in sync.
+
+For manual review with less typing, run interactive mode and pick the candidate number for each artist:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  go run ./cmd/spotwufamily artists resolve
+```
 
 ## Sync
 

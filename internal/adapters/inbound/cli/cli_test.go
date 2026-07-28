@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/inbound/cli"
@@ -115,6 +116,54 @@ artists:
 	require.Equal(t, 0, code)
 	require.Empty(t, stderr.String())
 	require.Contains(t, stdout.String(), "applied resolved Spotify IDs: 1")
+
+	updated, err := os.ReadFile(catalogPath)
+	require.NoError(t, err)
+	require.Contains(t, string(updated), "spotify_id: 0CH4f9m2L3TRaA5oErU2p0")
+	require.Contains(t, string(updated), "enabled: false")
+}
+
+func TestExecuteArtistsResolveInteractiveAppliesSelectedCandidate(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	candidatesPath := filepath.Join(dir, "candidates.json")
+
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`
+version: 1
+artists:
+  - slug: gravediggaz
+    name: Gravediggaz
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+`), 0o644))
+	require.NoError(t, os.WriteFile(candidatesPath, []byte(`{
+  "gravediggaz": [
+    {"name": "Gravediggaz", "spotify_id": "0CH4f9m2L3TRaA5oErU2p0", "popularity": 45, "followers": 1000}
+  ]
+}`), 0o644))
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := cli.ExecuteWithInput([]string{
+		"artists",
+		"resolve",
+		"--interactive",
+		"--catalog",
+		catalogPath,
+		"--candidates",
+		candidatesPath,
+	}, strings.NewReader("1\n"), &stdout, &stderr)
+
+	require.Equal(t, 0, code)
+	require.Empty(t, stderr.String())
+	require.Contains(t, stdout.String(), "select candidate number")
+	require.Contains(t, stdout.String(), "interactive resolve: applied=1 skipped=0")
 
 	updated, err := os.ReadFile(catalogPath)
 	require.NoError(t, err)

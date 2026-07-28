@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/catalogexport"
 	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
+	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
 const defaultCatalogPath = "data/artists.yaml"
@@ -28,6 +30,10 @@ const defaultExportOutputDir = "site/data/generated"
 const defaultExportStaticDir = "site/static"
 
 func Execute(args []string, stdout, stderr io.Writer) int {
+	return ExecuteWithInput(args, os.Stdin, stdout, stderr)
+}
+
+func ExecuteWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		printRootHelp(stdout)
 		return 0
@@ -41,7 +47,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stdout, "spotwufamily v2-dev")
 		return 0
 	case "artists":
-		return executeArtists(ctx, args[1:], stdout, stderr, store)
+		return executeArtists(ctx, args[1:], stdin, stdout, stderr, store)
 	case "sync":
 		return executeSync(ctx, args[1:], stdout, stderr, store)
 	case "export":
@@ -748,7 +754,7 @@ func executeDBRebuild(ctx context.Context, stdout, stderr io.Writer, options dbO
 	return 0
 }
 
-func executeArtists(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if len(args) == 0 {
 		printArtistsHelp(stdout)
 		return 0
@@ -760,7 +766,7 @@ func executeArtists(ctx context.Context, args []string, stdout, stderr io.Writer
 	case "import-groups":
 		return executeArtistsImportGroups(ctx, args[1:], stdout, stderr, store)
 	case "resolve":
-		return executeArtistsResolve(ctx, args[1:], stdout, stderr, store)
+		return executeArtistsResolve(ctx, args[1:], stdin, stdout, stderr, store)
 	case "help", "--help", "-h":
 		printArtistsHelp(stdout)
 		return 0
@@ -771,9 +777,9 @@ func executeArtists(ctx context.Context, args []string, stdout, stderr io.Writer
 	}
 }
 
-func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+func executeArtistsResolve(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve --non-interactive [--apply] [--min-score 95] [--min-score-gap 10] [--enable-applied] [--candidates data/artist-candidates.example.json] [--report report.md] [--catalog data/artists.yaml] [--market ES]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve [--interactive|--non-interactive] [--apply] [--min-score 95] [--min-score-gap 10] [--enable-applied] [--candidates data/artist-candidates.example.json] [--report report.md] [--catalog data/artists.yaml] [--market ES]")
 		return 0
 	}
 
@@ -782,15 +788,13 @@ func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
 		return 2
 	}
-	if !options.nonInteractive {
-		_, _ = fmt.Fprintln(stderr, "interactive artist resolution is not supported; use --non-interactive")
-		return 2
-	}
-
 	searcher, err := resolveSearcher(options)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
 		return 1
+	}
+	if options.interactive || !options.nonInteractive {
+		return executeArtistsResolveInteractive(ctx, stdin, stdout, stderr, store, searcher, options)
 	}
 
 	resolver := artists.NewResolveArtists(store, searcher)
@@ -834,6 +838,7 @@ type resolveOptions struct {
 	candidatesPath string
 	reportPath     string
 	market         string
+	interactive    bool
 	nonInteractive bool
 	apply          bool
 	enableApplied  bool
@@ -846,6 +851,8 @@ func parseResolveOptions(args []string) (resolveOptions, error) {
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--interactive":
+			options.interactive = true
 		case "--non-interactive":
 			options.nonInteractive = true
 		case "--apply":
@@ -900,8 +907,149 @@ func parseResolveOptions(args []string) (resolveOptions, error) {
 			return resolveOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
 	}
+	if options.interactive && options.nonInteractive {
+		return resolveOptions{}, fmt.Errorf("--interactive and --non-interactive cannot be used together")
+	}
+	if options.apply && options.interactive {
+		return resolveOptions{}, fmt.Errorf("--apply is only for --non-interactive mode; interactive mode applies selected candidates")
+	}
+	if options.apply && !options.nonInteractive {
+		return resolveOptions{}, fmt.Errorf("--apply requires --non-interactive, or use interactive mode without --apply")
+	}
 
 	return options, nil
+}
+
+func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer, store artists.CatalogStore, searcher artists.CandidateSearcher, options resolveOptions) int {
+	c, err := store.Load(ctx, options.catalogPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists resolve: load artist catalog: %v\n", err)
+		return 1
+	}
+
+	reader := bufio.NewReader(stdin)
+	applied := 0
+	skipped := 0
+	for i := range c.Artists {
+		artist := &c.Artists[i]
+		if artist.SpotifyID != "" {
+			continue
+		}
+
+		candidates, err := searcher.SearchArtistCandidates(ctx, *artist)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "artists resolve: search %s: %v\n", artist.Slug, err)
+			return 1
+		}
+		matches := catalog.RankCandidates(*artist, candidates)
+		_, _ = fmt.Fprintf(stdout, "\n%s (%s)\n", artist.Name, artist.Slug)
+		if len(artist.Aliases) > 0 {
+			_, _ = fmt.Fprintf(stdout, "aliases: %s\n", strings.Join(artist.Aliases, ", "))
+		}
+		if len(matches) == 0 {
+			_, _ = fmt.Fprintln(stdout, "no candidates found")
+			skipped++
+			continue
+		}
+
+		limit := len(matches)
+		if limit > 10 {
+			limit = 10
+		}
+		for index := 0; index < limit; index++ {
+			match := matches[index]
+			candidate := match.Candidate
+			_, _ = fmt.Fprintf(stdout, "  %d. %s | %s | score=%d confidence=%s popularity=%d followers=%d\n",
+				index+1,
+				candidate.Name,
+				candidate.SpotifyID,
+				match.Score,
+				match.Confidence,
+				candidate.Popularity,
+				candidate.Followers,
+			)
+		}
+
+		for {
+			_, _ = fmt.Fprint(stdout, "select candidate number, s=skip, q=save and quit: ")
+			line, readErr := reader.ReadString('\n')
+			if readErr != nil && readErr != io.EOF {
+				_, _ = fmt.Fprintf(stderr, "artists resolve: read selection: %v\n", readErr)
+				return 1
+			}
+			choice := strings.ToLower(strings.TrimSpace(line))
+			if choice == "" || choice == "s" || choice == "skip" {
+				skipped++
+				break
+			}
+			if choice == "q" || choice == "quit" {
+				if err := saveInteractiveResolve(ctx, store, options.catalogPath, c); err != nil {
+					_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+					return 1
+				}
+				_, _ = fmt.Fprintf(stdout, "interactive resolve: applied=%d skipped=%d\n", applied, skipped)
+				return 0
+			}
+
+			selected, err := strconv.Atoi(choice)
+			if err != nil || selected < 1 || selected > limit {
+				_, _ = fmt.Fprintf(stdout, "invalid selection %q\n", choice)
+				if readErr == io.EOF {
+					skipped++
+					break
+				}
+				continue
+			}
+
+			candidate := matches[selected-1].Candidate
+			if candidate.SpotifyID == "" {
+				_, _ = fmt.Fprintln(stdout, "candidate has no Spotify ID; skipped")
+				skipped++
+				break
+			}
+			if existing := spotifyIDOwner(c, candidate.SpotifyID, artist.Slug); existing != "" {
+				_, _ = fmt.Fprintf(stdout, "Spotify ID already belongs to %s; skipped\n", existing)
+				skipped++
+				break
+			}
+			artist.SpotifyID = candidate.SpotifyID
+			if options.enableApplied {
+				artist.Enabled = true
+			}
+			applied++
+			break
+		}
+	}
+
+	if err := saveInteractiveResolve(ctx, store, options.catalogPath, c); err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "interactive resolve: applied=%d skipped=%d\n", applied, skipped)
+	return 0
+}
+
+func saveInteractiveResolve(ctx context.Context, store artists.CatalogStore, path string, c catalog.EditorialCatalog) error {
+	if issues := catalog.ValidateEditorialCatalog(c); len(issues) > 0 {
+		messages := make([]string, 0, len(issues))
+		for _, issue := range issues {
+			messages = append(messages, issue.Error())
+		}
+		return fmt.Errorf("resolved catalog is invalid: %s", strings.Join(messages, "; "))
+	}
+	if err := store.Save(ctx, path, c); err != nil {
+		return fmt.Errorf("save resolved artist catalog: %w", err)
+	}
+	return nil
+}
+
+func spotifyIDOwner(c catalog.EditorialCatalog, spotifyID, currentSlug string) string {
+	for _, artist := range c.Artists {
+		if artist.Slug != currentSlug && artist.SpotifyID == spotifyID {
+			return artist.Slug
+		}
+	}
+	return ""
 }
 
 func resolveSearcher(options resolveOptions) (artists.CandidateSearcher, error) {

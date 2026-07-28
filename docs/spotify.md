@@ -50,6 +50,15 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
 
 `--apply` defaults to `--min-score 95 --min-score-gap 10`, skips ambiguous candidates, validates the resulting YAML before saving, and keeps resolved artists disabled unless `--enable-applied` is provided.
 
+For human-in-the-loop resolution, omit `--non-interactive`. The CLI prompts per unresolved artist:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  go run ./cmd/spotwufamily artists resolve
+```
+
+Use the candidate number to write that Spotify ID, `s` to skip, or `q` to save selected changes and quit.
+
 For deterministic local testing, it can still use a local JSON candidate file:
 
 ```bash
