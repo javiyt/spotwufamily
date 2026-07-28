@@ -18,6 +18,16 @@ go run ./cmd/spotwufamily audit --skip-site --skip-git-diff
 
 ## Catalog Sync
 
+Resolve reviewed artist IDs with as much automation as possible:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
+go run ./cmd/spotwufamily artists validate
+```
+
+Review `resolve.md` for skipped or ambiguous entries before manually editing YAML.
+
 Manual sync for one reviewed artist:
 
 ```bash

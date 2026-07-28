@@ -31,7 +31,7 @@ go run ./cmd/spotwufamily db rebuild
 
 The initial schema includes configured artists, aliases, Spotify artists, albums, tracks, album/track credits, discovery relationships, images, external URLs, copyrights and sync run metadata.
 
-Phase 5 sync persistence:
+Sync persistence:
 
 - `configured_artists` and `artist_aliases` are populated from `data/artists.yaml`.
 - Spotify artist, album and track rows are deduplicated by Spotify ID.
@@ -39,7 +39,7 @@ Phase 5 sync persistence:
 - `album_tracks`, `album_artists` and `track_artists` preserve album placement and credited artists.
 - The current policy is conservative: sync upserts observed data and does not delete rows simply because they are absent from one run.
 
-Phase 6 export:
+Export:
 
 - Reads the normalized SQLite schema.
 - Writes deterministic JSON to `site/data/generated`.

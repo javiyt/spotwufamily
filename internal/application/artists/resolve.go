@@ -26,6 +26,8 @@ func NewResolveArtists(store CatalogStore, searcher CandidateSearcher) ResolveAr
 type ResolveReport struct {
 	Entries []ResolveReportEntry
 	Errors  []ResolveError
+	Applied []ResolvedArtist
+	Skipped []ResolveSkip
 }
 
 type ResolveReportEntry struct {
@@ -33,9 +35,29 @@ type ResolveReportEntry struct {
 	Matches []catalog.CandidateMatch
 }
 
+type ResolvedArtist struct {
+	Slug      string
+	Name      string
+	SpotifyID string
+	Score     int
+	Reason    string
+}
+
+type ResolveSkip struct {
+	Slug   string
+	Name   string
+	Reason string
+}
+
 type ResolveError struct {
 	Slug string
 	Err  error
+}
+
+type ApplyResolveOptions struct {
+	MinScore       int
+	MinScoreGap    int
+	EnableResolved bool
 }
 
 func (r ResolveArtists) Run(ctx context.Context, path string) (ResolveReport, error) {
@@ -44,6 +66,67 @@ func (r ResolveArtists) Run(ctx context.Context, path string) (ResolveReport, er
 		return ResolveReport{}, fmt.Errorf("load artist catalog: %w", err)
 	}
 
+	return r.resolve(ctx, c)
+}
+
+func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyResolveOptions) (ResolveReport, error) {
+	c, err := r.store.Load(ctx, path)
+	if err != nil {
+		return ResolveReport{}, fmt.Errorf("load artist catalog: %w", err)
+	}
+
+	report, err := r.resolve(ctx, c)
+	if err != nil {
+		return ResolveReport{}, err
+	}
+	if len(report.Errors) > 0 {
+		return report, nil
+	}
+
+	if options.MinScore == 0 {
+		options.MinScore = 95
+	}
+	if options.MinScoreGap == 0 {
+		options.MinScoreGap = 10
+	}
+
+	updates := map[string]ResolvedArtist{}
+	for _, entry := range report.Entries {
+		resolved, ok, reason := autoResolvedMatch(entry, options)
+		if !ok {
+			report.Skipped = append(report.Skipped, ResolveSkip{Slug: entry.Artist.Slug, Name: entry.Artist.Name, Reason: reason})
+			continue
+		}
+		updates[entry.Artist.Slug] = resolved
+		report.Applied = append(report.Applied, resolved)
+	}
+
+	if len(updates) == 0 {
+		return report, nil
+	}
+
+	for i := range c.Artists {
+		update, ok := updates[c.Artists[i].Slug]
+		if !ok {
+			continue
+		}
+		c.Artists[i].SpotifyID = update.SpotifyID
+		if options.EnableResolved {
+			c.Artists[i].Enabled = true
+		}
+	}
+
+	if issues := catalog.ValidateEditorialCatalog(c); len(issues) > 0 {
+		return report, fmt.Errorf("resolved catalog is invalid: %s", formatValidationIssues(issues))
+	}
+	if err := r.store.Save(ctx, path, c); err != nil {
+		return report, fmt.Errorf("save resolved artist catalog: %w", err)
+	}
+
+	return report, nil
+}
+
+func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog) (ResolveReport, error) {
 	report := ResolveReport{}
 	for _, artist := range c.Artists {
 		if artist.SpotifyID != "" {
@@ -69,10 +152,61 @@ func (r ResolveArtists) Run(ctx context.Context, path string) (ResolveReport, er
 	return report, nil
 }
 
+func autoResolvedMatch(entry ResolveReportEntry, options ApplyResolveOptions) (ResolvedArtist, bool, string) {
+	if len(entry.Matches) == 0 {
+		return ResolvedArtist{}, false, "no candidates"
+	}
+
+	best := entry.Matches[0]
+	if best.Candidate.SpotifyID == "" {
+		return ResolvedArtist{}, false, "best candidate has no Spotify ID"
+	}
+	if best.Score < options.MinScore {
+		return ResolvedArtist{}, false, fmt.Sprintf("best score %d is below minimum %d", best.Score, options.MinScore)
+	}
+	if len(entry.Matches) > 1 && best.Score-entry.Matches[1].Score < options.MinScoreGap {
+		return ResolvedArtist{}, false, fmt.Sprintf("ambiguous top candidates: score gap %d is below minimum %d", best.Score-entry.Matches[1].Score, options.MinScoreGap)
+	}
+
+	return ResolvedArtist{
+		Slug:      entry.Artist.Slug,
+		Name:      entry.Artist.Name,
+		SpotifyID: best.Candidate.SpotifyID,
+		Score:     best.Score,
+		Reason:    best.Reason,
+	}, true, ""
+}
+
+func formatValidationIssues(issues []catalog.ValidationIssue) string {
+	messages := make([]string, 0, len(issues))
+	for _, issue := range issues {
+		messages = append(messages, issue.Error())
+	}
+	return strings.Join(messages, "; ")
+}
+
 func FormatResolveReportMarkdown(report ResolveReport) []byte {
 	var buf bytes.Buffer
 	buf.WriteString("# Artist Resolution Report\n\n")
 	buf.WriteString(fmt.Sprintf("Artists needing review: %d\n\n", len(report.Entries)))
+	if len(report.Applied) > 0 {
+		buf.WriteString(fmt.Sprintf("Applied automatically: %d\n\n", len(report.Applied)))
+		buf.WriteString("| Artist | Spotify ID | Score | Reason |\n")
+		buf.WriteString("| --- | --- | ---: | --- |\n")
+		for _, applied := range report.Applied {
+			buf.WriteString(fmt.Sprintf("| %s | `%s` | %d | %s |\n", escapeMarkdown(applied.Name), applied.SpotifyID, applied.Score, escapeMarkdown(applied.Reason)))
+		}
+		buf.WriteString("\n")
+	}
+	if len(report.Skipped) > 0 {
+		buf.WriteString(fmt.Sprintf("Skipped automatic updates: %d\n\n", len(report.Skipped)))
+		buf.WriteString("| Artist | Reason |\n")
+		buf.WriteString("| --- | --- |\n")
+		for _, skipped := range report.Skipped {
+			buf.WriteString(fmt.Sprintf("| %s | %s |\n", escapeMarkdown(skipped.Name), escapeMarkdown(skipped.Reason)))
+		}
+		buf.WriteString("\n")
+	}
 
 	for _, entry := range report.Entries {
 		buf.WriteString(fmt.Sprintf("## %s\n\n", entry.Artist.Name))

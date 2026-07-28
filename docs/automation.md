@@ -37,4 +37,6 @@ The sync identity and review identity must be separate GitHub Apps or bot creden
 - `site/data/generated/**`
 - `site/static/search-index.json`
 
-See [Security](security.md) and [End-to-end verification](e2e.md) for the approval and release checklist.
+Mergify is configured only to keep matching PRs up to date. It does not merge PRs; merge decisions are left to GitHub branch protection and the explicit auto-merge request created by `catalog-sync.yml`.
+
+See [Security](security.md), [End-to-end verification](e2e.md) and [Release readiness](release-readiness.md) for the approval and release checklist.

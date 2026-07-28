@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
@@ -47,8 +48,6 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		return executeExport(ctx, args[1:], stdout, stderr)
 	case "audit":
 		return executeAudit(ctx, args[1:], stdout, stderr, store)
-	case "build":
-		return notImplemented(stderr, args[0])
 	case "db":
 		return executeDB(ctx, args[1:], stdout, stderr)
 	case "site":
@@ -749,27 +748,6 @@ func executeDBRebuild(ctx context.Context, stdout, stderr io.Writer, options dbO
 	return 0
 }
 
-func executeReservedGroup(stderr io.Writer, group string, args []string, commands ...string) int {
-	if len(args) == 0 || hasHelp(args) {
-		_, _ = fmt.Fprintf(stderr, "%s commands planned for a later phase: %s\n", group, strings.Join(commands, ", "))
-		return 2
-	}
-
-	for _, command := range commands {
-		if args[0] == command {
-			return notImplemented(stderr, group+" "+command)
-		}
-	}
-
-	_, _ = fmt.Fprintf(stderr, "unknown %s command %q\n", group, args[0])
-	return 2
-}
-
-func notImplemented(stderr io.Writer, command string) int {
-	_, _ = fmt.Fprintf(stderr, "%s is planned for a later phase and is not implemented yet\n", command)
-	return 2
-}
-
 func executeArtists(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if len(args) == 0 {
 		printArtistsHelp(stdout)
@@ -795,7 +773,7 @@ func executeArtists(ctx context.Context, args []string, stdout, stderr io.Writer
 
 func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve --non-interactive [--candidates candidates.json] [--report report.md] [--catalog data/artists.yaml] [--market ES]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve --non-interactive [--apply] [--min-score 95] [--min-score-gap 10] [--enable-applied] [--candidates data/artist-candidates.example.json] [--report report.md] [--catalog data/artists.yaml] [--market ES]")
 		return 0
 	}
 
@@ -805,7 +783,7 @@ func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io
 		return 2
 	}
 	if !options.nonInteractive {
-		_, _ = fmt.Fprintln(stderr, "interactive artist resolution is planned after the Spotify adapter is available")
+		_, _ = fmt.Fprintln(stderr, "interactive artist resolution is not supported; use --non-interactive")
 		return 2
 	}
 
@@ -815,7 +793,17 @@ func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io
 		return 1
 	}
 
-	report, err := artists.NewResolveArtists(store, searcher).Run(ctx, options.catalogPath)
+	resolver := artists.NewResolveArtists(store, searcher)
+	var report artists.ResolveReport
+	if options.apply {
+		report, err = resolver.Apply(ctx, options.catalogPath, artists.ApplyResolveOptions{
+			MinScore:       options.minScore,
+			MinScoreGap:    options.minScoreGap,
+			EnableResolved: options.enableApplied,
+		})
+	} else {
+		report, err = resolver.Run(ctx, options.catalogPath)
+	}
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
 		return 1
@@ -829,6 +817,9 @@ func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io
 		return 1
 	} else {
 		_, _ = fmt.Fprintf(stdout, "wrote artist resolution report: %s\n", options.reportPath)
+	}
+	if options.apply {
+		_, _ = fmt.Fprintf(stdout, "applied resolved Spotify IDs: %d; skipped: %d\n", len(report.Applied), len(report.Skipped))
 	}
 
 	if len(report.Errors) > 0 {
@@ -844,15 +835,43 @@ type resolveOptions struct {
 	reportPath     string
 	market         string
 	nonInteractive bool
+	apply          bool
+	enableApplied  bool
+	minScore       int
+	minScoreGap    int
 }
 
 func parseResolveOptions(args []string) (resolveOptions, error) {
-	options := resolveOptions{catalogPath: defaultCatalogPath, reportPath: "-"}
+	options := resolveOptions{catalogPath: defaultCatalogPath, reportPath: "-", minScore: 95, minScoreGap: 10}
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--non-interactive":
 			options.nonInteractive = true
+		case "--apply":
+			options.apply = true
+		case "--enable-applied":
+			options.enableApplied = true
+		case "--min-score":
+			i++
+			if i >= len(args) {
+				return resolveOptions{}, fmt.Errorf("--min-score requires a value")
+			}
+			value, err := strconv.Atoi(args[i])
+			if err != nil {
+				return resolveOptions{}, fmt.Errorf("--min-score must be an integer")
+			}
+			options.minScore = value
+		case "--min-score-gap":
+			i++
+			if i >= len(args) {
+				return resolveOptions{}, fmt.Errorf("--min-score-gap requires a value")
+			}
+			value, err := strconv.Atoi(args[i])
+			if err != nil {
+				return resolveOptions{}, fmt.Errorf("--min-score-gap must be an integer")
+			}
+			options.minScoreGap = value
 		case "--catalog":
 			i++
 			if i >= len(args) {

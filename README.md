@@ -22,7 +22,8 @@ go run ./cmd/spotwufamily version
 go run ./cmd/spotwufamily artists validate
 go run ./cmd/spotwufamily artists import-groups
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --report resolve.md
-go run ./cmd/spotwufamily artists resolve --non-interactive --candidates candidates.json --report resolve.md
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
+go run ./cmd/spotwufamily artists resolve --non-interactive --candidates data/artist-candidates.example.json --report resolve.md
 go run ./cmd/spotwufamily db migrate
 go run ./cmd/spotwufamily db verify
 go run ./cmd/spotwufamily db snapshot
@@ -56,7 +57,20 @@ Run:
 go run ./cmd/spotwufamily artists validate
 ```
 
-The non-interactive resolver uses Spotify when credentials are present. It also accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access.
+The non-interactive resolver uses Spotify when credentials are present. It also accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access:
+
+```bash
+go run ./cmd/spotwufamily artists resolve --non-interactive --candidates data/artist-candidates.example.json --report resolve.md
+```
+
+To write strong, unambiguous matches back to `data/artists.yaml` automatically:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
+```
+
+By default, `--apply` only writes matches scoring at least `95` with a score gap of at least `10` over the next candidate. It leaves artists disabled; use `--enable-applied` only after deciding that resolved artists should be included in sync.
 
 ## Sync
 
@@ -124,4 +138,5 @@ go run ./cmd/spotwufamily site build
 - [Operations](docs/operations.md)
 - [Security](docs/security.md)
 - [End-to-end verification](docs/e2e.md)
+- [Release readiness](docs/release-readiness.md)
 - [Catalog policy](docs/catalog-policy.md)

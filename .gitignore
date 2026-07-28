@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+.bin/
 
 /build/
 /public/
@@ -30,3 +31,6 @@ data/catalog.db-journal
 
 mock_*.go
 coverage.txt
+
+resolve.md
+data/artist-candidates.example.json

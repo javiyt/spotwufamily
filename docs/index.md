@@ -12,3 +12,4 @@ Start here:
 - [Operations](operations.md)
 - [Security](security.md)
 - [End-to-end verification](e2e.md)
+- [Release readiness](release-readiness.md)

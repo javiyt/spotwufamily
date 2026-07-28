@@ -71,6 +71,57 @@ artists:
 	require.Contains(t, string(report), "`0CH4f9m2L3TRaA5oErU2p0`")
 }
 
+func TestExecuteArtistsResolveApply(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	candidatesPath := filepath.Join(dir, "candidates.json")
+	reportPath := filepath.Join(dir, "report.md")
+
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`
+version: 1
+artists:
+  - slug: gravediggaz
+    name: Gravediggaz
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+`), 0o644))
+	require.NoError(t, os.WriteFile(candidatesPath, []byte(`{
+  "gravediggaz": [
+    {"name": "Gravediggaz", "spotify_id": "0CH4f9m2L3TRaA5oErU2p0"}
+  ]
+}`), 0o644))
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := cli.Execute([]string{
+		"artists",
+		"resolve",
+		"--non-interactive",
+		"--apply",
+		"--catalog",
+		catalogPath,
+		"--candidates",
+		candidatesPath,
+		"--report",
+		reportPath,
+	}, &stdout, &stderr)
+
+	require.Equal(t, 0, code)
+	require.Empty(t, stderr.String())
+	require.Contains(t, stdout.String(), "applied resolved Spotify IDs: 1")
+
+	updated, err := os.ReadFile(catalogPath)
+	require.NoError(t, err)
+	require.Contains(t, string(updated), "spotify_id: 0CH4f9m2L3TRaA5oErU2p0")
+	require.Contains(t, string(updated), "enabled: false")
+}
+
 func TestExecuteUnknownCommand(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

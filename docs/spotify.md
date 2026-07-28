@@ -41,10 +41,19 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
   go run ./cmd/spotwufamily artists resolve --non-interactive --report resolve.md
 ```
 
+To reduce manual work, apply strong unambiguous matches directly to `data/artists.yaml`:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
+```
+
+`--apply` defaults to `--min-score 95 --min-score-gap 10`, skips ambiguous candidates, validates the resulting YAML before saving, and keeps resolved artists disabled unless `--enable-applied` is provided.
+
 For deterministic local testing, it can still use a local JSON candidate file:
 
 ```bash
-go run ./cmd/spotwufamily artists resolve --non-interactive --candidates candidates.json --report resolve.md
+go run ./cmd/spotwufamily artists resolve --non-interactive --candidates data/artist-candidates.example.json --report resolve.md
 ```
 
 Candidate JSON shape:
@@ -65,4 +74,4 @@ Candidate JSON shape:
 }
 ```
 
-The JSON adapter is only for offline reports and tests.
+`data/artist-candidates.example.json` is a small offline fixture for smoke-testing this path. The JSON adapter is only for offline reports and tests.
