@@ -13,6 +13,7 @@ import (
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
+	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
 )
 
 const defaultCatalogPath = "data/artists.yaml"
@@ -34,7 +35,9 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "artists":
 		return executeArtists(ctx, args[1:], stdout, stderr, store)
-	case "sync", "export", "audit", "build":
+	case "sync":
+		return executeSync(ctx, args[1:], stdout, stderr, store)
+	case "export", "audit", "build":
 		return notImplemented(stderr, args[0])
 	case "db":
 		return executeDB(ctx, args[1:], stdout, stderr)
@@ -48,6 +51,161 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		printRootHelp(stderr)
 		return 2
 	}
+}
+
+type syncOptions struct {
+	catalogPath  string
+	dbPath       string
+	snapshotPath string
+	artistSlug   string
+	market       string
+	full         bool
+	dryRun       bool
+}
+
+func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		printSyncHelp(stdout)
+		return 0
+	}
+
+	options, err := parseSyncOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
+		return 2
+	}
+
+	var repository *sqliteadapter.Database
+	if !options.dryRun {
+		repository, err = sqliteadapter.Open(options.dbPath)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
+			return 1
+		}
+		defer func() { _ = repository.Close() }()
+		if err := repository.Migrate(ctx); err != nil {
+			_, _ = fmt.Fprintf(stderr, "sync: migrate database: %v\n", err)
+			return 1
+		}
+	}
+
+	var fetcher catalogsync.Fetcher
+	if !options.dryRun {
+		fetcher, err = syncFetcher(options)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
+			return 1
+		}
+	}
+
+	report, err := catalogsync.NewSyncCatalog(store, fetcher, repository, catalogsync.SystemClock{}).Run(ctx, catalogsync.Options{
+		CatalogPath: options.catalogPath,
+		ArtistSlug:  options.artistSlug,
+		Market:      options.market,
+		Full:        options.full,
+		DryRun:      options.dryRun,
+	})
+
+	printSyncReport(stdout, report)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
+		for _, item := range report.Errors {
+			_, _ = fmt.Fprintf(stderr, "- %s: %v\n", item.Slug, item.Err)
+		}
+		return 1
+	}
+
+	if !options.dryRun {
+		if err := repository.WriteSnapshot(ctx, options.snapshotPath); err != nil {
+			_, _ = fmt.Fprintf(stderr, "sync: write snapshot: %v\n", err)
+			return 1
+		}
+	}
+
+	return 0
+}
+
+func parseSyncOptions(args []string) (syncOptions, error) {
+	options := syncOptions{catalogPath: defaultCatalogPath, dbPath: defaultDatabasePath, snapshotPath: defaultSnapshotPath}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return syncOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+		case "--db":
+			i++
+			if i >= len(args) {
+				return syncOptions{}, fmt.Errorf("--db requires a value")
+			}
+			options.dbPath = args[i]
+		case "--snapshot":
+			i++
+			if i >= len(args) {
+				return syncOptions{}, fmt.Errorf("--snapshot requires a value")
+			}
+			options.snapshotPath = args[i]
+		case "--artist":
+			i++
+			if i >= len(args) {
+				return syncOptions{}, fmt.Errorf("--artist requires a value")
+			}
+			options.artistSlug = args[i]
+		case "--market":
+			i++
+			if i >= len(args) {
+				return syncOptions{}, fmt.Errorf("--market requires a value")
+			}
+			options.market = args[i]
+		case "--full":
+			options.full = true
+		case "--dry-run":
+			options.dryRun = true
+		default:
+			return syncOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+
+	return options, nil
+}
+
+func syncFetcher(options syncOptions) (catalogsync.Fetcher, error) {
+	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
+	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		return nil, fmt.Errorf("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required")
+	}
+
+	market := options.market
+	if market == "" {
+		market = os.Getenv("SPOTIFY_MARKET")
+	}
+
+	return spotifyadapter.NewClient(spotifyadapter.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Market:       market,
+	})
+}
+
+func printSyncReport(stdout io.Writer, report catalogsync.Report) {
+	mode := "sync"
+	if report.DryRun {
+		mode = "dry-run"
+	}
+	_, _ = fmt.Fprintf(stdout, "%s planned artists: %d\n", mode, report.ArtistsPlanned)
+	_, _ = fmt.Fprintf(stdout, "processed: %d failed: %d skipped: %d\n", report.ArtistsProcessed, report.ArtistsFailed, report.ArtistsSkipped)
+	if report.RunID > 0 {
+		_, _ = fmt.Fprintf(stdout, "sync_run_id: %d\n", report.RunID)
+	}
+	_, _ = fmt.Fprintf(stdout, "albums: %d tracks: %d artist_albums: %d artist_tracks: %d\n",
+		report.Stats.AlbumsUpserted,
+		report.Stats.TracksUpserted,
+		report.Stats.ArtistAlbumsUpserted,
+		report.Stats.ArtistTracksUpserted,
+	)
 }
 
 func executeDB(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -482,6 +640,10 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  import-groups [groups-path] [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  resolve")
+}
+
+func printSyncHelp(w io.Writer) {
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily sync [--artist slug] [--full] [--dry-run] [--market ES] [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
 }
 
 func printDBHelp(w io.Writer) {

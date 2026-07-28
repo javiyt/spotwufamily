@@ -98,8 +98,8 @@ func TestGetArtistAlbumsFollowsPagination(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, albums, 2)
-	require.Equal(t, "album-1", albums[0].ID)
-	require.Equal(t, "album-2", albums[1].ID)
+	require.Equal(t, "album-1", albums[0].SpotifyID)
+	require.Equal(t, "album-2", albums[1].SpotifyID)
 }
 
 func TestRetriesRateLimitsAndTemporaryErrors(t *testing.T) {

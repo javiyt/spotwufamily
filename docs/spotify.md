@@ -19,6 +19,13 @@ Implemented endpoints:
 - `GET /v1/albums/{id}/tracks`
 - `GET /v1/tracks?ids=...`
 
+`sync` currently uses:
+
+- `GET /v1/artists/{id}`
+- `GET /v1/artists/{id}/albums?include_groups=album,single,compilation,appears_on`
+- `GET /v1/albums/{id}`
+- `GET /v1/albums/{id}/tracks`
+
 References:
 
 - Client Credentials Flow: https://developer.spotify.com/documentation/web-api/tutorials/client-credentials-flow

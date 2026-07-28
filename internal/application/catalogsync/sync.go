@@ -1,0 +1,257 @@
+package catalogsync
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/javiyt/spotwufamily/internal/domain/catalog"
+)
+
+type CatalogStore interface {
+	Load(context.Context, string) (catalog.EditorialCatalog, error)
+}
+
+type Fetcher interface {
+	GetArtist(context.Context, string) (catalog.ArtistCandidate, error)
+	GetArtistAlbums(context.Context, string, []string) ([]catalog.Release, error)
+	GetAlbum(context.Context, string) (catalog.Release, error)
+	GetAlbumTracks(context.Context, string) ([]catalog.Track, error)
+}
+
+type Repository interface {
+	SaveConfiguredArtists(context.Context, []catalog.Artist) error
+	BeginSyncRun(context.Context, SyncRun) (int64, error)
+	FinishSyncRun(context.Context, int64, string, SyncStats) error
+	SaveArtistCatalog(context.Context, int64, catalog.Artist, catalog.ArtistCandidate, []catalog.ReleaseTracks, time.Time) (SyncStats, error)
+}
+
+type Clock interface {
+	Now() time.Time
+}
+
+type SystemClock struct{}
+
+func (SystemClock) Now() time.Time {
+	return time.Now().UTC()
+}
+
+type SyncCatalog struct {
+	store      CatalogStore
+	fetcher    Fetcher
+	repository Repository
+	clock      Clock
+}
+
+func NewSyncCatalog(store CatalogStore, fetcher Fetcher, repository Repository, clock Clock) SyncCatalog {
+	if clock == nil {
+		clock = SystemClock{}
+	}
+
+	return SyncCatalog{store: store, fetcher: fetcher, repository: repository, clock: clock}
+}
+
+type Options struct {
+	CatalogPath string
+	ArtistSlug  string
+	Market      string
+	Full        bool
+	DryRun      bool
+}
+
+type SyncRun struct {
+	StartedAt time.Time
+	Market    string
+	Full      bool
+}
+
+type Report struct {
+	DryRun           bool
+	ArtistsPlanned   int
+	ArtistsProcessed int
+	ArtistsSkipped   int
+	ArtistsFailed    int
+	RunID            int64
+	Stats            SyncStats
+	Errors           []ArtistError
+}
+
+type ArtistError struct {
+	Slug string
+	Err  error
+}
+
+type SyncStats struct {
+	ConfiguredArtistsUpserted int
+	SpotifyArtistsUpserted    int
+	AlbumsUpserted            int
+	TracksUpserted            int
+	AlbumArtistsUpserted      int
+	TrackArtistsUpserted      int
+	AlbumTracksUpserted       int
+	ArtistAlbumsUpserted      int
+	ArtistTracksUpserted      int
+	ImagesUpserted            int
+	ExternalURLsUpserted      int
+	CopyrightsUpserted        int
+}
+
+func (s SyncStats) Add(other SyncStats) SyncStats {
+	s.ConfiguredArtistsUpserted += other.ConfiguredArtistsUpserted
+	s.SpotifyArtistsUpserted += other.SpotifyArtistsUpserted
+	s.AlbumsUpserted += other.AlbumsUpserted
+	s.TracksUpserted += other.TracksUpserted
+	s.AlbumArtistsUpserted += other.AlbumArtistsUpserted
+	s.TrackArtistsUpserted += other.TrackArtistsUpserted
+	s.AlbumTracksUpserted += other.AlbumTracksUpserted
+	s.ArtistAlbumsUpserted += other.ArtistAlbumsUpserted
+	s.ArtistTracksUpserted += other.ArtistTracksUpserted
+	s.ImagesUpserted += other.ImagesUpserted
+	s.ExternalURLsUpserted += other.ExternalURLsUpserted
+	s.CopyrightsUpserted += other.CopyrightsUpserted
+
+	return s
+}
+
+func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
+	editorialCatalog, err := s.store.Load(ctx, options.CatalogPath)
+	if err != nil {
+		return Report{}, fmt.Errorf("load artist catalog: %w", err)
+	}
+	if issues := catalog.ValidateEditorialCatalog(editorialCatalog); len(issues) > 0 {
+		return Report{}, fmt.Errorf("artist catalog is invalid: %s", issues[0].Error())
+	}
+
+	artists := enabledArtists(editorialCatalog.Artists, options.ArtistSlug)
+	report := Report{DryRun: options.DryRun, ArtistsPlanned: len(artists)}
+	if options.ArtistSlug != "" && len(artists) == 0 {
+		return report, fmt.Errorf("enabled artist %q not found", options.ArtistSlug)
+	}
+	if options.DryRun {
+		return report, nil
+	}
+
+	if err := s.repository.SaveConfiguredArtists(ctx, editorialCatalog.Artists); err != nil {
+		return report, fmt.Errorf("save configured artists: %w", err)
+	}
+	report.Stats.ConfiguredArtistsUpserted = len(editorialCatalog.Artists)
+
+	runID, err := s.repository.BeginSyncRun(ctx, SyncRun{
+		StartedAt: s.clock.Now(),
+		Market:    marketOrDefault(options.Market),
+		Full:      options.Full,
+	})
+	if err != nil {
+		return report, fmt.Errorf("begin sync run: %w", err)
+	}
+	report.RunID = runID
+
+	for _, configuredArtist := range artists {
+		artistStats, err := s.syncArtist(ctx, runID, configuredArtist)
+		if err != nil {
+			report.ArtistsFailed++
+			report.Errors = append(report.Errors, ArtistError{Slug: configuredArtist.Slug, Err: err})
+			continue
+		}
+		report.ArtistsProcessed++
+		report.Stats = report.Stats.Add(artistStats)
+	}
+	report.ArtistsSkipped = len(editorialCatalog.Artists) - len(artists)
+
+	status := "success"
+	if report.ArtistsFailed > 0 {
+		status = "partial"
+	}
+	if err := s.repository.FinishSyncRun(ctx, runID, status, report.Stats); err != nil {
+		return report, fmt.Errorf("finish sync run: %w", err)
+	}
+
+	if report.ArtistsFailed > 0 {
+		return report, fmt.Errorf("%d artist syncs failed", report.ArtistsFailed)
+	}
+
+	return report, nil
+}
+
+func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArtist catalog.Artist) (SyncStats, error) {
+	spotifyArtist, err := s.fetcher.GetArtist(ctx, configuredArtist.SpotifyID)
+	if err != nil {
+		return SyncStats{}, fmt.Errorf("get Spotify artist: %w", err)
+	}
+
+	releases, err := s.fetcher.GetArtistAlbums(ctx, configuredArtist.SpotifyID, []string{"album", "single", "compilation", "appears_on"})
+	if err != nil {
+		return SyncStats{}, fmt.Errorf("get Spotify artist albums: %w", err)
+	}
+
+	releaseTracks := make([]catalog.ReleaseTracks, 0, len(releases))
+	seenReleases := map[string]struct{}{}
+	for _, release := range releases {
+		if release.SpotifyID == "" {
+			continue
+		}
+		if _, ok := seenReleases[release.SpotifyID]; ok {
+			continue
+		}
+		seenReleases[release.SpotifyID] = struct{}{}
+
+		fullRelease, err := s.fetcher.GetAlbum(ctx, release.SpotifyID)
+		if err != nil {
+			return SyncStats{}, fmt.Errorf("get Spotify album %s: %w", release.SpotifyID, err)
+		}
+		tracks, err := s.fetcher.GetAlbumTracks(ctx, release.SpotifyID)
+		if err != nil {
+			return SyncStats{}, fmt.Errorf("get Spotify album tracks %s: %w", release.SpotifyID, err)
+		}
+		releaseTracks = append(releaseTracks, catalog.ReleaseTracks{Release: fullRelease, Tracks: deduplicateTracks(tracks)})
+	}
+
+	stats, err := s.repository.SaveArtistCatalog(ctx, runID, configuredArtist, spotifyArtist, releaseTracks, s.clock.Now())
+	if err != nil {
+		return SyncStats{}, fmt.Errorf("save artist catalog: %w", err)
+	}
+
+	return stats, nil
+}
+
+func enabledArtists(artists []catalog.Artist, slug string) []catalog.Artist {
+	enabled := make([]catalog.Artist, 0, len(artists))
+	for _, artist := range artists {
+		if !artist.Enabled || artist.SpotifyID == "" {
+			continue
+		}
+		if slug != "" && artist.Slug != slug {
+			continue
+		}
+		enabled = append(enabled, artist)
+	}
+
+	return enabled
+}
+
+func deduplicateTracks(tracks []catalog.Track) []catalog.Track {
+	deduped := make([]catalog.Track, 0, len(tracks))
+	seen := map[string]struct{}{}
+	for _, track := range tracks {
+		if track.SpotifyID == "" {
+			continue
+		}
+		if _, ok := seen[track.SpotifyID]; ok {
+			continue
+		}
+		seen[track.SpotifyID] = struct{}{}
+		deduped = append(deduped, track)
+	}
+
+	return deduped
+}
+
+func marketOrDefault(market string) string {
+	market = strings.TrimSpace(market)
+	if market == "" {
+		return "ES"
+	}
+
+	return market
+}

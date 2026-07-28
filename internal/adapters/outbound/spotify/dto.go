@@ -77,45 +77,6 @@ type trackObject struct {
 	Artists      []artistObject    `json:"artists"`
 }
 
-type Album struct {
-	ID                   string
-	Name                 string
-	AlbumType            string
-	AlbumGroup           string
-	ReleaseDate          string
-	ReleaseDatePrecision string
-	Label                string
-	TotalTracks          int
-	URL                  string
-	Images               []Image
-	Artists              []catalog.ArtistCandidate
-	Copyrights           []Copyright
-}
-
-type Track struct {
-	ID          string
-	Name        string
-	DiscNumber  int
-	TrackNumber int
-	DurationMS  int
-	Explicit    bool
-	ISRC        string
-	PreviewURL  string
-	URL         string
-	Artists     []catalog.ArtistCandidate
-}
-
-type Image struct {
-	URL    string
-	Height int
-	Width  int
-}
-
-type Copyright struct {
-	Text string
-	Type string
-}
-
 func (a artistObject) toCandidate() catalog.ArtistCandidate {
 	imageURL := ""
 	if len(a.Images) > 0 {
@@ -133,24 +94,24 @@ func (a artistObject) toCandidate() catalog.ArtistCandidate {
 	}
 }
 
-func (a albumObject) toAlbum() Album {
+func (a albumObject) toAlbum() catalog.Release {
 	artists := make([]catalog.ArtistCandidate, 0, len(a.Artists))
 	for _, artist := range a.Artists {
 		artists = append(artists, artist.toCandidate())
 	}
 
-	images := make([]Image, 0, len(a.Images))
+	images := make([]catalog.Image, 0, len(a.Images))
 	for _, image := range a.Images {
-		images = append(images, Image{URL: image.URL, Height: image.Height, Width: image.Width})
+		images = append(images, catalog.Image{URL: image.URL, Height: image.Height, Width: image.Width})
 	}
 
-	copyrights := make([]Copyright, 0, len(a.Copyrights))
+	copyrights := make([]catalog.Copyright, 0, len(a.Copyrights))
 	for _, item := range a.Copyrights {
-		copyrights = append(copyrights, Copyright{Text: item.Text, Type: item.Type})
+		copyrights = append(copyrights, catalog.Copyright{Text: item.Text, Type: item.Type})
 	}
 
-	return Album{
-		ID:                   a.ID,
+	return catalog.Release{
+		SpotifyID:            a.ID,
 		Name:                 a.Name,
 		AlbumType:            a.AlbumType,
 		AlbumGroup:           a.AlbumGroup,
@@ -165,14 +126,14 @@ func (a albumObject) toAlbum() Album {
 	}
 }
 
-func (t trackObject) toTrack() Track {
+func (t trackObject) toTrack() catalog.Track {
 	artists := make([]catalog.ArtistCandidate, 0, len(t.Artists))
 	for _, artist := range t.Artists {
 		artists = append(artists, artist.toCandidate())
 	}
 
-	return Track{
-		ID:          t.ID,
+	return catalog.Track{
+		SpotifyID:   t.ID,
 		Name:        t.Name,
 		DiscNumber:  t.DiscNumber,
 		TrackNumber: t.TrackNumber,

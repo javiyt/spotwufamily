@@ -6,8 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
+	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
+	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,6 +105,82 @@ func TestWriteSnapshotDoesNotRewriteUnchangedFile(t *testing.T) {
 	require.True(t, strings.HasPrefix(string(second), "-- Spot Wu Family catalog snapshot"))
 }
 
+func TestSaveArtistCatalogPersistsNormalizedCatalog(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	configuredArtist := catalog.Artist{
+		Slug:           "wu-tang-clan",
+		Name:           "Wu-Tang Clan",
+		SpotifyID:      "artist-1",
+		Category:       catalog.CategoryCore,
+		Roles:          []catalog.Category{catalog.CategoryCore},
+		Aliases:        []string{"Wu Tang Clan"},
+		Enabled:        true,
+		EditorialOrder: 1,
+	}
+	require.NoError(t, database.SaveConfiguredArtists(ctx, []catalog.Artist{configuredArtist}))
+	runID, err := database.BeginSyncRun(ctx, catalogsync.SyncRun{StartedAt: fixedTime(), Market: "ES"})
+	require.NoError(t, err)
+
+	stats, err := database.SaveArtistCatalog(
+		ctx,
+		runID,
+		configuredArtist,
+		catalog.ArtistCandidate{SpotifyID: "artist-1", Name: "Wu-Tang Clan", URL: "https://artist", ImageURL: "https://artist/image.jpg", Popularity: 90, Followers: 100},
+		[]catalog.ReleaseTracks{{
+			Release: catalog.Release{
+				SpotifyID:            "album-1",
+				Name:                 "Album One",
+				AlbumType:            "album",
+				ReleaseDate:          "1993-11-09",
+				ReleaseDatePrecision: "day",
+				Label:                "Loud",
+				TotalTracks:          1,
+				URL:                  "https://album",
+				Images:               []catalog.Image{{URL: "https://album/image.jpg", Height: 640, Width: 640}},
+				Artists:              []catalog.ArtistCandidate{{SpotifyID: "artist-1", Name: "Wu-Tang Clan"}},
+				Copyrights:           []catalog.Copyright{{Text: "1993 Loud", Type: "C"}},
+			},
+			Tracks: []catalog.Track{{
+				SpotifyID:   "track-1",
+				Name:        "Track One",
+				DiscNumber:  1,
+				TrackNumber: 1,
+				DurationMS:  120000,
+				Explicit:    true,
+				ISRC:        "USRC10000001",
+				URL:         "https://track",
+				Artists:     []catalog.ArtistCandidate{{SpotifyID: "artist-1", Name: "Wu-Tang Clan"}},
+			}},
+		}},
+		fixedTime(),
+	)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats.AlbumsUpserted)
+	require.Equal(t, 1, stats.TracksUpserted)
+	require.Equal(t, 1, stats.ArtistAlbumsUpserted)
+	require.Equal(t, 1, stats.ArtistTracksUpserted)
+
+	requireRowCount(t, database, "configured_artists", 1)
+	requireRowCount(t, database, "artist_aliases", 1)
+	requireRowCount(t, database, "artists", 1)
+	requireRowCount(t, database, "albums", 1)
+	requireRowCount(t, database, "tracks", 1)
+	requireRowCount(t, database, "album_tracks", 1)
+	requireRowCount(t, database, "artist_albums", 1)
+	requireRowCount(t, database, "artist_tracks", 1)
+	requireRowCount(t, database, "track_artists", 1)
+	requireRowCount(t, database, "album_artists", 1)
+
+	migrations, err := sqliteadapter.EmbeddedMigrations()
+	require.NoError(t, err)
+	_, err = database.Verify(ctx, migrations)
+	require.NoError(t, err)
+}
+
 func openMigratedDatabase(t *testing.T, ctx context.Context, path string) *sqliteadapter.Database {
 	t.Helper()
 
@@ -110,4 +189,17 @@ func openMigratedDatabase(t *testing.T, ctx context.Context, path string) *sqlit
 	require.NoError(t, database.Migrate(ctx))
 
 	return database
+}
+
+func requireRowCount(t *testing.T, database *sqliteadapter.Database, table string, want int) {
+	t.Helper()
+
+	var got int
+	err := database.DB().QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got)
+	require.NoError(t, err)
+	require.Equal(t, want, got)
+}
+
+func fixedTime() time.Time {
+	return time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
 }

@@ -151,7 +151,7 @@ func (c *Client) GetArtist(ctx context.Context, spotifyID string) (catalog.Artis
 	return response.toCandidate(), nil
 }
 
-func (c *Client) GetArtistAlbums(ctx context.Context, spotifyID string, groups []string) ([]Album, error) {
+func (c *Client) GetArtistAlbums(ctx context.Context, spotifyID string, groups []string) ([]catalog.Release, error) {
 	values := url.Values{}
 	values.Set("limit", "50")
 	values.Set("market", c.market)
@@ -159,7 +159,7 @@ func (c *Client) GetArtistAlbums(ctx context.Context, spotifyID string, groups [
 		values.Set("include_groups", strings.Join(groups, ","))
 	}
 
-	var albums []Album
+	var albums []catalog.Release
 	path := "/v1/artists/" + url.PathEscape(spotifyID) + "/albums?" + values.Encode()
 	for path != "" {
 		var page albumsPage
@@ -175,24 +175,24 @@ func (c *Client) GetArtistAlbums(ctx context.Context, spotifyID string, groups [
 	return albums, nil
 }
 
-func (c *Client) GetAlbum(ctx context.Context, spotifyID string) (Album, error) {
+func (c *Client) GetAlbum(ctx context.Context, spotifyID string) (catalog.Release, error) {
 	values := url.Values{}
 	values.Set("market", c.market)
 
 	var response albumObject
 	if err := c.getJSON(ctx, "/v1/albums/"+url.PathEscape(spotifyID)+"?"+values.Encode(), &response); err != nil {
-		return Album{}, fmt.Errorf("get album %s: %w", spotifyID, err)
+		return catalog.Release{}, fmt.Errorf("get album %s: %w", spotifyID, err)
 	}
 
 	return response.toAlbum(), nil
 }
 
-func (c *Client) GetAlbumTracks(ctx context.Context, spotifyID string) ([]Track, error) {
+func (c *Client) GetAlbumTracks(ctx context.Context, spotifyID string) ([]catalog.Track, error) {
 	values := url.Values{}
 	values.Set("limit", "50")
 	values.Set("market", c.market)
 
-	var tracks []Track
+	var tracks []catalog.Track
 	path := "/v1/albums/" + url.PathEscape(spotifyID) + "/tracks?" + values.Encode()
 	for path != "" {
 		var page tracksPage
@@ -208,12 +208,12 @@ func (c *Client) GetAlbumTracks(ctx context.Context, spotifyID string) ([]Track,
 	return tracks, nil
 }
 
-func (c *Client) GetTracks(ctx context.Context, spotifyIDs []string) ([]Track, error) {
+func (c *Client) GetTracks(ctx context.Context, spotifyIDs []string) ([]catalog.Track, error) {
 	if len(spotifyIDs) == 0 {
-		return []Track{}, nil
+		return []catalog.Track{}, nil
 	}
 
-	var tracks []Track
+	var tracks []catalog.Track
 	for start := 0; start < len(spotifyIDs); start += 50 {
 		end := start + 50
 		if end > len(spotifyIDs) {

@@ -30,3 +30,11 @@ go run ./cmd/spotwufamily db rebuild
 - snapshot freshness when `data/catalog.snapshot.sql` exists
 
 The initial schema includes configured artists, aliases, Spotify artists, albums, tracks, album/track credits, discovery relationships, images, external URLs, copyrights and sync run metadata.
+
+Phase 5 sync persistence:
+
+- `configured_artists` and `artist_aliases` are populated from `data/artists.yaml`.
+- Spotify artist, album and track rows are deduplicated by Spotify ID.
+- `artist_albums` and `artist_tracks` record which configured artist discovered a release or track.
+- `album_tracks`, `album_artists` and `track_artists` preserve album placement and credited artists.
+- The current policy is conservative: sync upserts observed data and does not delete rows simply because they are absent from one run.

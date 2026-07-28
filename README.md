@@ -27,6 +27,8 @@ go run ./cmd/spotwufamily db migrate
 go run ./cmd/spotwufamily db verify
 go run ./cmd/spotwufamily db snapshot
 go run ./cmd/spotwufamily db rebuild
+go run ./cmd/spotwufamily sync --dry-run
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily sync --artist wu-tang-clan
 make ci
 ```
 
@@ -52,6 +54,23 @@ go run ./cmd/spotwufamily artists validate
 ```
 
 The non-interactive resolver uses Spotify when credentials are present. It also accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access.
+
+## Sync
+
+`sync` reads enabled artists from `data/artists.yaml`, fetches Spotify artist metadata, albums, singles, compilations, appearances and album tracks, then stores normalized rows in SQLite.
+
+Current catalog entries are disabled until reviewed Spotify IDs are assigned, so this is expected:
+
+```bash
+go run ./cmd/spotwufamily sync --dry-run
+```
+
+Use real sync only after enabling reviewed artists:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  go run ./cmd/spotwufamily sync --artist wu-tang-clan
+```
 
 ## Database
 
