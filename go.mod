@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/golangci/golangci-lint v1.64.8
-	github.com/jarcoal/httpmock v1.4.1
+	github.com/jarcoal/httpmock v1.4.2
 	github.com/stretchr/testify v1.11.1
 	github.com/vektra/mockery/v2 v2.53.6
 	github.com/zmb3/spotify v1.3.0
