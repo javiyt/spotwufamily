@@ -23,6 +23,10 @@ go run ./cmd/spotwufamily artists validate
 go run ./cmd/spotwufamily artists import-groups
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --report resolve.md
 go run ./cmd/spotwufamily artists resolve --non-interactive --candidates candidates.json --report resolve.md
+go run ./cmd/spotwufamily db migrate
+go run ./cmd/spotwufamily db verify
+go run ./cmd/spotwufamily db snapshot
+go run ./cmd/spotwufamily db rebuild
 make ci
 ```
 
@@ -48,6 +52,16 @@ go run ./cmd/spotwufamily artists validate
 ```
 
 The non-interactive resolver uses Spotify when credentials are present. It also accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access.
+
+## Database
+
+`data/catalog.db` is the versioned SQLite catalog. `data/catalog.snapshot.sql` is the deterministic logical snapshot used for reviewable diffs and rebuild verification.
+
+Run:
+
+```bash
+go run ./cmd/spotwufamily db verify
+```
 
 ## Documentation
 

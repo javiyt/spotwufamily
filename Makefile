@@ -1,4 +1,4 @@
-.PHONY: setup format lint test test-race validate sync export build serve audit db-verify ci
+.PHONY: setup format lint test test-race validate sync export build serve audit db-migrate db-snapshot db-rebuild db-verify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -39,4 +39,13 @@ audit:
 db-verify:
 	go run $(CLI) db verify
 
-ci: format validate test lint build
+db-migrate:
+	go run $(CLI) db migrate
+
+db-snapshot:
+	go run $(CLI) db snapshot
+
+db-rebuild:
+	go run $(CLI) db rebuild
+
+ci: format validate db-verify test lint build

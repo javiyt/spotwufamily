@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -9,11 +10,14 @@ import (
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/jsoncandidates"
 	spotifyadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/spotify"
+	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 )
 
 const defaultCatalogPath = "data/artists.yaml"
+const defaultDatabasePath = "data/catalog.db"
+const defaultSnapshotPath = "data/catalog.snapshot.sql"
 
 func Execute(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -33,7 +37,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	case "sync", "export", "audit", "build":
 		return notImplemented(stderr, args[0])
 	case "db":
-		return executeReservedGroup(stderr, "db", args[1:], "migrate", "verify", "snapshot", "rebuild")
+		return executeDB(ctx, args[1:], stdout, stderr)
 	case "site":
 		return executeReservedGroup(stderr, "site", args[1:], "build")
 	case "help", "--help", "-h":
@@ -44,6 +48,186 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		printRootHelp(stderr)
 		return 2
 	}
+}
+
+func executeDB(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || hasHelp(args) {
+		printDBHelp(stdout)
+		return 0
+	}
+	if len(args) > 1 && hasHelp(args[1:]) {
+		printDBHelp(stdout)
+		return 0
+	}
+
+	options, err := parseDBOptions(args[1:])
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "db %s: %v\n", args[0], err)
+		return 2
+	}
+
+	switch args[0] {
+	case "migrate":
+		return executeDBMigrate(ctx, stdout, stderr, options)
+	case "verify":
+		return executeDBVerify(ctx, stdout, stderr, options)
+	case "snapshot":
+		return executeDBSnapshot(ctx, stdout, stderr, options)
+	case "rebuild":
+		return executeDBRebuild(ctx, stdout, stderr, options)
+	default:
+		_, _ = fmt.Fprintf(stderr, "unknown db command %q\n\n", args[0])
+		printDBHelp(stderr)
+		return 2
+	}
+}
+
+type dbOptions struct {
+	dbPath       string
+	snapshotPath string
+}
+
+func parseDBOptions(args []string) (dbOptions, error) {
+	options := dbOptions{dbPath: defaultDatabasePath, snapshotPath: defaultSnapshotPath}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--db":
+			i++
+			if i >= len(args) {
+				return dbOptions{}, fmt.Errorf("--db requires a value")
+			}
+			options.dbPath = args[i]
+		case "--snapshot":
+			i++
+			if i >= len(args) {
+				return dbOptions{}, fmt.Errorf("--snapshot requires a value")
+			}
+			options.snapshotPath = args[i]
+		case "--help", "-h", "help":
+			return options, nil
+		default:
+			return dbOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+
+	return options, nil
+}
+
+func executeDBMigrate(ctx context.Context, stdout, stderr io.Writer, options dbOptions) int {
+	database, err := sqliteadapter.Open(options.dbPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "db migrate: %v\n", err)
+		return 1
+	}
+	defer func() { _ = database.Close() }()
+
+	if err := database.Migrate(ctx); err != nil {
+		_, _ = fmt.Fprintf(stderr, "db migrate: %v\n", err)
+		return 1
+	}
+	if err := database.Optimize(ctx); err != nil {
+		_, _ = fmt.Fprintf(stderr, "db migrate: %v\n", err)
+		return 1
+	}
+
+	_, _ = fmt.Fprintf(stdout, "database migrated: %s\n", options.dbPath)
+	return 0
+}
+
+func executeDBVerify(ctx context.Context, stdout, stderr io.Writer, options dbOptions) int {
+	database, err := sqliteadapter.Open(options.dbPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "db verify: %v\n", err)
+		return 1
+	}
+	defer func() { _ = database.Close() }()
+
+	migrations, err := sqliteadapter.EmbeddedMigrations()
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "db verify: %v\n", err)
+		return 1
+	}
+	report, err := database.Verify(ctx, migrations)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "db verify: %v\n", err)
+		return 1
+	}
+
+	if _, err := os.Stat(options.snapshotPath); err == nil {
+		generated, err := database.Snapshot(ctx)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "db verify: %v\n", err)
+			return 1
+		}
+		current, err := os.ReadFile(options.snapshotPath)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "db verify: read snapshot: %v\n", err)
+			return 1
+		}
+		if !bytes.Equal(generated, current) {
+			_, _ = fmt.Fprintf(stderr, "db verify: snapshot is out of date: %s\n", options.snapshotPath)
+			return 1
+		}
+		report.Checks = append(report.Checks, "snapshot")
+	} else if err != nil && !os.IsNotExist(err) {
+		_, _ = fmt.Fprintf(stderr, "db verify: stat snapshot: %v\n", err)
+		return 1
+	}
+
+	_, _ = fmt.Fprintf(stdout, "database verified: %s (%d migrations; checks: %s)\n", options.dbPath, report.Migrations, strings.Join(report.Checks, ", "))
+	return 0
+}
+
+func executeDBSnapshot(ctx context.Context, stdout, stderr io.Writer, options dbOptions) int {
+	database, err := sqliteadapter.Open(options.dbPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "db snapshot: %v\n", err)
+		return 1
+	}
+	defer func() { _ = database.Close() }()
+
+	if err := database.WriteSnapshot(ctx, options.snapshotPath); err != nil {
+		_, _ = fmt.Fprintf(stderr, "db snapshot: %v\n", err)
+		return 1
+	}
+
+	_, _ = fmt.Fprintf(stdout, "database snapshot written: %s\n", options.snapshotPath)
+	return 0
+}
+
+func executeDBRebuild(ctx context.Context, stdout, stderr io.Writer, options dbOptions) int {
+	if err := os.Remove(options.dbPath); err != nil && !os.IsNotExist(err) {
+		_, _ = fmt.Fprintf(stderr, "db rebuild: remove database: %v\n", err)
+		return 1
+	}
+
+	database, err := sqliteadapter.Open(options.dbPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "db rebuild: %v\n", err)
+		return 1
+	}
+	defer func() { _ = database.Close() }()
+
+	if err := database.Migrate(ctx); err != nil {
+		_, _ = fmt.Fprintf(stderr, "db rebuild: %v\n", err)
+		return 1
+	}
+	if _, err := os.Stat(options.snapshotPath); err == nil {
+		if err := sqliteadapter.RestoreSnapshot(ctx, database.DB(), options.snapshotPath); err != nil {
+			_, _ = fmt.Fprintf(stderr, "db rebuild: %v\n", err)
+			return 1
+		}
+	} else if err != nil && !os.IsNotExist(err) {
+		_, _ = fmt.Fprintf(stderr, "db rebuild: stat snapshot: %v\n", err)
+		return 1
+	}
+	if err := database.Optimize(ctx); err != nil {
+		_, _ = fmt.Fprintf(stderr, "db rebuild: %v\n", err)
+		return 1
+	}
+
+	_, _ = fmt.Fprintf(stdout, "database rebuilt: %s\n", options.dbPath)
+	return 0
 }
 
 func executeReservedGroup(stderr io.Writer, group string, args []string, commands ...string) int {
@@ -298,4 +482,14 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  import-groups [groups-path] [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  resolve")
+}
+
+func printDBHelp(w io.Writer) {
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily db <command> [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
+	_, _ = fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w, "commands:")
+	_, _ = fmt.Fprintln(w, "  migrate")
+	_, _ = fmt.Fprintln(w, "  verify")
+	_, _ = fmt.Fprintln(w, "  snapshot")
+	_, _ = fmt.Fprintln(w, "  rebuild")
 }

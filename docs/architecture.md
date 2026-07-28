@@ -21,6 +21,7 @@ Current phase:
 - YAML is an outbound adapter.
 - Local JSON candidate files are a temporary outbound adapter for offline resolution reports.
 - Spotify is an outbound `net/http` adapter behind the candidate-search port and exposes catalog-fetching methods for later sync work.
+- SQLite is an outbound `database/sql` adapter with versioned migrations, verification and deterministic snapshots.
 - CLI composition lives at the inbound edge.
 
 Planned phases add Spotify, SQLite, export, Hugo and automation without making domain packages depend on those technologies.
