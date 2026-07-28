@@ -27,12 +27,13 @@ func TestValidateEditorialCatalogReportsInvalidEntries(t *testing.T) {
 		Version: 1,
 		Artists: []catalog.Artist{
 			{
-				Slug:      "Wu Tang",
-				Name:      "Wu-Tang Clan",
-				SpotifyID: "bad",
-				Category:  catalog.Category("unknown"),
-				Aliases:   []string{"Clan", " clan "},
-				Enabled:   true,
+				Slug:       "Wu Tang",
+				Name:       "Wu-Tang Clan",
+				PublicName: "Wu-Tang Clan",
+				SpotifyID:  "bad",
+				Category:   catalog.Category("unknown"),
+				Aliases:    []string{"Clan", " clan "},
+				Enabled:    true,
 			},
 			{
 				Slug:      "wu-tang",
@@ -47,7 +48,38 @@ func TestValidateEditorialCatalogReportsInvalidEntries(t *testing.T) {
 	issues := catalog.ValidateEditorialCatalog(c)
 
 	require.ErrorContains(t, issues[0], "slug")
-	require.Len(t, issues, 7)
+	require.Len(t, issues, 8)
+}
+
+func TestValidateEditorialCatalogReportsEditorialIssues(t *testing.T) {
+	c := catalog.EditorialCatalog{
+		Version: 1,
+		Artists: []catalog.Artist{
+			{
+				Slug:           "wu-tang-clan",
+				Name:           "Wu-Tang Clan",
+				Category:       catalog.CategoryCore,
+				Roles:          []catalog.Category{catalog.CategoryCore, catalog.CategoryCore},
+				Aliases:        []string{"Wu Tang Clan"},
+				EditorialOrder: 1,
+				ExternalURL:    "http://example.com",
+				AddedAt:        "20260728",
+			},
+			{
+				Slug:           "gravediggaz",
+				Name:           "Gravediggaz",
+				Category:       catalog.CategoryAffiliateGroup,
+				Roles:          []catalog.Category{catalog.CategoryProducer},
+				Aliases:        []string{"Wu Tang Clan"},
+				EditorialOrder: 1,
+			},
+		},
+	}
+
+	issues := catalog.ValidateEditorialCatalog(c)
+
+	require.Len(t, issues, 6)
+	require.ErrorContains(t, issues[0], "duplicate role")
 }
 
 func TestSlugify(t *testing.T) {

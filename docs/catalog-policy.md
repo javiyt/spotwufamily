@@ -7,5 +7,11 @@ Rules:
 - Do not use artist name as internal identity once a Spotify ID is known.
 - Keep artists disabled until their Spotify ID has been reviewed.
 - Use categories: `core`, `affiliate_group`, `affiliate_artist`, `producer`, `collaborator`.
+- Keep the primary `category` present in `roles` whenever roles are listed.
+- Use `public_name` only when the display name should intentionally differ from `name`.
+- Use `external_url` only for HTTPS editorial references.
+- Use `added_at` in `YYYY-MM-DD` format.
 - Preserve aliases and notes for editorial context.
 - Keep `data/groups.txt` until the YAML migration has been verified.
+
+Validation detects duplicate slugs, names, Spotify IDs, aliases, roles and editorial order values, plus unknown categories and malformed Spotify IDs.

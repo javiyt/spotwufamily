@@ -16,8 +16,10 @@ flowchart LR
 Current phase:
 
 - Domain contains editorial artist catalog rules.
-- Application contains `artists validate` and `artists import-groups`.
+- Domain contains artist candidate scoring for resolution.
+- Application contains `artists validate`, `artists import-groups` and non-interactive `artists resolve` reports.
 - YAML is an outbound adapter.
+- Local JSON candidate files are a temporary outbound adapter for offline resolution reports.
 - CLI composition lives at the inbound edge.
 
 Planned phases add Spotify, SQLite, export, Hugo and automation without making domain packages depend on those technologies.

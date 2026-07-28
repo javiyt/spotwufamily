@@ -112,12 +112,12 @@ func ValidateEditorialCatalog(c EditorialCatalog) []ValidationIssue {
 			if key == "" {
 				continue
 			}
-			if previous, ok := aliases[key]; ok {
+			if previous, ok := aliases[key]; ok && previous != i {
 				issues = append(issues, ValidationIssue{
 					Field:   fmt.Sprintf("%s.aliases[%d]", prefix, aliasIndex),
 					Message: fmt.Sprintf("alias duplicates alias from artists[%d]", previous),
 				})
-			} else {
+			} else if !ok {
 				aliases[key] = i
 			}
 			if previous, ok := names[key]; ok && previous != i {

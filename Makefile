@@ -1,6 +1,7 @@
 .PHONY: setup format lint test test-race validate sync export build serve audit db-verify ci
 
 CLI := ./cmd/spotwufamily
+BUILD_DIR := build
 
 setup:
 	go mod download
@@ -27,7 +28,7 @@ export:
 	go run $(CLI) export
 
 build:
-	go build $(CLI)
+	go build -o $(BUILD_DIR)/spotwufamily $(CLI)
 
 serve:
 	@echo "Hugo site is planned for a later phase."

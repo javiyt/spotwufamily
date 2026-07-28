@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/javiyt/spotwufamily/internal/adapters/outbound/jsoncandidates"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 )
@@ -77,7 +78,7 @@ func executeArtists(ctx context.Context, args []string, stdout, stderr io.Writer
 	case "import-groups":
 		return executeArtistsImportGroups(ctx, args[1:], stdout, stderr, store)
 	case "resolve":
-		return notImplemented(stderr, "artists resolve")
+		return executeArtistsResolve(ctx, args[1:], stdout, stderr, store)
 	case "help", "--help", "-h":
 		printArtistsHelp(stdout)
 		return 0
@@ -86,6 +87,95 @@ func executeArtists(ctx context.Context, args []string, stdout, stderr io.Writer
 		printArtistsHelp(stderr)
 		return 2
 	}
+}
+
+func executeArtistsResolve(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve --non-interactive --candidates candidates.json [--report report.md] [--catalog data/artists.yaml]")
+		return 0
+	}
+
+	options, err := parseResolveOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+		return 2
+	}
+	if !options.nonInteractive {
+		_, _ = fmt.Fprintln(stderr, "interactive artist resolution is planned after the Spotify adapter is available")
+		return 2
+	}
+	if options.candidatesPath == "" {
+		_, _ = fmt.Fprintln(stderr, "artists resolve: --candidates is required until the Spotify adapter is implemented")
+		return 2
+	}
+
+	searcher, err := jsoncandidates.NewSearcher(options.candidatesPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+		return 1
+	}
+
+	report, err := artists.NewResolveArtists(store, searcher).Run(ctx, options.catalogPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+		return 1
+	}
+
+	markdown := artists.FormatResolveReportMarkdown(report)
+	if options.reportPath == "" || options.reportPath == "-" {
+		_, _ = stdout.Write(markdown)
+	} else if err := os.WriteFile(options.reportPath, markdown, 0o644); err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists resolve: write report: %v\n", err)
+		return 1
+	} else {
+		_, _ = fmt.Fprintf(stdout, "wrote artist resolution report: %s\n", options.reportPath)
+	}
+
+	if len(report.Errors) > 0 {
+		return 1
+	}
+
+	return 0
+}
+
+type resolveOptions struct {
+	catalogPath    string
+	candidatesPath string
+	reportPath     string
+	nonInteractive bool
+}
+
+func parseResolveOptions(args []string) (resolveOptions, error) {
+	options := resolveOptions{catalogPath: defaultCatalogPath, reportPath: "-"}
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--non-interactive":
+			options.nonInteractive = true
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return resolveOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+		case "--candidates":
+			i++
+			if i >= len(args) {
+				return resolveOptions{}, fmt.Errorf("--candidates requires a value")
+			}
+			options.candidatesPath = args[i]
+		case "--report":
+			i++
+			if i >= len(args) {
+				return resolveOptions{}, fmt.Errorf("--report requires a value")
+			}
+			options.reportPath = args[i]
+		default:
+			return resolveOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+
+	return options, nil
 }
 
 func executeArtistsValidate(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
