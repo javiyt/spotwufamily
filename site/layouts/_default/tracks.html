@@ -1,0 +1,26 @@
+{{ define "main" }}
+  {{ $tracks := (index hugo.Data.generated.tracks "index").items }}
+  <section class="shell page-head">
+    <p class="eyebrow">Songs</p>
+    <h1>Tracks</h1>
+  </section>
+  <section class="shell section">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Track</th><th>Artists</th><th>Duration</th><th>Explicit</th></tr></thead>
+        <tbody>
+          {{ range $tracks }}
+            <tr>
+              <td>{{ if .spotify_url }}<a href="{{ .spotify_url }}">{{ .name }}</a>{{ else }}{{ .name }}{{ end }}</td>
+              <td>{{ range $i, $artist := .artists }}{{ if $i }}, {{ end }}{{ $artist.name }}{{ end }}</td>
+              <td>{{ div .duration_ms 1000 }}s</td>
+              <td>{{ if .explicit }}Yes{{ else }}No{{ end }}</td>
+            </tr>
+          {{ else }}
+            <tr><td colspan="4">No tracks exported yet.</td></tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{{ end }}

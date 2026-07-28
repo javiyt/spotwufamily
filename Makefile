@@ -1,4 +1,4 @@
-.PHONY: setup format lint test test-race validate sync export build serve audit db-migrate db-snapshot db-rebuild db-verify ci
+.PHONY: setup format lint test test-race validate sync export build serve audit db-migrate db-snapshot db-rebuild db-verify site-build ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -31,7 +31,7 @@ build:
 	go build -o $(BUILD_DIR)/spotwufamily $(CLI)
 
 serve:
-	@echo "Hugo site is planned for a later phase."
+	hugo server --source site --bind 127.0.0.1
 
 audit:
 	go run $(CLI) audit
@@ -48,4 +48,7 @@ db-snapshot:
 db-rebuild:
 	go run $(CLI) db rebuild
 
-ci: format validate db-verify export test lint build
+site-build:
+	go run $(CLI) site build
+
+ci: format validate db-verify export site-build test lint build

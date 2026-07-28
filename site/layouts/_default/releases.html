@@ -1,0 +1,10 @@
+{{ define "main" }}
+  {{ $albums := (index hugo.Data.generated.albums "index").items }}
+  <section class="shell page-head">
+    <p class="eyebrow">Discography</p>
+    <h1>Releases</h1>
+  </section>
+  <section class="shell section">
+    {{ partial "album-list.html" $albums }}
+  </section>
+{{ end }}

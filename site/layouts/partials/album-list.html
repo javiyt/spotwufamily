@@ -1,0 +1,11 @@
+<div class="album-grid">
+  {{ range . }}
+    <article class="album-card">
+      <div class="cover">{{ if .image_url }}<img src="{{ .image_url }}" alt="" loading="lazy">{{ else }}<span>12"</span>{{ end }}</div>
+      <h3>{{ if .spotify_url }}<a href="{{ .spotify_url }}">{{ .name }}</a>{{ else }}{{ .name }}{{ end }}</h3>
+      <p>{{ .album_type }}{{ if .release_date }} / {{ .release_date }}{{ end }}</p>
+    </article>
+  {{ else }}
+    <p class="empty">No releases exported yet.</p>
+  {{ end }}
+</div>

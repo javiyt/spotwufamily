@@ -1,0 +1,18 @@
+{{ define "main" }}
+  {{ $albums := (index hugo.Data.generated.albums "index").items }}
+  <section class="shell page-head">
+    <p class="eyebrow">Chronology</p>
+    <h1>Timeline</h1>
+  </section>
+  <section class="shell section timeline">
+    {{ range $albums }}
+      <article>
+        <time>{{ if .release_date }}{{ .release_date }}{{ else }}Unknown date{{ end }}</time>
+        <h2>{{ .name }}</h2>
+        <p>{{ .album_type }}</p>
+      </article>
+    {{ else }}
+      <p class="empty">No release timeline yet.</p>
+    {{ end }}
+  </section>
+{{ end }}

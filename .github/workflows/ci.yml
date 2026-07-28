@@ -24,6 +24,12 @@ jobs:
           go-version: "1.25.x"
           cache: true
 
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.164.0"
+          extended: true
+
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
 

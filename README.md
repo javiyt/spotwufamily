@@ -30,6 +30,7 @@ go run ./cmd/spotwufamily db rebuild
 go run ./cmd/spotwufamily sync --dry-run
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily sync --artist wu-tang-clan
 go run ./cmd/spotwufamily export
+go run ./cmd/spotwufamily site build
 make ci
 ```
 
@@ -98,6 +99,20 @@ Outputs:
 - `site/data/generated/albums/index.json`
 - `site/data/generated/tracks/index.json`
 - `site/static/search-index.json`
+
+## Site
+
+The Hugo site lives in `site/` and is configured for GitHub Pages under:
+
+```text
+https://javiyt.github.io/spotwufamily/
+```
+
+Build it with:
+
+```bash
+go run ./cmd/spotwufamily site build
+```
 
 ## Documentation
 

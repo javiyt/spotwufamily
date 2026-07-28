@@ -1,0 +1,12 @@
+<div class="card-grid">
+  {{ range . }}
+    <article class="item-card">
+      <div class="thumb">{{ if .image_url }}<img src="{{ .image_url }}" alt="" loading="lazy">{{ else }}<span>{{ substr .name 0 1 }}</span>{{ end }}</div>
+      <h3>{{ .name }}</h3>
+      <p>{{ replace .category "_" " " }}</p>
+      {{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}">Open in Spotify</a>{{ end }}
+    </article>
+  {{ else }}
+    <p class="empty">No featured artists yet.</p>
+  {{ end }}
+</div>

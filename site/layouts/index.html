@@ -1,0 +1,37 @@
+{{ define "main" }}
+  {{ $summary := index hugo.Data.generated "catalog-summary" }}
+  <section class="hero">
+    <div class="shell hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Static catalog archive</p>
+        <h1>Spot Wu Family</h1>
+        <p>A searchable static archive for Wu-Tang Clan, Wu Family affiliates, producers and collaborators, built from reviewed editorial data and Spotify catalog metadata.</p>
+      </div>
+      <div class="search-panel" role="search">
+        <label for="site-search">Search catalog</label>
+        <input id="site-search" type="search" autocomplete="off" placeholder="Artist, release, track, alias">
+        <div id="search-status" class="sr-only" aria-live="polite"></div>
+        <div id="search-results" class="search-results" data-empty="No matches yet."></div>
+      </div>
+    </div>
+  </section>
+  <section class="shell section">
+    <div class="stat-grid">
+      <div class="stat"><span>{{ $summary.stats.artists }}</span><p>Artists</p></div>
+      <div class="stat"><span>{{ $summary.stats.groups }}</span><p>Groups</p></div>
+      <div class="stat"><span>{{ $summary.stats.albums }}</span><p>Releases</p></div>
+      <div class="stat"><span>{{ $summary.stats.tracks }}</span><p>Tracks</p></div>
+      <div class="stat"><span>{{ $summary.stats.appearances }}</span><p>Appearances</p></div>
+    </div>
+  </section>
+  <section class="shell section two-column">
+    <div>
+      <h2>Recent Releases</h2>
+      {{ partial "album-list.html" $summary.recent_albums }}
+    </div>
+    <div>
+      <h2>Featured Artists</h2>
+      {{ partial "artist-list.html" $summary.featured_artists }}
+    </div>
+  </section>
+{{ end }}

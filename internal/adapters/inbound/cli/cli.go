@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
@@ -48,7 +49,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	case "db":
 		return executeDB(ctx, args[1:], stdout, stderr)
 	case "site":
-		return executeReservedGroup(stderr, "site", args[1:], "build")
+		return executeSite(ctx, args[1:], stdout, stderr)
 	case "help", "--help", "-h":
 		printRootHelp(stdout)
 		return 0
@@ -57,6 +58,58 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		printRootHelp(stderr)
 		return 2
 	}
+}
+
+func executeSite(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || hasHelp(args) {
+		printSiteHelp(stdout)
+		return 0
+	}
+	if args[0] != "build" {
+		_, _ = fmt.Fprintf(stderr, "unknown site command %q\n\n", args[0])
+		printSiteHelp(stderr)
+		return 2
+	}
+
+	source := "site"
+	destination := "/tmp/spotwufamily-site"
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--source":
+			i++
+			if i >= len(args) {
+				return optionError(stderr, "site build", "--source requires a value")
+			}
+			source = args[i]
+		case "--destination":
+			i++
+			if i >= len(args) {
+				return optionError(stderr, "site build", "--destination requires a value")
+			}
+			destination = args[i]
+		default:
+			return optionError(stderr, "site build", fmt.Sprintf("unknown option %q", args[i]))
+		}
+	}
+
+	commandArgs := []string{"--source", source, "--minify"}
+	if destination != "" {
+		commandArgs = append(commandArgs, "--destination", destination)
+	}
+	cmd := exec.CommandContext(ctx, "hugo", commandArgs...)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		_, _ = fmt.Fprintf(stderr, "site build: %v\n", err)
+		return 1
+	}
+
+	return 0
+}
+
+func optionError(stderr io.Writer, command, message string) int {
+	_, _ = fmt.Fprintf(stderr, "%s: %s\n", command, message)
+	return 2
 }
 
 type syncOptions struct {
@@ -739,6 +792,10 @@ func printSyncHelp(w io.Writer) {
 
 func printExportHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "usage: spotwufamily export [--db data/catalog.db] [--output site/data/generated] [--static site/static]")
+}
+
+func printSiteHelp(w io.Writer) {
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily site build [--source site] [--destination /tmp/spotwufamily-site]")
 }
 
 func printDBHelp(w io.Writer) {
