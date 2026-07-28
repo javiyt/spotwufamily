@@ -29,6 +29,7 @@ go run ./cmd/spotwufamily db snapshot
 go run ./cmd/spotwufamily db rebuild
 go run ./cmd/spotwufamily sync --dry-run
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily sync --artist wu-tang-clan
+go run ./cmd/spotwufamily export
 make ci
 ```
 
@@ -81,6 +82,22 @@ Run:
 ```bash
 go run ./cmd/spotwufamily db verify
 ```
+
+## Export
+
+`export` reads SQLite and writes deterministic JSON for Hugo:
+
+```bash
+go run ./cmd/spotwufamily export
+```
+
+Outputs:
+
+- `site/data/generated/catalog-summary.json`
+- `site/data/generated/artists/index.json`
+- `site/data/generated/albums/index.json`
+- `site/data/generated/tracks/index.json`
+- `site/static/search-index.json`
 
 ## Documentation
 

@@ -8,17 +8,21 @@ import (
 	"os"
 	"strings"
 
+	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/jsoncandidates"
 	spotifyadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/spotify"
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
+	"github.com/javiyt/spotwufamily/internal/application/catalogexport"
 	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
 )
 
 const defaultCatalogPath = "data/artists.yaml"
 const defaultDatabasePath = "data/catalog.db"
 const defaultSnapshotPath = "data/catalog.snapshot.sql"
+const defaultExportOutputDir = "site/data/generated"
+const defaultExportStaticDir = "site/static"
 
 func Execute(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -37,7 +41,9 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		return executeArtists(ctx, args[1:], stdout, stderr, store)
 	case "sync":
 		return executeSync(ctx, args[1:], stdout, stderr, store)
-	case "export", "audit", "build":
+	case "export":
+		return executeExport(ctx, args[1:], stdout, stderr)
+	case "audit", "build":
 		return notImplemented(stderr, args[0])
 	case "db":
 		return executeDB(ctx, args[1:], stdout, stderr)
@@ -206,6 +212,91 @@ func printSyncReport(stdout io.Writer, report catalogsync.Report) {
 		report.Stats.ArtistAlbumsUpserted,
 		report.Stats.ArtistTracksUpserted,
 	)
+}
+
+type exportOptions struct {
+	dbPath    string
+	outputDir string
+	staticDir string
+}
+
+func executeExport(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	if hasHelp(args) {
+		printExportHelp(stdout)
+		return 0
+	}
+
+	options, err := parseExportOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "export: %v\n", err)
+		return 2
+	}
+
+	database, err := sqliteadapter.Open(options.dbPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "export: %v\n", err)
+		return 1
+	}
+	defer func() { _ = database.Close() }()
+
+	migrations, err := sqliteadapter.EmbeddedMigrations()
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "export: %v\n", err)
+		return 1
+	}
+	if _, err := database.Verify(ctx, migrations); err != nil {
+		_, _ = fmt.Fprintf(stderr, "export: database is not verified: %v\n", err)
+		return 1
+	}
+
+	report, err := catalogexport.NewExportCatalog(database, filesystem.NewWriter()).Run(ctx, catalogexport.Options{
+		OutputDir: options.outputDir,
+		StaticDir: options.staticDir,
+	})
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "export: %v\n", err)
+		return 1
+	}
+
+	_, _ = fmt.Fprintf(stdout, "exported catalog: artists=%d albums=%d tracks=%d files_written=%d files_kept=%d\n",
+		report.Artists,
+		report.Albums,
+		report.Tracks,
+		report.FilesWritten,
+		report.FilesKept,
+	)
+
+	return 0
+}
+
+func parseExportOptions(args []string) (exportOptions, error) {
+	options := exportOptions{dbPath: defaultDatabasePath, outputDir: defaultExportOutputDir, staticDir: defaultExportStaticDir}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--db":
+			i++
+			if i >= len(args) {
+				return exportOptions{}, fmt.Errorf("--db requires a value")
+			}
+			options.dbPath = args[i]
+		case "--output":
+			i++
+			if i >= len(args) {
+				return exportOptions{}, fmt.Errorf("--output requires a value")
+			}
+			options.outputDir = args[i]
+		case "--static":
+			i++
+			if i >= len(args) {
+				return exportOptions{}, fmt.Errorf("--static requires a value")
+			}
+			options.staticDir = args[i]
+		default:
+			return exportOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+
+	return options, nil
 }
 
 func executeDB(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -644,6 +735,10 @@ func printArtistsHelp(w io.Writer) {
 
 func printSyncHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "usage: spotwufamily sync [--artist slug] [--full] [--dry-run] [--market ES] [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
+}
+
+func printExportHelp(w io.Writer) {
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily export [--db data/catalog.db] [--output site/data/generated] [--static site/static]")
 }
 
 func printDBHelp(w io.Writer) {

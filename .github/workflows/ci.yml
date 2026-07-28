@@ -33,6 +33,9 @@ jobs:
       - name: Verify SQLite catalog
         run: go run ./cmd/spotwufamily db verify
 
+      - name: Regenerate static exports
+        run: go run ./cmd/spotwufamily export
+
       - name: Test
         run: go test ./...
 

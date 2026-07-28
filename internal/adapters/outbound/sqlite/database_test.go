@@ -179,6 +179,16 @@ func TestSaveArtistCatalogPersistsNormalizedCatalog(t *testing.T) {
 	require.NoError(t, err)
 	_, err = database.Verify(ctx, migrations)
 	require.NoError(t, err)
+
+	exported, err := database.LoadExportCatalog(ctx)
+	require.NoError(t, err)
+	require.Len(t, exported.Artists, 1)
+	require.Len(t, exported.Albums, 1)
+	require.Len(t, exported.Tracks, 1)
+	require.Equal(t, "Wu-Tang Clan", exported.Artists[0].Name)
+	require.Equal(t, "Album One", exported.Albums[0].Name)
+	require.Equal(t, "Track One", exported.Albums[0].Tracks[0].Name)
+	require.Equal(t, "Wu-Tang Clan", exported.Tracks[0].Artists[0].Name)
 }
 
 func openMigratedDatabase(t *testing.T, ctx context.Context, path string) *sqliteadapter.Database {

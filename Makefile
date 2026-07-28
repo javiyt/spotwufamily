@@ -48,4 +48,4 @@ db-snapshot:
 db-rebuild:
 	go run $(CLI) db rebuild
 
-ci: format validate db-verify test lint build
+ci: format validate db-verify export test lint build

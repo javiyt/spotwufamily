@@ -38,3 +38,11 @@ Phase 5 sync persistence:
 - `artist_albums` and `artist_tracks` record which configured artist discovered a release or track.
 - `album_tracks`, `album_artists` and `track_artists` preserve album placement and credited artists.
 - The current policy is conservative: sync upserts observed data and does not delete rows simply because they are absent from one run.
+
+Phase 6 export:
+
+- Reads the normalized SQLite schema.
+- Writes deterministic JSON to `site/data/generated`.
+- Writes a compact static search index to `site/static/search-index.json`.
+- Does not rewrite unchanged files.
+- Removes obsolete generated JSON files under the export directories.
