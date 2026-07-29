@@ -1097,26 +1097,43 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 			continue
 		}
 
+		matches = filterCurrentArtistMatches(matches, *artist)
+		if len(matches) == 0 {
+			_, _ = fmt.Fprintln(stdout, "no new candidates found")
+			if len(artist.AllSpotifyIDs()) == 0 {
+				skipped++
+				continue
+			}
+			action, done, code := promptKeepClearOrQuit(ctx, reader, stdout, stderr, store, options.catalogPath, c, applied, skipped, kept, cleared)
+			if done {
+				return code
+			}
+			switch action {
+			case "keep":
+				kept++
+			case "clear":
+				artist.SpotifyID = ""
+				artist.SpotifyIDs = nil
+				artist.Enabled = false
+				cleared++
+			default:
+				skipped++
+			}
+			continue
+		}
+
 		limit := len(matches)
 		if limit > 10 {
 			limit = 10
 		}
-		for index := 0; index < limit; index++ {
-			match := matches[index]
-			candidate := match.Candidate
-			_, _ = fmt.Fprintf(stdout, "  %d. %s | %s | %s | score=%d confidence=%s popularity=%d followers=%d\n",
-				index+1,
-				candidate.Name,
-				candidate.SpotifyID,
-				spotifyArtistURL(candidate),
-				match.Score,
-				match.Confidence,
-				candidate.Popularity,
-				candidate.Followers,
-			)
-		}
+		printInteractiveMatches(stdout, matches, limit)
 
 		for {
+			matches = filterCurrentArtistMatches(matches, *artist)
+			if len(matches) < limit {
+				limit = len(matches)
+				printInteractiveMatches(stdout, matches, limit)
+			}
 			if len(artist.AllSpotifyIDs()) > 0 {
 				_, _ = fmt.Fprint(stdout, "select candidate number to replace primary, aN=add candidate as extra ID, repeat aN to add more, k=keep current, c=clear all IDs, s=skip, q=save and quit: ")
 			} else {
@@ -1252,6 +1269,41 @@ func promptKeepClearOrQuit(ctx context.Context, reader *bufio.Reader, stdout, st
 
 func printInteractiveResolveSummary(stdout io.Writer, applied, skipped, kept, cleared int) {
 	_, _ = fmt.Fprintf(stdout, "interactive resolve: applied=%d skipped=%d kept=%d cleared=%d\n", applied, skipped, kept, cleared)
+}
+
+func printInteractiveMatches(stdout io.Writer, matches []catalog.CandidateMatch, limit int) {
+	if limit > len(matches) {
+		limit = len(matches)
+	}
+	if limit == 0 {
+		_, _ = fmt.Fprintln(stdout, "no new candidates found")
+		return
+	}
+	for index := 0; index < limit; index++ {
+		match := matches[index]
+		candidate := match.Candidate
+		_, _ = fmt.Fprintf(stdout, "  %d. %s | %s | %s | score=%d confidence=%s popularity=%d followers=%d\n",
+			index+1,
+			candidate.Name,
+			candidate.SpotifyID,
+			spotifyArtistURL(candidate),
+			match.Score,
+			match.Confidence,
+			candidate.Popularity,
+			candidate.Followers,
+		)
+	}
+}
+
+func filterCurrentArtistMatches(matches []catalog.CandidateMatch, artist catalog.Artist) []catalog.CandidateMatch {
+	filtered := make([]catalog.CandidateMatch, 0, len(matches))
+	for _, match := range matches {
+		if artist.HasSpotifyID(match.Candidate.SpotifyID) {
+			continue
+		}
+		filtered = append(filtered, match)
+	}
+	return filtered
 }
 
 func saveInteractiveResolve(ctx context.Context, store artists.CatalogStore, path string, c catalog.EditorialCatalog) error {

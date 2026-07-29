@@ -260,7 +260,7 @@ artists:
 		catalogPath,
 		"--candidates",
 		candidatesPath,
-	}, strings.NewReader("a1\na2\nk\n"), &stdout, &stderr)
+	}, strings.NewReader("a1\na1\nk\n"), &stdout, &stderr)
 
 	require.Equal(t, 0, code)
 	require.Empty(t, stderr.String())
@@ -275,6 +275,53 @@ artists:
 	require.Contains(t, string(updated), "spotify_ids:")
 	require.Contains(t, string(updated), "- 0H8YCcvC3MPLKnbDRasGiG")
 	require.Contains(t, string(updated), "- 1WuLegacySpotifyArtist")
+}
+
+func TestExecuteArtistsResolveInteractiveReviewAllHidesCurrentSpotifyIDsFromCandidates(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	candidatesPath := filepath.Join(dir, "candidates.json")
+
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`
+version: 1
+artists:
+  - slug: wu-tang-killa-beez
+    name: Wu-Tang Killa Beez
+    spotify_id: "6UEytD2shU7Z8fMKj08puK"
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+`), 0o644))
+	require.NoError(t, os.WriteFile(candidatesPath, []byte(`{
+  "wu-tang-killa-beez": [
+    {"name": "Wu Tang Killa Beez", "spotify_id": "6UEytD2shU7Z8fMKj08puK", "popularity": 24, "followers": 59749},
+    {"name": "Eternal of Wu Tang Killa Beez", "spotify_id": "5txM0FfDbF5hcAR5wRCt1Y", "popularity": 0, "followers": 0}
+  ]
+}`), 0o644))
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := cli.ExecuteWithInput([]string{
+		"artists",
+		"resolve",
+		"--interactive",
+		"--review-all",
+		"--catalog",
+		catalogPath,
+		"--candidates",
+		candidatesPath,
+	}, strings.NewReader("k\n"), &stdout, &stderr)
+
+	require.Equal(t, 0, code)
+	require.Empty(t, stderr.String())
+	require.Contains(t, stdout.String(), "current Spotify IDs:")
+	require.Contains(t, stdout.String(), "- 6UEytD2shU7Z8fMKj08puK | https://open.spotify.com/artist/6UEytD2shU7Z8fMKj08puK | primary")
+	require.NotContains(t, stdout.String(), "1. Wu Tang Killa Beez | 6UEytD2shU7Z8fMKj08puK")
+	require.Contains(t, stdout.String(), "1. Eternal of Wu Tang Killa Beez | 5txM0FfDbF5hcAR5wRCt1Y")
 }
 
 func TestExecuteUnknownCommand(t *testing.T) {
