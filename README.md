@@ -127,6 +127,8 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
 
 The report is advisory. It lists matched albums, MusicBrainz albums missing from Spotify results, and Spotify albums that look suspicious or unmatched.
 
+Live Spotify artist resolution also uses MusicBrainz album evidence to discard Spotify candidates that do not match any MusicBrainz album release group for the editorial artist. Offline candidate files are not filtered this way.
+
 ## Sync
 
 `sync` reads enabled artists from `data/artists.yaml`, fetches Spotify artist metadata, albums, singles, compilations, appearances and album tracks, then stores normalized rows in SQLite.

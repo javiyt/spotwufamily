@@ -120,16 +120,7 @@ func (a AuditAlbums) auditArtist(ctx context.Context, artist catalog.Artist) (Au
 		return AuditAlbumsArtistReport{}, fmt.Errorf("search MusicBrainz release groups: %w", err)
 	}
 
-	mbAlbums := make([]AuditedAlbum, 0, len(musicBrainzReleaseGroups))
-	for _, releaseGroup := range musicBrainzReleaseGroups {
-		mbAlbums = append(mbAlbums, AuditedAlbum{
-			ID:    releaseGroup.ID,
-			Title: releaseGroup.Title,
-			Date:  releaseGroup.FirstReleaseDate,
-			Year:  yearFromDate(releaseGroup.FirstReleaseDate),
-			URL:   releaseGroup.URL,
-		})
-	}
+	mbAlbums := auditedMusicBrainzAlbums(musicBrainzReleaseGroups)
 
 	matched, missingSpotify, suspiciousSpotify := compareAlbums(spotifyAlbums, mbAlbums)
 	return AuditAlbumsArtistReport{

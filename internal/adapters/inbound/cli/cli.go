@@ -1303,11 +1303,19 @@ func resolveSearcher(options resolveOptions) (artists.CandidateSearcher, error) 
 		market = os.Getenv("SPOTIFY_MARKET")
 	}
 
-	return spotifyadapter.NewClient(spotifyadapter.Config{
+	spotifyClient, err := spotifyadapter.NewClient(spotifyadapter.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Market:       market,
 	})
+	if err != nil {
+		return nil, err
+	}
+	musicBrainzClient := musicbrainz.NewClient(musicbrainz.Config{
+		UserAgent: os.Getenv("MUSICBRAINZ_USER_AGENT"),
+	})
+
+	return artists.NewAlbumEvidenceCandidateSearcher(spotifyClient, spotifyClient, musicBrainzClient), nil
 }
 
 func executeArtistsValidate(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
