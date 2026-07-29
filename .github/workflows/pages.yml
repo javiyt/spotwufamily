@@ -54,7 +54,10 @@ jobs:
           go run ./cmd/spotwufamily export
 
       - name: Build Hugo
-        run: hugo --source site --destination public --minify
+        run: go run ./cmd/spotwufamily site build --source site --destination ../public
+
+      - name: Verify Pages artifact
+        run: test -d public && test -f public/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
