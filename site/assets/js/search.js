@@ -91,6 +91,23 @@
     }
   });
 
+  for (const list of document.querySelectorAll("[data-random-artist-list]")) {
+    const items = Array.from(list.querySelectorAll("[data-random-artist-item]"));
+    const limit = Number.parseInt(list.dataset.randomLimit || "", 10) || items.length;
+    shuffle(items);
+    for (const [index, item] of items.entries()) {
+      item.hidden = index >= limit;
+      list.appendChild(item);
+    }
+  }
+
+  function shuffle(items) {
+    for (let index = items.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
+    }
+  }
+
   function siteURL(path) {
     const base = window.SpotWuBasePath || "/";
     return base.replace(/\/$/, "") + "/" + String(path || "").replace(/^\//, "");

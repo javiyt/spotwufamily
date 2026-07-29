@@ -10,6 +10,12 @@ artists:
     spotify_id: 34EP7KEpOjXcM2TCat1ISk
     spotify_ids:
       - 0H8YCcvC3MPLKnbDRasGiG
+    genres:
+      - east coast hip hop
+      - gangster rap
+      - hardcore hip hop
+      - hip hop
+      - old school hip hop
     category: core
     roles:
       - core
@@ -43,6 +49,8 @@ artists:
   - slug: a-i-g
     name: A.I.G.
     spotify_id: 4W91zWkx3syrUDACiK5Jxh
+    genres:
+      - underground hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -95,6 +103,8 @@ artists:
   - slug: black-market-militia
     name: Black Market Militia
     spotify_id: 3jcyrGTj2QAkZOjriBOr9a
+    genres:
+      - east coast hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -139,6 +149,8 @@ artists:
   - slug: deadly-venoms
     name: Deadly Venoms
     spotify_id: 65qelf3gvWxMQew3vIp5bS
+    genres:
+      - east coast hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -161,6 +173,10 @@ artists:
     spotify_id: 5NIhgQ08PBzMux08ndi8Ae
     spotify_ids:
       - 5kM2hWXBW4G2AwPNcFjIZX
+    genres:
+      - east coast hip hop
+      - hardcore hip hop
+      - horrorcore
     category: affiliate_group
     roles:
       - affiliate_group
@@ -175,7 +191,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 16
     notes: ""
   - slug: hillside-scramblers
@@ -185,7 +201,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 17
     notes: ""
   - slug: house-gang
@@ -221,11 +237,14 @@ artists:
   - slug: killarmy
     name: Killarmy
     spotify_id: 5wwleY8YnxnutxOExPVoJb
+    genres:
+      - east coast hip hop
+      - underground hip hop
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 21
     notes: ""
   - slug: maccabeez
@@ -245,7 +264,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 23
     notes: ""
   - slug: northstar
@@ -255,17 +274,24 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 24
     notes: ""
   - slug: orphanage
     name: Orphanage
     spotify_id: 1yFECWZ2weONlh8oovXaI8
+    genres:
+      - doom metal
+      - gothic metal
+      - gothic rock
+      - groove metal
+      - melodic death metal
+      - symphonic metal
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 25
     notes: ""
   - slug: royal-fam
@@ -275,7 +301,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 26
     notes: ""
   - slug: school-of-the-gifted
@@ -285,7 +311,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 27
     notes: ""
   - slug: stone-mecca
@@ -295,7 +321,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 28
     notes: ""
   - slug: sunz-of-man
@@ -303,11 +329,14 @@ artists:
     spotify_id: 5PtIZ9EIXAYnZKhBZZuRsA
     spotify_ids:
       - 2BLi7tO8z8oHfsy1Q3K9tb
+    genres:
+      - boom bap
+      - east coast hip hop
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 29
     notes: ""
   - slug: tha-beggas
@@ -319,7 +348,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 30
     notes: ""
   - slug: theodore-unit
@@ -331,7 +360,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 31
     notes: ""
   - slug: t-m-f
@@ -341,7 +370,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 32
     notes: ""
   - slug: two-on-da-road
@@ -361,27 +390,32 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 34
     notes: ""
   - slug: wu-syndicate
     name: Wu-Syndicate
     spotify_id: 7Kiy2CEjPnhXePyLiBoscc
+    genres:
+      - east coast hip hop
+      - underground hip hop
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 35
     notes: ""
   - slug: yellow-jacketz
     name: Yellow Jacketz
     spotify_id: 4h45LoknPVdea6ePNiia1K
+    genres:
+      - underground hip hop
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 36
     notes: ""
   - slug: zu-ninjaz
@@ -391,7 +425,7 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 37
     notes: ""
   - slug: 9th-prince
@@ -401,7 +435,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 38
     notes: ""
   - slug: 12-o-clock
@@ -411,7 +445,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 39
     notes: ""
   - slug: armel
@@ -431,49 +465,58 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 41
     notes: ""
   - slug: bronze-nazareth
     name: Bronze Nazareth
     spotify_id: 4VhYUWpDsLraUG6Sd8g9TF
+    genres:
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
       - producer
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 42
     notes: ""
   - slug: buddha-monk
     name: Buddha Monk
     spotify_id: 4QTIR7KM0trauXspUNduhh
+    genres:
+      - boom bap
+      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 43
     notes: ""
   - slug: cilvaringz
     name: Cilvaringz
     spotify_id: 2v8ABtQy5LkGqPbrwwKQcj
+    genres:
+      - arabic hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
       - producer
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 44
     notes: ""
   - slug: darkim-be-allah
     name: Darkim Be Allah
     spotify_id: 1kVxIOLoDQhladQfYBIOdd
+    genres:
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 45
     notes: ""
   - slug: dj-ace-nyc
@@ -483,17 +526,19 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 46
     notes: ""
   - slug: dom-pachino
     name: Dom Pachino
     spotify_id: 7CRWPXETWBXqVw8rzEoGtn
+    genres:
+      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 47
     notes: ""
   - slug: don-staten
@@ -503,7 +548,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 48
     notes: ""
   - slug: dr-ama-aka-dark-skinned-assassin
@@ -523,11 +568,13 @@ artists:
     spotify_id: 4DFFHbyOLhS79zbAX1T1M9
     spotify_ids:
       - 0Ljv2YoYC1aaFPbBlKvDwI
+    genres:
+      - french rap
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 50
     notes: ""
   - slug: dungeon-masta
@@ -545,11 +592,13 @@ artists:
     spotify_id: 7bcaPLwtiAQbJUcYYvHPlq
     spotify_ids:
       - 2n2CyLQNyTcScQCuqnqp81
+    genres:
+      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 52
     notes: ""
   - slug: hanz-on
@@ -559,27 +608,32 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 53
     notes: ""
   - slug: hell-razah
     name: Hell Razah
     spotify_id: 59h4urZSPlBLaT0YharjOM
+    genres:
+      - east coast hip hop
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 54
     notes: ""
   - slug: intell
     name: Intell
     spotify_id: 4jITyKWjSTPCdzK1iM5eaA
+    genres:
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 55
     notes: ""
   - slug: islord
@@ -595,42 +649,54 @@ artists:
   - slug: killah-priest
     name: Killah Priest
     spotify_id: 0JYmatsiEQMn2v5KchV8u2
+    genres:
+      - east coast hip hop
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 57
     notes: ""
   - slug: killa-sin
     name: Killa Sin
     spotify_id: 67XIntxIqJFHkWpewJcrOb
+    genres:
+      - boom bap
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 58
     notes: ""
   - slug: krumbsnatcha
     name: Krumbsnatcha
     spotify_id: 4StWnbDC5LLdf3socfu0gx
+    genres:
+      - boom bap
+      - east coast hip hop
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 59
     notes: ""
   - slug: la-the-darkman
     name: LA the Darkman
     spotify_id: 130JkW1WwUswzofZ2paOvs
+    genres:
+      - east coast hip hop
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases:
       - La the Darkman
-    enabled: false
+    enabled: true
     editorial_order: 60
     notes: ""
   - slug: lord-superb
@@ -640,7 +706,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 61
     notes: ""
   - slug: lounge-lo
@@ -650,7 +716,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 62
     notes: ""
   - slug: piro
@@ -660,7 +726,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 63
     notes: ""
   - slug: popa-wu
@@ -680,68 +746,86 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 65
     notes: ""
   - slug: redman
     name: Redman
     spotify_id: 7xTKLpo7UCzXSnlH7fOIoM
+    genres:
+      - east coast hip hop
+      - hardcore hip hop
+      - hip hop
+      - old school hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 66
     notes: ""
   - slug: remedy
     name: Remedy
     spotify_id: 0Z5hmVxMatrIWgNi989seP
+    genres:
+      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 67
     notes: ""
   - slug: sav-killz
     name: Sav Killz
     spotify_id: 3PIEghHoWzGDpdiWv84mVm
+    genres:
+      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 68
     notes: ""
   - slug: shabazz-the-disciple
     name: Shabazz the Disciple
     spotify_id: 4KdOlzgquyDPqR2Fi8EcnB
+    genres:
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 69
     notes: ""
   - slug: shaka-amazulu-the-7th
     name: Shaka Amazulu the 7th
     spotify_id: 7rDn5lYbCFDYLL6ZirkSuR
+    genres:
+      - horrorcore
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 70
     notes: ""
   - slug: shyheim
     name: Shyheim
     spotify_id: 0rqb5s3Cxj0lGr6jTrWc0P
+    genres:
+      - boom bap
+      - east coast hip hop
+      - hardcore hip hop
+      - old school hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 71
     notes: ""
   - slug: silkski
@@ -751,7 +835,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 72
     notes: ""
   - slug: solomon-childs
@@ -767,11 +851,14 @@ artists:
   - slug: streetlife
     name: Streetlife
     spotify_id: 0FCYBhXjpfQIQWNKiVEDg5
+    genres:
+      - acid jazz
+      - nu jazz
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 74
     notes: ""
   - slug: sun-god
@@ -791,7 +878,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 76
     notes: ""
   - slug: truvillain
@@ -808,11 +895,14 @@ artists:
   - slug: warcloud
     name: Warcloud
     spotify_id: 0ZL948orsY5yM2hlESNF6O
+    genres:
+      - horrorcore
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 78
     notes: ""
   - slug: young-justice
@@ -832,7 +922,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 80
     notes: ""
   - slug: allah-real
@@ -842,7 +932,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 81
     notes: ""
   - slug: blue-raspberry
@@ -852,7 +942,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 82
     notes: ""
   - slug: jamie-sommers
@@ -872,7 +962,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 84
     notes: ""
   - slug: suga-bang-bang
@@ -882,7 +972,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 85
     notes: ""
   - slug: tash-mahogany
@@ -892,7 +982,7 @@ artists:
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 86
     notes: ""
   - slug: tekitha
@@ -908,11 +998,13 @@ artists:
   - slug: 4th-disciple
     name: 4th Disciple
     spotify_id: 2tpSqPZjUTXghpgDsQDi9I
+    genres:
+      - east coast hip hop
     category: producer
     roles:
       - producer
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 88
     notes: ""
   - slug: arabian-knight
@@ -944,7 +1036,7 @@ artists:
     roles:
       - producer
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 91
     notes: ""
   - slug: popsoundz
@@ -954,7 +1046,7 @@ artists:
     roles:
       - producer
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 92
     notes: ""
   - slug: rns
@@ -980,11 +1072,13 @@ artists:
   - slug: true-master
     name: True Master
     spotify_id: 41gTa5cSf7Zg5eErVb0aOS
+    genres:
+      - east coast hip hop
     category: producer
     roles:
       - producer
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 95
     notes: ""
   - slug: y-kim-the-illfigure
@@ -1000,33 +1094,47 @@ artists:
   - slug: nas
     name: Nas
     spotify_id: 20qISvAhX20dpIbOOzGK3q
+    genres:
+      - east coast hip hop
+      - hip hop
+      - old school hip hop
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 97
     notes: ""
   - slug: mobb-deep
     name: Mobb Deep
     spotify_id: 6O2zJ0tId7g07yzHtX0yap
+    genres:
+      - east coast hip hop
+      - gangster rap
+      - hardcore hip hop
+      - hip hop
+      - old school hip hop
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 98
     notes: ""
   - slug: the-l-o-x
     name: The L.O.X.
     spotify_id: 0A7g2YbCA9FlyZvAG6VmKP
+    genres:
+      - east coast hip hop
+      - hardcore hip hop
+      - old school hip hop
     category: collaborator
     roles:
       - collaborator
     aliases:
       - The LOX
       - LOX
-    enabled: false
+    enabled: true
     editorial_order: 99
     notes: ""
   - slug: az
@@ -1042,21 +1150,29 @@ artists:
   - slug: busta-rhymes
     name: Busta Rhymes
     spotify_id: 1YfEcTuGvBQ8xSD1f53UnK
+    genres:
+      - east coast hip hop
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 101
     notes: ""
   - slug: kool-g-rap
     name: Kool G Rap
     spotify_id: 099tLNCZZvtjC7myKD0mFp
+    genres:
+      - boom bap
+      - east coast hip hop
+      - hardcore hip hop
+      - horrorcore
+      - old school hip hop
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 102
     notes: ""
   - slug: mf-doom
@@ -1082,31 +1198,41 @@ artists:
   - slug: pete-rock
     name: Pete Rock
     spotify_id: 3BeQqzKdlARoOd6y30kCO2
+    genres:
+      - boom bap
+      - east coast hip hop
+      - jazz rap
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 105
     notes: ""
   - slug: kanye-west
     name: Kanye West
     spotify_id: 5K4W6rqBFWDnAN6FQUkS6x
+    genres:
+      - rap
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 106
     notes: ""
   - slug: dj-muggs
     name: DJ Muggs
     spotify_id: 7pDkjftAxiFHomWsPNkapS
+    genres:
+      - boom bap
+      - hardcore hip hop
+      - underground hip hop
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 107
     notes: ""
   - slug: b-nasty
@@ -1116,26 +1242,32 @@ artists:
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 108
     notes: ""
   - slug: dj-symphony
     name: DJ Symphony
     spotify_id: 75nXQyLeB5YjzE7LV8l5gx
+    genres:
+      - east coast hip hop
+      - finnish hip hop
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 109
     notes: ""
   - slug: j-love
     name: J-Love
     spotify_id: 5eGENdlc6kQZeuzUJZ4W8B
+    genres:
+      - boom bap
+      - underground hip hop
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 110
     notes: ""

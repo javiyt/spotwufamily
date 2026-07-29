@@ -1,5 +1,6 @@
 {{ define "main" }}
   {{ $summary := index hugo.Data.generated "catalog-summary" }}
+  {{ $artists := (index hugo.Data.generated.artists "index").items }}
   <section class="hero">
     <div class="shell hero-grid">
       <div class="hero-copy">
@@ -31,7 +32,7 @@
     </div>
     <div>
       <h2>Featured Artists</h2>
-      {{ partial "artist-list.html" $summary.featured_artists }}
+      {{ partial "artist-list.html" (dict "artists" $artists "randomize" true "limit" 12) }}
     </div>
   </section>
 {{ end }}

@@ -1,18 +1,22 @@
-<div class="card-grid">
-  {{ range . }}
-    <article class="item-card">
+{{ $artists := .artists }}
+{{ $randomize := .randomize }}
+{{ $limit := .limit }}
+<div class="card-grid"{{ if $randomize }} data-random-artist-list data-random-limit="{{ $limit }}"{{ end }}>
+  {{ range $index, $artist := $artists }}
+    {{ $initiallyHidden := and $randomize (gt $limit 0) (ge $index $limit) }}
+    <article class="item-card"{{ if $randomize }} data-random-artist-item{{ end }}{{ if $initiallyHidden }} hidden{{ end }}>
       <div class="thumb">
-        {{ if .image_url }}
-          {{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ .name }} on Spotify">{{ end }}
-          <img src="{{ .image_url }}" alt="" loading="lazy">
-          {{ if .spotify_url }}</a>{{ end }}
+        {{ if $artist.image_url }}
+          {{ if $artist.spotify_url }}<a href="{{ $artist.spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ $artist.name }} on Spotify">{{ end }}
+          <img src="{{ $artist.image_url }}" alt="" loading="lazy">
+          {{ if $artist.spotify_url }}</a>{{ end }}
         {{ else }}
-          <span>{{ substr .name 0 1 }}</span>
+          <span>{{ substr $artist.name 0 1 }}</span>
         {{ end }}
       </div>
-      <h3>{{ .name }}</h3>
-      <p>{{ replace .category "_" " " }}</p>
-      {{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
+      <h3>{{ $artist.name }}</h3>
+      <p>{{ replace $artist.category "_" " " }}</p>
+      {{ if $artist.spotify_url }}<a class="spotify-link" href="{{ $artist.spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
     </article>
   {{ else }}
     <p class="empty">No featured artists yet.</p>
