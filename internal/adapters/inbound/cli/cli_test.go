@@ -63,7 +63,8 @@ artists:
 	}, &stdout, &stderr)
 
 	require.Equal(t, 0, code)
-	require.Empty(t, stderr.String())
+	require.Contains(t, stderr.String(), "artists resolve: artist 1/1 Gravediggaz (gravediggaz): searching")
+	require.Contains(t, stderr.String(), "artists resolve: artist 1/1 gravediggaz: candidates=1")
 	require.Contains(t, stdout.String(), "wrote artist resolution report")
 
 	report, err := os.ReadFile(reportPath)
@@ -114,7 +115,8 @@ artists:
 	}, &stdout, &stderr)
 
 	require.Equal(t, 0, code)
-	require.Empty(t, stderr.String())
+	require.Contains(t, stderr.String(), "artists resolve: artist 1/1 Gravediggaz (gravediggaz): searching")
+	require.Contains(t, stderr.String(), "artists resolve: artist 1/1 gravediggaz: candidates=1")
 	require.Contains(t, stdout.String(), "applied resolved Spotify IDs: 1")
 
 	updated, err := os.ReadFile(catalogPath)

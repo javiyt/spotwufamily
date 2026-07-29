@@ -34,6 +34,7 @@ func NewDiscoverWuFamily(store CatalogStore, source DiscoverySource) DiscoverWuF
 type DiscoverWuFamilyOptions struct {
 	CatalogPath string
 	Apply       bool
+	Progress    func(DiscoverWuFamilyProgress)
 }
 
 type DiscoverWuFamilyReport struct {
@@ -53,18 +54,29 @@ type DiscoveryCandidate struct {
 	Reason    string
 }
 
+type DiscoverWuFamilyProgress struct {
+	Stage    string
+	Found    int
+	Existing int
+	New      int
+	Added    int
+}
+
 func (d DiscoverWuFamily) Run(ctx context.Context, options DiscoverWuFamilyOptions) (DiscoverWuFamilyReport, error) {
 	c, err := d.store.Load(ctx, options.CatalogPath)
 	if err != nil {
 		return DiscoverWuFamilyReport{}, fmt.Errorf("load artist catalog: %w", err)
 	}
 
+	emitDiscoverWuFamilyProgress(options.Progress, DiscoverWuFamilyProgress{Stage: "fetching"})
 	discovered, err := d.source.DiscoverWuFamilyArtists(ctx)
 	if err != nil {
 		return DiscoverWuFamilyReport{}, fmt.Errorf("discover Wu Family artists: %w", err)
 	}
+	emitDiscoverWuFamilyProgress(options.Progress, DiscoverWuFamilyProgress{Stage: "fetched", Found: len(discovered)})
 
 	report := buildDiscoverWuFamilyReport(c, discovered)
+	emitDiscoverWuFamilyProgress(options.Progress, DiscoverWuFamilyProgress{Stage: "compared", Found: report.Found, Existing: len(report.Existing), New: len(report.New)})
 	if options.Apply && len(report.New) > 0 {
 		nextOrder := nextEditorialOrder(c.Artists)
 		for _, candidate := range report.New {
@@ -89,9 +101,16 @@ func (d DiscoverWuFamily) Run(ctx context.Context, options DiscoverWuFamilyOptio
 		if err := d.store.Save(ctx, options.CatalogPath, c); err != nil {
 			return report, fmt.Errorf("save artist catalog: %w", err)
 		}
+		emitDiscoverWuFamilyProgress(options.Progress, DiscoverWuFamilyProgress{Stage: "saved", Found: report.Found, Existing: len(report.Existing), New: len(report.New), Added: len(report.Added)})
 	}
 
 	return report, nil
+}
+
+func emitDiscoverWuFamilyProgress(progress func(DiscoverWuFamilyProgress), event DiscoverWuFamilyProgress) {
+	if progress != nil {
+		progress(event)
+	}
 }
 
 func buildDiscoverWuFamilyReport(c catalog.EditorialCatalog, discovered []DiscoveredArtist) DiscoverWuFamilyReport {

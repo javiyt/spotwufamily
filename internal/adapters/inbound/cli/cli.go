@@ -937,11 +937,12 @@ type artistsDiscoverWuOptions struct {
 	wikipediaAPIURL string
 	wikipediaPage   string
 	apply           bool
+	quiet           bool
 }
 
 func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists discover-wu [--catalog data/artists.yaml] [--report wu-discovery.md] [--apply] [--wikipedia-api-url URL] [--wikipedia-page TITLE]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists discover-wu [--catalog data/artists.yaml] [--report wu-discovery.md] [--apply] [--quiet] [--wikipedia-api-url URL] [--wikipedia-page TITLE]")
 		return 0
 	}
 
@@ -951,10 +952,17 @@ func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr
 		return 2
 	}
 
+	var progress func(artists.DiscoverWuFamilyProgress)
+	if !options.quiet {
+		progress = func(event artists.DiscoverWuFamilyProgress) {
+			printDiscoverWuFamilyProgress(stderr, event)
+		}
+	}
 	source := wikipedia.NewClient(wikipedia.Config{APIURL: options.wikipediaAPIURL, Page: options.wikipediaPage})
 	report, err := artists.NewDiscoverWuFamily(store, source).Run(ctx, artists.DiscoverWuFamilyOptions{
 		CatalogPath: options.catalogPath,
 		Apply:       options.apply,
+		Progress:    progress,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists discover-wu: %v\n", err)
@@ -1008,6 +1016,8 @@ func parseArtistsDiscoverWuOptions(args []string) (artistsDiscoverWuOptions, err
 			options.wikipediaPage = args[i]
 		case "--apply":
 			options.apply = true
+		case "--quiet":
+			options.quiet = true
 		default:
 			return artistsDiscoverWuOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -1015,15 +1025,29 @@ func parseArtistsDiscoverWuOptions(args []string) (artistsDiscoverWuOptions, err
 	return options, nil
 }
 
+func printDiscoverWuFamilyProgress(stderr io.Writer, event artists.DiscoverWuFamilyProgress) {
+	switch event.Stage {
+	case "fetching":
+		_, _ = fmt.Fprintln(stderr, "artists discover-wu: fetching Wikipedia source")
+	case "fetched":
+		_, _ = fmt.Fprintf(stderr, "artists discover-wu: fetched candidates=%d\n", event.Found)
+	case "compared":
+		_, _ = fmt.Fprintf(stderr, "artists discover-wu: compared candidates found=%d existing=%d new=%d\n", event.Found, event.Existing, event.New)
+	case "saved":
+		_, _ = fmt.Fprintf(stderr, "artists discover-wu: saved catalog added=%d\n", event.Added)
+	}
+}
+
 type artistsRefreshGenresOptions struct {
 	catalogPath string
 	market      string
 	dryRun      bool
+	quiet       bool
 }
 
 func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists refresh-genres [--catalog data/artists.yaml] [--market ES] [--dry-run]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists refresh-genres [--catalog data/artists.yaml] [--market ES] [--dry-run] [--quiet]")
 		return 0
 	}
 
@@ -1039,9 +1063,16 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 		return 1
 	}
 
+	var progress func(artists.RefreshGenresProgress)
+	if !options.quiet {
+		progress = func(event artists.RefreshGenresProgress) {
+			printRefreshGenresProgress(stderr, event)
+		}
+	}
 	report, err := artists.NewRefreshGenres(store, fetcher).Run(ctx, artists.RefreshGenresOptions{
 		CatalogPath: options.catalogPath,
 		DryRun:      options.dryRun,
+		Progress:    progress,
 	})
 	mode := "updated"
 	if options.dryRun {
@@ -1082,11 +1113,28 @@ func parseArtistsRefreshGenresOptions(args []string) (artistsRefreshGenresOption
 			options.market = args[i]
 		case "--dry-run":
 			options.dryRun = true
+		case "--quiet":
+			options.quiet = true
 		default:
 			return artistsRefreshGenresOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
 	}
 	return options, nil
+}
+
+func printRefreshGenresProgress(stderr io.Writer, event artists.RefreshGenresProgress) {
+	switch {
+	case event.Err != nil:
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: spotify id %d/%d %s failed: %v\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyIDIndex, event.SpotifyIDTotal, event.SpotifyID, event.Err)
+	case event.Updated:
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: updated\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug)
+	case event.Unchanged:
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: unchanged\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug)
+	case event.SpotifyID != "":
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: spotify id %d/%d %s\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyIDIndex, event.SpotifyIDTotal, event.SpotifyID)
+	default:
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s (%s): start\n", event.ArtistIndex, event.ArtistTotal, event.ArtistName, event.ArtistSlug)
+	}
 }
 
 func spotifyArtistFetcher(market string) (artists.SpotifyArtistFetcher, error) {
@@ -1184,11 +1232,12 @@ type artistAlbumAuditOptions struct {
 	reportPath  string
 	artistSlug  string
 	market      string
+	quiet       bool
 }
 
 func executeArtistsAuditAlbums(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists audit-albums [--artist slug] [--catalog data/artists.yaml] [--market ES] [--report albums-audit.md]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists audit-albums [--artist slug] [--catalog data/artists.yaml] [--market ES] [--report albums-audit.md] [--quiet]")
 		return 0
 	}
 
@@ -1207,9 +1256,16 @@ func executeArtistsAuditAlbums(ctx context.Context, args []string, stdout, stder
 		UserAgent: os.Getenv("MUSICBRAINZ_USER_AGENT"),
 	})
 
+	var progress func(artists.AuditAlbumsProgress)
+	if !options.quiet {
+		progress = func(event artists.AuditAlbumsProgress) {
+			printAuditAlbumsProgress(stderr, event)
+		}
+	}
 	report, err := artists.NewAuditAlbums(store, spotifyClient, musicBrainzClient).Run(ctx, artists.AuditAlbumsOptions{
 		CatalogPath: options.catalogPath,
 		ArtistSlug:  options.artistSlug,
+		Progress:    progress,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists audit-albums: %v\n", err)
@@ -1260,12 +1316,33 @@ func parseArtistAlbumAuditOptions(args []string) (artistAlbumAuditOptions, error
 				return artistAlbumAuditOptions{}, fmt.Errorf("--market requires a value")
 			}
 			options.market = args[i]
+		case "--quiet":
+			options.quiet = true
 		default:
 			return artistAlbumAuditOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
 	}
 
 	return options, nil
+}
+
+func printAuditAlbumsProgress(stderr io.Writer, event artists.AuditAlbumsProgress) {
+	switch event.Stage {
+	case "artist_started":
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: artist %d/%d %s (%s): start\n", event.ArtistIndex, event.ArtistTotal, event.ArtistName, event.ArtistSlug)
+	case "spotify_started":
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: artist %d/%d %s: Spotify albums for %s\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyID)
+	case "spotify_finished":
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: artist %d/%d %s: Spotify albums fetched for %s: %d\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyID, event.AlbumCount)
+	case "musicbrainz_started":
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: artist %d/%d %s: MusicBrainz release groups\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug)
+	case "musicbrainz_finished":
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: artist %d/%d %s: MusicBrainz albums fetched: %d\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.AlbumCount)
+	case "artist_finished":
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: artist %d/%d %s: done spotify_albums=%d matched=%d\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.AlbumCount, event.MatchCount)
+	case "artist_failed":
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: artist %d/%d %s: failed: %v\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.Err)
+	}
 }
 
 func artistAlbumAuditSpotifyFetcher(options artistAlbumAuditOptions) (artists.SpotifyAlbumFetcher, error) {
@@ -1289,7 +1366,7 @@ func artistAlbumAuditSpotifyFetcher(options artistAlbumAuditOptions) (artists.Sp
 
 func executeArtistsResolve(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve [--interactive|--non-interactive] [--review-all] [--apply] [--min-score 95] [--min-score-gap 10] [--enable-applied] [--candidates data/artist-candidates.example.json] [--report report.md] [--catalog data/artists.yaml] [--market ES]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve [--interactive|--non-interactive] [--review-all] [--apply] [--min-score 95] [--min-score-gap 10] [--enable-applied] [--quiet] [--candidates data/artist-candidates.example.json] [--report report.md] [--catalog data/artists.yaml] [--market ES]")
 		return 0
 	}
 
@@ -1308,15 +1385,22 @@ func executeArtistsResolve(ctx context.Context, args []string, stdin io.Reader, 
 	}
 
 	resolver := artists.NewResolveArtists(store, searcher)
+	var progress func(artists.ResolveProgress)
+	if !options.quiet {
+		progress = func(event artists.ResolveProgress) {
+			printResolveProgress(stderr, event)
+		}
+	}
 	var report artists.ResolveReport
 	if options.apply {
 		report, err = resolver.Apply(ctx, options.catalogPath, artists.ApplyResolveOptions{
 			MinScore:       options.minScore,
 			MinScoreGap:    options.minScoreGap,
 			EnableResolved: options.enableApplied,
+			Progress:       progress,
 		})
 	} else {
-		report, err = resolver.Run(ctx, options.catalogPath)
+		report, err = resolver.RunWithProgress(ctx, options.catalogPath, progress)
 	}
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
@@ -1355,6 +1439,7 @@ type resolveOptions struct {
 	enableApplied  bool
 	minScore       int
 	minScoreGap    int
+	quiet          bool
 }
 
 func parseResolveOptions(args []string) (resolveOptions, error) {
@@ -1372,6 +1457,8 @@ func parseResolveOptions(args []string) (resolveOptions, error) {
 			options.apply = true
 		case "--enable-applied":
 			options.enableApplied = true
+		case "--quiet":
+			options.quiet = true
 		case "--min-score":
 			i++
 			if i >= len(args) {
@@ -1431,6 +1518,17 @@ func parseResolveOptions(args []string) (resolveOptions, error) {
 	}
 
 	return options, nil
+}
+
+func printResolveProgress(stderr io.Writer, event artists.ResolveProgress) {
+	switch event.Stage {
+	case "artist_started":
+		_, _ = fmt.Fprintf(stderr, "artists resolve: artist %d/%d %s (%s): searching\n", event.ArtistIndex, event.ArtistTotal, event.ArtistName, event.ArtistSlug)
+	case "artist_finished":
+		_, _ = fmt.Fprintf(stderr, "artists resolve: artist %d/%d %s: candidates=%d\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.MatchCount)
+	case "artist_failed":
+		_, _ = fmt.Fprintf(stderr, "artists resolve: artist %d/%d %s: failed: %v\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.Err)
+	}
 }
 
 func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer, store artists.CatalogStore, searcher artists.CandidateSearcher, options resolveOptions) int {

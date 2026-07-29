@@ -40,6 +40,7 @@ func NewAuditAlbums(store CatalogStore, spotify SpotifyAlbumFetcher, musicBrainz
 type AuditAlbumsOptions struct {
 	CatalogPath string
 	ArtistSlug  string
+	Progress    func(AuditAlbumsProgress)
 }
 
 type AuditAlbumsReport struct {
@@ -75,6 +76,18 @@ type AuditAlbumsError struct {
 	Err  error
 }
 
+type AuditAlbumsProgress struct {
+	Stage       string
+	ArtistSlug  string
+	ArtistName  string
+	ArtistIndex int
+	ArtistTotal int
+	SpotifyID   string
+	AlbumCount  int
+	MatchCount  int
+	Err         error
+}
+
 func (a AuditAlbums) Run(ctx context.Context, options AuditAlbumsOptions) (AuditAlbumsReport, error) {
 	c, err := a.store.Load(ctx, options.CatalogPath)
 	if err != nil {
@@ -84,21 +97,30 @@ func (a AuditAlbums) Run(ctx context.Context, options AuditAlbumsOptions) (Audit
 		return AuditAlbumsReport{}, fmt.Errorf("artist catalog is invalid: %s", issues[0].Error())
 	}
 
+	auditedArtists := auditAlbumArtists(c.Artists, options.ArtistSlug)
 	report := AuditAlbumsReport{}
-	for _, artist := range c.Artists {
-		if options.ArtistSlug != "" && artist.Slug != options.ArtistSlug {
-			continue
+	for index, artist := range auditedArtists {
+		base := AuditAlbumsProgress{
+			Stage:       "artist_started",
+			ArtistSlug:  artist.Slug,
+			ArtistName:  artist.Name,
+			ArtistIndex: index + 1,
+			ArtistTotal: len(auditedArtists),
 		}
-		if len(artist.AllSpotifyIDs()) == 0 {
-			continue
-		}
-
-		artistReport, err := a.auditArtist(ctx, artist)
+		emitAuditAlbumsProgress(options.Progress, base)
+		artistReport, err := a.auditArtist(ctx, artist, options.Progress, base)
 		if err != nil {
 			report.Errors = append(report.Errors, AuditAlbumsError{Slug: artist.Slug, Err: err})
+			base.Stage = "artist_failed"
+			base.Err = err
+			emitAuditAlbumsProgress(options.Progress, base)
 			continue
 		}
 		report.Artists = append(report.Artists, artistReport)
+		base.Stage = "artist_finished"
+		base.AlbumCount = len(artistReport.SpotifyAlbums)
+		base.MatchCount = len(artistReport.Matched)
+		emitAuditAlbumsProgress(options.Progress, base)
 	}
 	if options.ArtistSlug != "" && len(report.Artists) == 0 && len(report.Errors) == 0 {
 		return report, fmt.Errorf("artist %q with Spotify IDs not found", options.ArtistSlug)
@@ -110,17 +132,22 @@ func (a AuditAlbums) Run(ctx context.Context, options AuditAlbumsOptions) (Audit
 	return report, nil
 }
 
-func (a AuditAlbums) auditArtist(ctx context.Context, artist catalog.Artist) (AuditAlbumsArtistReport, error) {
-	spotifyAlbums, err := a.spotifyAlbums(ctx, artist)
+func (a AuditAlbums) auditArtist(ctx context.Context, artist catalog.Artist, progress func(AuditAlbumsProgress), base AuditAlbumsProgress) (AuditAlbumsArtistReport, error) {
+	spotifyAlbums, err := a.spotifyAlbums(ctx, artist, progress, base)
 	if err != nil {
 		return AuditAlbumsArtistReport{}, err
 	}
+	base.Stage = "musicbrainz_started"
+	emitAuditAlbumsProgress(progress, base)
 	musicBrainzReleaseGroups, err := a.musicBrainz.SearchArtistAlbumReleaseGroups(ctx, artist)
 	if err != nil {
 		return AuditAlbumsArtistReport{}, fmt.Errorf("search MusicBrainz release groups: %w", err)
 	}
 
 	mbAlbums := auditedMusicBrainzAlbums(musicBrainzReleaseGroups)
+	base.Stage = "musicbrainz_finished"
+	base.AlbumCount = len(mbAlbums)
+	emitAuditAlbumsProgress(progress, base)
 
 	matched, missingSpotify, suspiciousSpotify := compareAlbums(spotifyAlbums, mbAlbums)
 	return AuditAlbumsArtistReport{
@@ -133,14 +160,21 @@ func (a AuditAlbums) auditArtist(ctx context.Context, artist catalog.Artist) (Au
 	}, nil
 }
 
-func (a AuditAlbums) spotifyAlbums(ctx context.Context, artist catalog.Artist) ([]AuditedAlbum, error) {
+func (a AuditAlbums) spotifyAlbums(ctx context.Context, artist catalog.Artist, progress func(AuditAlbumsProgress), base AuditAlbumsProgress) ([]AuditedAlbum, error) {
 	seen := map[string]struct{}{}
 	var albums []AuditedAlbum
 	for _, spotifyID := range artist.AllSpotifyIDs() {
+		event := base
+		event.Stage = "spotify_started"
+		event.SpotifyID = spotifyID
+		emitAuditAlbumsProgress(progress, event)
 		releases, err := a.spotify.GetArtistAlbums(ctx, spotifyID, []string{"album"})
 		if err != nil {
 			return nil, fmt.Errorf("get Spotify albums %s: %w", spotifyID, err)
 		}
+		event.Stage = "spotify_finished"
+		event.AlbumCount = len(releases)
+		emitAuditAlbumsProgress(progress, event)
 		for _, release := range releases {
 			if release.SpotifyID == "" {
 				continue
@@ -161,6 +195,26 @@ func (a AuditAlbums) spotifyAlbums(ctx context.Context, artist catalog.Artist) (
 	}
 	sortAlbums(albums)
 	return albums, nil
+}
+
+func auditAlbumArtists(artists []catalog.Artist, slug string) []catalog.Artist {
+	audited := make([]catalog.Artist, 0, len(artists))
+	for _, artist := range artists {
+		if slug != "" && artist.Slug != slug {
+			continue
+		}
+		if len(artist.AllSpotifyIDs()) == 0 {
+			continue
+		}
+		audited = append(audited, artist)
+	}
+	return audited
+}
+
+func emitAuditAlbumsProgress(progress func(AuditAlbumsProgress), event AuditAlbumsProgress) {
+	if progress != nil {
+		progress(event)
+	}
 }
 
 func compareAlbums(spotifyAlbums, musicBrainzAlbums []AuditedAlbum) ([]AlbumMatch, []AuditedAlbum, []AuditedAlbum) {

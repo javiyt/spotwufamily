@@ -54,19 +54,34 @@ type ResolveError struct {
 	Err  error
 }
 
+type ResolveProgress struct {
+	Stage       string
+	ArtistSlug  string
+	ArtistName  string
+	ArtistIndex int
+	ArtistTotal int
+	MatchCount  int
+	Err         error
+}
+
 type ApplyResolveOptions struct {
 	MinScore       int
 	MinScoreGap    int
 	EnableResolved bool
+	Progress       func(ResolveProgress)
 }
 
 func (r ResolveArtists) Run(ctx context.Context, path string) (ResolveReport, error) {
+	return r.RunWithProgress(ctx, path, nil)
+}
+
+func (r ResolveArtists) RunWithProgress(ctx context.Context, path string, progress func(ResolveProgress)) (ResolveReport, error) {
 	c, err := r.store.Load(ctx, path)
 	if err != nil {
 		return ResolveReport{}, fmt.Errorf("load artist catalog: %w", err)
 	}
 
-	return r.resolve(ctx, c)
+	return r.resolve(ctx, c, progress)
 }
 
 func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyResolveOptions) (ResolveReport, error) {
@@ -75,7 +90,7 @@ func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyRes
 		return ResolveReport{}, fmt.Errorf("load artist catalog: %w", err)
 	}
 
-	report, err := r.resolve(ctx, c)
+	report, err := r.resolve(ctx, c, options.Progress)
 	if err != nil {
 		return ResolveReport{}, err
 	}
@@ -126,19 +141,25 @@ func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyRes
 	return report, nil
 }
 
-func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog) (ResolveReport, error) {
+func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog, progress func(ResolveProgress)) (ResolveReport, error) {
 	report := ResolveReport{}
-	for _, artist := range c.Artists {
-		if len(artist.AllSpotifyIDs()) > 0 {
-			continue
-		}
+	artistsToResolve := unresolvedArtists(c.Artists)
+	for index, artist := range artistsToResolve {
+		event := ResolveProgress{Stage: "artist_started", ArtistSlug: artist.Slug, ArtistName: artist.Name, ArtistIndex: index + 1, ArtistTotal: len(artistsToResolve)}
+		emitResolveProgress(progress, event)
 
 		candidates, err := r.searcher.SearchArtistCandidates(ctx, artist)
 		if err != nil {
 			report.Errors = append(report.Errors, ResolveError{Slug: artist.Slug, Err: err})
+			event.Stage = "artist_failed"
+			event.Err = err
+			emitResolveProgress(progress, event)
 			continue
 		}
 
+		event.Stage = "artist_finished"
+		event.MatchCount = len(candidates)
+		emitResolveProgress(progress, event)
 		report.Entries = append(report.Entries, ResolveReportEntry{
 			Artist:  artist,
 			Matches: catalog.RankCandidates(artist, candidates),
@@ -150,6 +171,23 @@ func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog)
 	})
 
 	return report, nil
+}
+
+func unresolvedArtists(artists []catalog.Artist) []catalog.Artist {
+	unresolved := make([]catalog.Artist, 0, len(artists))
+	for _, artist := range artists {
+		if len(artist.AllSpotifyIDs()) > 0 {
+			continue
+		}
+		unresolved = append(unresolved, artist)
+	}
+	return unresolved
+}
+
+func emitResolveProgress(progress func(ResolveProgress), event ResolveProgress) {
+	if progress != nil {
+		progress(event)
+	}
 }
 
 func autoResolvedMatch(entry ResolveReportEntry, options ApplyResolveOptions) (ResolvedArtist, bool, string) {

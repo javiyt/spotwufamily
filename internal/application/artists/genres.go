@@ -25,6 +25,7 @@ func NewRefreshGenres(store CatalogStore, fetcher SpotifyArtistFetcher) RefreshG
 type RefreshGenresOptions struct {
 	CatalogPath string
 	DryRun      bool
+	Progress    func(RefreshGenresProgress)
 }
 
 type RefreshGenresReport struct {
@@ -42,6 +43,19 @@ type RefreshGenresError struct {
 	Err  error
 }
 
+type RefreshGenresProgress struct {
+	ArtistSlug     string
+	ArtistName     string
+	SpotifyID      string
+	ArtistIndex    int
+	ArtistTotal    int
+	SpotifyIDIndex int
+	SpotifyIDTotal int
+	Updated        bool
+	Unchanged      bool
+	Err            error
+}
+
 func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (RefreshGenresReport, error) {
 	c, err := r.store.Load(ctx, options.CatalogPath)
 	if err != nil {
@@ -49,6 +63,7 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 	}
 
 	report := RefreshGenresReport{}
+	artistsWithIDs := countArtistsWithSpotifyIDs(c.Artists)
 	for index := range c.Artists {
 		artist := &c.Artists[index]
 		ids := artist.AllSpotifyIDs()
@@ -56,14 +71,33 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 			continue
 		}
 		report.ArtistsWithIDs++
+		artistIndex := report.ArtistsWithIDs
+		emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
+			ArtistSlug:  artist.Slug,
+			ArtistName:  artist.Name,
+			ArtistIndex: artistIndex,
+			ArtistTotal: artistsWithIDs,
+		})
 
 		genres := []string{}
 		externalURL := ""
 		imageURL := ""
-		for _, spotifyID := range ids {
+		for spotifyIndex, spotifyID := range ids {
+			progress := RefreshGenresProgress{
+				ArtistSlug:     artist.Slug,
+				ArtistName:     artist.Name,
+				SpotifyID:      spotifyID,
+				ArtistIndex:    artistIndex,
+				ArtistTotal:    artistsWithIDs,
+				SpotifyIDIndex: spotifyIndex + 1,
+				SpotifyIDTotal: len(ids),
+			}
+			emitRefreshGenresProgress(options.Progress, progress)
 			spotifyArtist, err := r.fetcher.GetArtist(ctx, spotifyID)
 			if err != nil {
 				report.Errors = append(report.Errors, RefreshGenresError{Slug: artist.Slug, ID: spotifyID, Err: err})
+				progress.Err = err
+				emitRefreshGenresProgress(options.Progress, progress)
 				continue
 			}
 			genres = append(genres, spotifyArtist.Genres...)
@@ -83,12 +117,26 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		}
 		if equalStringSlices(artist.Genres, genres) && artist.ExternalURL == externalURL && artist.ImageURL == imageURL {
 			report.Unchanged++
+			emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
+				ArtistSlug:  artist.Slug,
+				ArtistName:  artist.Name,
+				ArtistIndex: artistIndex,
+				ArtistTotal: artistsWithIDs,
+				Unchanged:   true,
+			})
 			continue
 		}
 		artist.Genres = genres
 		artist.ExternalURL = externalURL
 		artist.ImageURL = imageURL
 		report.Updated++
+		emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
+			ArtistSlug:  artist.Slug,
+			ArtistName:  artist.Name,
+			ArtistIndex: artistIndex,
+			ArtistTotal: artistsWithIDs,
+			Updated:     true,
+		})
 	}
 
 	if len(report.Errors) > 0 {
@@ -104,6 +152,22 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 	}
 
 	return report, nil
+}
+
+func emitRefreshGenresProgress(progress func(RefreshGenresProgress), event RefreshGenresProgress) {
+	if progress != nil {
+		progress(event)
+	}
+}
+
+func countArtistsWithSpotifyIDs(artists []catalog.Artist) int {
+	total := 0
+	for _, artist := range artists {
+		if len(artist.AllSpotifyIDs()) > 0 {
+			total++
+		}
+	}
+	return total
 }
 
 func normalizeGenreList(genres []string) []string {
