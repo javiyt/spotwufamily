@@ -79,6 +79,49 @@ func TestSyncCatalogProcessesEnabledArtistsAndDeduplicates(t *testing.T) {
 	require.Equal(t, []string{"34EP7KEpOjXcM2TCat1ISk", "0H8YCcvC3MPLKnbDRasGiG"}, fetcher.artistIDs)
 }
 
+func TestSyncCatalogReportsProgress(t *testing.T) {
+	store := fakeStore{catalog: catalog.EditorialCatalog{
+		Version: 1,
+		Artists: []catalog.Artist{enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")},
+	}}
+	fetcher := &fakeFetcher{
+		artist:   catalog.ArtistCandidate{Name: "Wu-Tang Clan", SpotifyID: "34EP7KEpOjXcM2TCat1ISk"},
+		releases: []catalog.Release{{SpotifyID: "album-1", Name: "Album One"}},
+		albums: map[string]catalog.Release{
+			"album-1": {SpotifyID: "album-1", Name: "Album One", AlbumType: "album"},
+		},
+		tracks: map[string][]catalog.Track{
+			"album-1": {{SpotifyID: "track-1", Name: "Track One"}},
+		},
+	}
+	var events []catalogsync.ProgressEvent
+	usecase := catalogsync.NewSyncCatalog(store, fetcher, &fakeRepository{}, fixedClock{})
+
+	report, err := usecase.Run(context.Background(), catalogsync.Options{
+		CatalogPath: "ignored",
+		Progress: func(event catalogsync.ProgressEvent) {
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, report.ArtistsProcessed)
+	requireProgressStages(t, events,
+		catalogsync.ProgressCatalogLoaded,
+		catalogsync.ProgressConfiguredSaved,
+		catalogsync.ProgressRunStarted,
+		catalogsync.ProgressArtistStarted,
+		catalogsync.ProgressSpotifyStarted,
+		catalogsync.ProgressReleasesFetched,
+		catalogsync.ProgressReleaseStarted,
+		catalogsync.ProgressSpotifySaved,
+		catalogsync.ProgressArtistFinished,
+		catalogsync.ProgressRunFinished,
+	)
+	require.Equal(t, "album-1", events[6].ReleaseID)
+	require.Equal(t, 1, events[8].Stats.AlbumsUpserted)
+}
+
 func TestSyncCatalogReturnsPartialFailure(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
 		Version: 1,
@@ -91,6 +134,15 @@ func TestSyncCatalogReturnsPartialFailure(t *testing.T) {
 	require.ErrorContains(t, err, "1 artist syncs failed")
 	require.Equal(t, 1, report.ArtistsFailed)
 	require.Len(t, report.Errors, 1)
+}
+
+func requireProgressStages(t *testing.T, events []catalogsync.ProgressEvent, stages ...catalogsync.ProgressStage) {
+	t.Helper()
+
+	require.Len(t, events, len(stages))
+	for index, stage := range stages {
+		require.Equal(t, stage, events[index].Stage)
+	}
 }
 
 type fakeStore struct {

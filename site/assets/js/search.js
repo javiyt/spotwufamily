@@ -3,10 +3,6 @@
   const results = document.getElementById("search-results");
   const status = document.getElementById("search-status");
 
-  if (!input || !results) {
-    return;
-  }
-
   let indexPromise;
   let timer;
 
@@ -54,27 +50,29 @@
     }
   }
 
-  input.addEventListener("input", function () {
-    clearTimeout(timer);
-    timer = setTimeout(function () {
-      const query = normalize(input.value);
-      if (!query) {
-        results.innerHTML = "";
-        if (status) {
-          status.textContent = "";
+  if (input && results) {
+    input.addEventListener("input", function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        const query = normalize(input.value);
+        if (!query) {
+          results.innerHTML = "";
+          if (status) {
+            status.textContent = "";
+          }
+          return;
         }
-        return;
-      }
 
-      loadIndex().then((data) => {
-        const matches = (data.items || []).filter((item) => {
-          const haystack = normalize([item.title, item.subtitle, ...(item.terms || [])].join(" "));
-          return haystack.includes(query);
+        loadIndex().then((data) => {
+          const matches = (data.items || []).filter((item) => {
+            const haystack = normalize([item.title, item.subtitle, ...(item.terms || [])].join(" "));
+            return haystack.includes(query);
+          });
+          render(matches);
         });
-        render(matches);
-      });
-    }, 160);
-  });
+      }, 160);
+    });
+  }
 
   document.addEventListener("change", function (event) {
     const select = event.target.closest("[data-filter-target]");

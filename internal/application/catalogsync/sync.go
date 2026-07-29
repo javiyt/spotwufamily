@@ -58,6 +58,7 @@ type Options struct {
 	Market      string
 	Full        bool
 	DryRun      bool
+	Progress    func(ProgressEvent)
 }
 
 type SyncRun struct {
@@ -81,6 +82,41 @@ type ArtistError struct {
 	Slug string
 	Err  error
 }
+
+type ProgressEvent struct {
+	Stage           ProgressStage
+	ArtistSlug      string
+	ArtistName      string
+	SpotifyID       string
+	ReleaseID       string
+	ReleaseName     string
+	ArtistIndex     int
+	ArtistTotal     int
+	SpotifyIDIndex  int
+	SpotifyIDTotal  int
+	ReleaseIndex    int
+	ReleaseTotal    int
+	ConfiguredCount int
+	RunID           int64
+	Stats           SyncStats
+	Err             error
+}
+
+type ProgressStage string
+
+const (
+	ProgressCatalogLoaded   ProgressStage = "catalog_loaded"
+	ProgressConfiguredSaved ProgressStage = "configured_saved"
+	ProgressRunStarted      ProgressStage = "run_started"
+	ProgressArtistStarted   ProgressStage = "artist_started"
+	ProgressSpotifyStarted  ProgressStage = "spotify_started"
+	ProgressReleasesFetched ProgressStage = "releases_fetched"
+	ProgressReleaseStarted  ProgressStage = "release_started"
+	ProgressSpotifySaved    ProgressStage = "spotify_saved"
+	ProgressArtistFinished  ProgressStage = "artist_finished"
+	ProgressArtistFailed    ProgressStage = "artist_failed"
+	ProgressRunFinished     ProgressStage = "run_finished"
+)
 
 type SyncStats struct {
 	ConfiguredArtistsUpserted int
@@ -125,6 +161,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 
 	artists := enabledArtists(editorialCatalog.Artists, options.ArtistSlug)
 	report := Report{DryRun: options.DryRun, ArtistsPlanned: len(artists)}
+	progress(options.Progress, ProgressEvent{Stage: ProgressCatalogLoaded, ArtistTotal: len(artists), ConfiguredCount: len(editorialCatalog.Artists)})
 	if options.ArtistSlug != "" && len(artists) == 0 {
 		return report, fmt.Errorf("enabled artist %q not found", options.ArtistSlug)
 	}
@@ -136,6 +173,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 		return report, fmt.Errorf("save configured artists: %w", err)
 	}
 	report.Stats.ConfiguredArtistsUpserted = len(editorialCatalog.Artists)
+	progress(options.Progress, ProgressEvent{Stage: ProgressConfiguredSaved, ConfiguredCount: len(editorialCatalog.Artists)})
 
 	runID, err := s.repository.BeginSyncRun(ctx, SyncRun{
 		StartedAt: s.clock.Now(),
@@ -146,16 +184,31 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 		return report, fmt.Errorf("begin sync run: %w", err)
 	}
 	report.RunID = runID
+	progress(options.Progress, ProgressEvent{Stage: ProgressRunStarted, RunID: runID})
 
-	for _, configuredArtist := range artists {
-		artistStats, err := s.syncArtist(ctx, runID, configuredArtist)
+	for index, configuredArtist := range artists {
+		event := ProgressEvent{
+			Stage:       ProgressArtistStarted,
+			ArtistSlug:  configuredArtist.Slug,
+			ArtistName:  configuredArtist.Name,
+			ArtistIndex: index + 1,
+			ArtistTotal: len(artists),
+		}
+		progress(options.Progress, event)
+		artistStats, err := s.syncArtist(ctx, runID, configuredArtist, event, options.Progress)
 		if err != nil {
 			report.ArtistsFailed++
 			report.Errors = append(report.Errors, ArtistError{Slug: configuredArtist.Slug, Err: err})
+			event.Stage = ProgressArtistFailed
+			event.Err = err
+			progress(options.Progress, event)
 			continue
 		}
 		report.ArtistsProcessed++
 		report.Stats = report.Stats.Add(artistStats)
+		event.Stage = ProgressArtistFinished
+		event.Stats = artistStats
+		progress(options.Progress, event)
 	}
 	report.ArtistsSkipped = len(editorialCatalog.Artists) - len(artists)
 
@@ -166,6 +219,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 	if err := s.repository.FinishSyncRun(ctx, runID, status, report.Stats); err != nil {
 		return report, fmt.Errorf("finish sync run: %w", err)
 	}
+	progress(options.Progress, ProgressEvent{Stage: ProgressRunFinished, RunID: runID, Stats: report.Stats})
 
 	if report.ArtistsFailed > 0 {
 		return report, fmt.Errorf("%d artist syncs failed", report.ArtistsFailed)
@@ -174,10 +228,18 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 	return report, nil
 }
 
-func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArtist catalog.Artist) (SyncStats, error) {
+func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArtist catalog.Artist, baseEvent ProgressEvent, progressFunc func(ProgressEvent)) (SyncStats, error) {
 	stats := SyncStats{}
 	seenReleases := map[string]struct{}{}
-	for _, spotifyID := range configuredArtist.AllSpotifyIDs() {
+	spotifyIDs := configuredArtist.AllSpotifyIDs()
+	for spotifyIndex, spotifyID := range spotifyIDs {
+		event := baseEvent
+		event.Stage = ProgressSpotifyStarted
+		event.SpotifyID = spotifyID
+		event.SpotifyIDIndex = spotifyIndex + 1
+		event.SpotifyIDTotal = len(spotifyIDs)
+		progress(progressFunc, event)
+
 		spotifyArtist, err := s.fetcher.GetArtist(ctx, spotifyID)
 		if err != nil {
 			return SyncStats{}, fmt.Errorf("get Spotify artist %s: %w", spotifyID, err)
@@ -187,9 +249,12 @@ func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArti
 		if err != nil {
 			return SyncStats{}, fmt.Errorf("get Spotify artist albums %s: %w", spotifyID, err)
 		}
+		event.Stage = ProgressReleasesFetched
+		event.ReleaseTotal = len(releases)
+		progress(progressFunc, event)
 
 		releaseTracks := make([]catalog.ReleaseTracks, 0, len(releases))
-		for _, release := range releases {
+		for releaseIndex, release := range releases {
 			if release.SpotifyID == "" {
 				continue
 			}
@@ -197,6 +262,13 @@ func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArti
 				continue
 			}
 			seenReleases[release.SpotifyID] = struct{}{}
+
+			event.Stage = ProgressReleaseStarted
+			event.ReleaseID = release.SpotifyID
+			event.ReleaseName = release.Name
+			event.ReleaseIndex = releaseIndex + 1
+			event.ReleaseTotal = len(releases)
+			progress(progressFunc, event)
 
 			fullRelease, err := s.fetcher.GetAlbum(ctx, release.SpotifyID)
 			if err != nil {
@@ -214,9 +286,18 @@ func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArti
 			return SyncStats{}, fmt.Errorf("save artist catalog %s: %w", spotifyID, err)
 		}
 		stats = stats.Add(artistStats)
+		event.Stage = ProgressSpotifySaved
+		event.Stats = artistStats
+		progress(progressFunc, event)
 	}
 
 	return stats, nil
+}
+
+func progress(progressFunc func(ProgressEvent), event ProgressEvent) {
+	if progressFunc != nil {
+		progressFunc(event)
+	}
 }
 
 func enabledArtists(artists []catalog.Artist, slug string) []catalog.Artist {

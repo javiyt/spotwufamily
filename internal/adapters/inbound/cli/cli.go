@@ -131,6 +131,7 @@ type syncOptions struct {
 	market       string
 	full         bool
 	dryRun       bool
+	quiet        bool
 }
 
 func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
@@ -168,12 +169,20 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 		}
 	}
 
+	var progress func(catalogsync.ProgressEvent)
+	if !options.dryRun && !options.quiet {
+		progress = func(event catalogsync.ProgressEvent) {
+			printSyncProgress(stderr, event)
+		}
+	}
+
 	report, err := catalogsync.NewSyncCatalog(store, fetcher, repository, catalogsync.SystemClock{}).Run(ctx, catalogsync.Options{
 		CatalogPath: options.catalogPath,
 		ArtistSlug:  options.artistSlug,
 		Market:      options.market,
 		Full:        options.full,
 		DryRun:      options.dryRun,
+		Progress:    progress,
 	})
 
 	printSyncReport(stdout, report)
@@ -233,6 +242,8 @@ func parseSyncOptions(args []string) (syncOptions, error) {
 			options.full = true
 		case "--dry-run":
 			options.dryRun = true
+		case "--quiet":
+			options.quiet = true
 		default:
 			return syncOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -276,6 +287,33 @@ func printSyncReport(stdout io.Writer, report catalogsync.Report) {
 		report.Stats.ArtistAlbumsUpserted,
 		report.Stats.ArtistTracksUpserted,
 	)
+}
+
+func printSyncProgress(stderr io.Writer, event catalogsync.ProgressEvent) {
+	switch event.Stage {
+	case catalogsync.ProgressCatalogLoaded:
+		_, _ = fmt.Fprintf(stderr, "sync: catalog loaded: configured=%d enabled_with_spotify_id=%d\n", event.ConfiguredCount, event.ArtistTotal)
+	case catalogsync.ProgressConfiguredSaved:
+		_, _ = fmt.Fprintf(stderr, "sync: configured artists saved: %d\n", event.ConfiguredCount)
+	case catalogsync.ProgressRunStarted:
+		_, _ = fmt.Fprintf(stderr, "sync: run started: id=%d\n", event.RunID)
+	case catalogsync.ProgressArtistStarted:
+		_, _ = fmt.Fprintf(stderr, "sync: artist %d/%d %s (%s): start\n", event.ArtistIndex, event.ArtistTotal, event.ArtistName, event.ArtistSlug)
+	case catalogsync.ProgressSpotifyStarted:
+		_, _ = fmt.Fprintf(stderr, "sync: artist %d/%d %s: spotify id %d/%d %s\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyIDIndex, event.SpotifyIDTotal, event.SpotifyID)
+	case catalogsync.ProgressReleasesFetched:
+		_, _ = fmt.Fprintf(stderr, "sync: artist %d/%d %s: releases fetched for %s: %d\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyID, event.ReleaseTotal)
+	case catalogsync.ProgressReleaseStarted:
+		_, _ = fmt.Fprintf(stderr, "sync: artist %d/%d %s: release %d/%d %s (%s)\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.ReleaseIndex, event.ReleaseTotal, event.ReleaseName, event.ReleaseID)
+	case catalogsync.ProgressSpotifySaved:
+		_, _ = fmt.Fprintf(stderr, "sync: artist %d/%d %s: saved spotify id %s albums=%d tracks=%d images=%d\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyID, event.Stats.AlbumsUpserted, event.Stats.TracksUpserted, event.Stats.ImagesUpserted)
+	case catalogsync.ProgressArtistFinished:
+		_, _ = fmt.Fprintf(stderr, "sync: artist %d/%d %s: done albums=%d tracks=%d\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.Stats.AlbumsUpserted, event.Stats.TracksUpserted)
+	case catalogsync.ProgressArtistFailed:
+		_, _ = fmt.Fprintf(stderr, "sync: artist %d/%d %s: failed: %v\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.Err)
+	case catalogsync.ProgressRunFinished:
+		_, _ = fmt.Fprintf(stderr, "sync: run finished: id=%d albums=%d tracks=%d images=%d\n", event.RunID, event.Stats.AlbumsUpserted, event.Stats.TracksUpserted, event.Stats.ImagesUpserted)
+	}
 }
 
 type auditOptions struct {
@@ -1912,7 +1950,7 @@ func printArtistsHelp(w io.Writer) {
 }
 
 func printSyncHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily sync [--artist slug] [--full] [--dry-run] [--market ES] [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily sync [--artist slug] [--full] [--dry-run] [--quiet] [--market ES] [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
 }
 
 func printExportHelp(w io.Writer) {
