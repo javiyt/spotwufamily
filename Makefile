@@ -10,6 +10,7 @@ DB ?= data/catalog.db
 SNAPSHOT ?= data/catalog.snapshot.sql
 EXPORT_DIR ?= site/data/generated
 STATIC_DIR ?= site/static
+CONTENT_DIR ?= site/content/generated
 CANDIDATES ?= data/artist-candidates.example.json
 REPORT ?= resolve.md
 ALBUM_REPORT ?= albums-audit.md
@@ -37,7 +38,7 @@ help:
 	@printf '  make sync-all                 Sync every enabled artist from Spotify\n'
 	@printf '  make refresh-all-from-spotify Refresh metadata, sync all artists, export/build/audit\n'
 	@printf '  make ci                      Local CI gate\n'
-	@printf '\nVariables: CATALOG=%s DB=%s SNAPSHOT=%s ARTIST=%s MARKET=%s REPORT=%s ALBUM_REPORT=%s DISCOVERY_REPORT=%s\n' "$(CATALOG)" "$(DB)" "$(SNAPSHOT)" "$(ARTIST)" "$(MARKET)" "$(REPORT)" "$(ALBUM_REPORT)" "$(DISCOVERY_REPORT)"
+	@printf '\nVariables: CATALOG=%s DB=%s SNAPSHOT=%s ARTIST=%s MARKET=%s REPORT=%s ALBUM_REPORT=%s DISCOVERY_REPORT=%s CONTENT_DIR=%s\n' "$(CATALOG)" "$(DB)" "$(SNAPSHOT)" "$(ARTIST)" "$(MARKET)" "$(REPORT)" "$(ALBUM_REPORT)" "$(DISCOVERY_REPORT)" "$(CONTENT_DIR)"
 
 setup:
 	go mod download
@@ -122,7 +123,7 @@ sync-artist:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --artist $(ARTIST) --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
 
 export:
-	go run $(CLI) export --db $(DB) --output $(EXPORT_DIR) --static $(STATIC_DIR)
+	go run $(CLI) export --db $(DB) --output $(EXPORT_DIR) --static $(STATIC_DIR) --content $(CONTENT_DIR)
 
 build:
 	go build -o $(BUILD_DIR)/spotwufamily $(CLI)
@@ -131,10 +132,10 @@ serve:
 	hugo server --source site --bind 127.0.0.1
 
 audit:
-	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --site-source $(SITE_SOURCE) --site-destination $(SITE_DESTINATION) --skip-git-diff
+	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --content $(CONTENT_DIR) --site-source $(SITE_SOURCE) --site-destination $(SITE_DESTINATION) --skip-git-diff
 
 audit-fast:
-	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --skip-site --skip-git-diff
+	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --content $(CONTENT_DIR) --skip-site --skip-git-diff
 
 db-verify:
 	go run $(CLI) db verify --db $(DB) --snapshot $(SNAPSHOT)

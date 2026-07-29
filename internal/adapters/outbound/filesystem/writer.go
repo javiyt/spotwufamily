@@ -60,7 +60,7 @@ func (Writer) PruneDir(dir string, keep map[string]struct{}) error {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() || !strings.HasSuffix(path, ".json") {
+		if entry.IsDir() || (!strings.HasSuffix(path, ".json") && !strings.HasSuffix(path, ".md")) {
 			return nil
 		}
 		if _, ok := keep[path]; ok {

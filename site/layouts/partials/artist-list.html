@@ -14,7 +14,7 @@
           <span>{{ substr $artist.name 0 1 }}</span>
         {{ end }}
       </div>
-      <h3>{{ $artist.name }}</h3>
+      <h3><a href="{{ printf "artists/%s/" $artist.slug | relURL }}">{{ $artist.name }}</a></h3>
       <p>{{ replace $artist.category "_" " " }}</p>
       {{ if $artist.spotify_url }}<a class="spotify-link" href="{{ $artist.spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
     </article>

@@ -19,11 +19,10 @@
   </section>
   <section class="shell section">
     <div class="stat-grid">
-      <div class="stat"><span>{{ $summary.stats.artists }}</span><p>Artists</p></div>
-      <div class="stat"><span>{{ $summary.stats.groups }}</span><p>Groups</p></div>
-      <div class="stat"><span>{{ $summary.stats.albums }}</span><p>Releases</p></div>
-      <div class="stat"><span>{{ $summary.stats.tracks }}</span><p>Tracks</p></div>
-      <div class="stat"><span>{{ $summary.stats.appearances }}</span><p>Appearances</p></div>
+      <a class="stat" href="{{ "artists/" | relURL }}"><span>{{ $summary.stats.artists }}</span><p>Artists</p></a>
+      <a class="stat" href="{{ "artists/?category=affiliate_group" | relURL }}"><span>{{ $summary.stats.groups }}</span><p>Groups</p></a>
+      <a class="stat" href="{{ "releases/" | relURL }}"><span>{{ $summary.stats.albums }}</span><p>Releases</p></a>
+      <a class="stat" href="{{ "tracks/" | relURL }}"><span>{{ $summary.stats.tracks }}</span><p>Tracks</p></a>
     </div>
   </section>
   <section class="shell section two-column">

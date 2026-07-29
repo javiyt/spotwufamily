@@ -17,6 +17,7 @@ func TestExecuteAudit(t *testing.T) {
 	snapshotPath := filepath.Join(dir, "catalog.snapshot.sql")
 	outputDir := filepath.Join(dir, "site", "data", "generated")
 	staticDir := filepath.Join(dir, "site", "static")
+	contentDir := filepath.Join(dir, "site", "content", "generated")
 
 	require.NoError(t, os.WriteFile(catalogPath, []byte(`
 version: 1
@@ -51,6 +52,7 @@ artists:
 		"--snapshot", snapshotPath,
 		"--output", outputDir,
 		"--static", staticDir,
+		"--content", contentDir,
 		"--skip-site",
 		"--skip-git-diff",
 	}, &stdout, &stderr)

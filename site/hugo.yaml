@@ -28,9 +28,6 @@ menus:
     - name: Timeline
       pageRef: /timeline/
       weight: 50
-    - name: Relationships
-      pageRef: /relationships/
-      weight: 55
     - name: About
       pageRef: /about/
       weight: 60

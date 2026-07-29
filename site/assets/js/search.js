@@ -81,6 +81,18 @@
     if (!select) {
       return;
     }
+    applyFilter(select);
+  });
+
+  for (const select of document.querySelectorAll("[data-filter-target]")) {
+    const category = new URLSearchParams(window.location.search).get("category");
+    if (category) {
+      select.value = category;
+    }
+    applyFilter(select);
+  }
+
+  function applyFilter(select) {
     const target = document.getElementById(select.dataset.filterTarget);
     if (!target) {
       return;
@@ -89,7 +101,7 @@
     for (const card of target.querySelectorAll("[data-category]")) {
       card.hidden = value && card.dataset.category !== value;
     }
-  });
+  }
 
   for (const list of document.querySelectorAll("[data-random-artist-list]")) {
     const items = Array.from(list.querySelectorAll("[data-random-artist-item]"));

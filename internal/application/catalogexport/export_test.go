@@ -14,8 +14,9 @@ func TestExportCatalogWritesDeterministicFiles(t *testing.T) {
 	usecase := catalogexport.NewExportCatalog(fakeReader{catalog: sampleCatalog()}, writer)
 
 	report, err := usecase.Run(context.Background(), catalogexport.Options{
-		OutputDir: "generated",
-		StaticDir: "static",
+		OutputDir:  "generated",
+		StaticDir:  "static",
+		ContentDir: "content/generated",
 	})
 
 	require.NoError(t, err)
@@ -28,20 +29,21 @@ func TestExportCatalogWritesDeterministicFiles(t *testing.T) {
 	require.Contains(t, string(writer.files["generated/artists/index.json"]), `"wu-tang-clan"`)
 	require.Contains(t, string(writer.files["generated/albums/album-1.json"]), `"Track One"`)
 	require.Contains(t, string(writer.files["generated/tracks/track-1.json"]), `"Album One"`)
+	require.Contains(t, string(writer.files["content/generated/artists/wu-tang-clan.md"]), `layout: "artist"`)
+	require.Contains(t, string(writer.files["content/generated/albums/album-1.md"]), `layout: "album"`)
 	require.Contains(t, string(writer.files["static/search-index.json"]), `"type": "artist"`)
-	require.Contains(t, string(writer.files["static/search-index.json"]), `"url": "/artists/#wu-tang-clan"`)
-	require.Contains(t, string(writer.files["static/search-index.json"]), `"url": "/releases/#album-1"`)
+	require.Contains(t, string(writer.files["static/search-index.json"]), `"url": "/artists/wu-tang-clan/"`)
+	require.Contains(t, string(writer.files["static/search-index.json"]), `"url": "/albums/album-1/"`)
 	require.Contains(t, string(writer.files["static/search-index.json"]), `"url": "/tracks/#track-1"`)
-	require.NotContains(t, string(writer.files["static/search-index.json"]), `"/albums/album-1/"`)
 }
 
 func TestExportCatalogSecondRunKeepsUnchangedFiles(t *testing.T) {
 	writer := &memoryWriter{files: map[string][]byte{}}
 	usecase := catalogexport.NewExportCatalog(fakeReader{catalog: sampleCatalog()}, writer)
 
-	_, err := usecase.Run(context.Background(), catalogexport.Options{OutputDir: "generated", StaticDir: "static"})
+	_, err := usecase.Run(context.Background(), catalogexport.Options{OutputDir: "generated", StaticDir: "static", ContentDir: "content/generated"})
 	require.NoError(t, err)
-	report, err := usecase.Run(context.Background(), catalogexport.Options{OutputDir: "generated", StaticDir: "static"})
+	report, err := usecase.Run(context.Background(), catalogexport.Options{OutputDir: "generated", StaticDir: "static", ContentDir: "content/generated"})
 
 	require.NoError(t, err)
 	require.Zero(t, report.FilesWritten)

@@ -30,6 +30,7 @@ const defaultDatabasePath = "data/catalog.db"
 const defaultSnapshotPath = "data/catalog.snapshot.sql"
 const defaultExportOutputDir = "site/data/generated"
 const defaultExportStaticDir = "site/static"
+const defaultExportContentDir = "site/content/generated"
 
 func Execute(args []string, stdout, stderr io.Writer) int {
 	return ExecuteWithInput(args, os.Stdin, stdout, stderr)
@@ -283,6 +284,7 @@ type auditOptions struct {
 	snapshotPath    string
 	outputDir       string
 	staticDir       string
+	contentDir      string
 	siteSource      string
 	siteDestination string
 	skipSite        bool
@@ -336,8 +338,9 @@ func executeAudit(ctx context.Context, args []string, stdout, stderr io.Writer, 
 	_, _ = fmt.Fprintf(stdout, "audit: database ok (%d migrations)\n", report.Migrations)
 
 	exportReport, err := catalogexport.NewExportCatalog(database, filesystem.NewWriter()).Run(ctx, catalogexport.Options{
-		OutputDir: options.outputDir,
-		StaticDir: options.staticDir,
+		OutputDir:  options.outputDir,
+		StaticDir:  options.staticDir,
+		ContentDir: options.contentDir,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "audit: export catalog: %v\n", err)
@@ -381,6 +384,7 @@ func parseAuditOptions(args []string) (auditOptions, error) {
 		snapshotPath:    defaultSnapshotPath,
 		outputDir:       defaultExportOutputDir,
 		staticDir:       defaultExportStaticDir,
+		contentDir:      defaultExportContentDir,
 		siteSource:      "site",
 		siteDestination: "/tmp/spotwufamily-site",
 	}
@@ -416,6 +420,12 @@ func parseAuditOptions(args []string) (auditOptions, error) {
 				return auditOptions{}, fmt.Errorf("--static requires a value")
 			}
 			options.staticDir = args[i]
+		case "--content":
+			i++
+			if i >= len(args) {
+				return auditOptions{}, fmt.Errorf("--content requires a value")
+			}
+			options.contentDir = args[i]
 		case "--site-source":
 			i++
 			if i >= len(args) {
@@ -456,18 +466,26 @@ func verifySnapshotFreshness(ctx context.Context, database *sqliteadapter.Databa
 }
 
 func verifyExportArtifacts(options auditOptions) error {
-	required := []string{
-		filepath.Join(options.outputDir, "catalog-summary.json"),
-		filepath.Join(options.outputDir, "artists", "index.json"),
-		filepath.Join(options.outputDir, "albums", "index.json"),
-		filepath.Join(options.outputDir, "tracks", "index.json"),
-		filepath.Join(options.staticDir, "search-index.json"),
+	required := []struct {
+		path string
+		dir  bool
+	}{
+		{path: filepath.Join(options.outputDir, "catalog-summary.json")},
+		{path: filepath.Join(options.outputDir, "artists", "index.json")},
+		{path: filepath.Join(options.outputDir, "albums", "index.json")},
+		{path: filepath.Join(options.outputDir, "tracks", "index.json")},
+		{path: filepath.Join(options.staticDir, "search-index.json")},
 	}
-	for _, path := range required {
-		if info, err := os.Stat(path); err != nil {
-			return fmt.Errorf("missing export artifact %s: %w", path, err)
-		} else if info.IsDir() {
-			return fmt.Errorf("export artifact is a directory: %s", path)
+	for _, item := range required {
+		info, err := os.Stat(item.path)
+		if err != nil {
+			return fmt.Errorf("missing export artifact %s: %w", item.path, err)
+		}
+		if item.dir && !info.IsDir() {
+			return fmt.Errorf("export artifact is not a directory: %s", item.path)
+		}
+		if !item.dir && info.IsDir() {
+			return fmt.Errorf("export artifact is a directory: %s", item.path)
 		}
 	}
 	return nil
@@ -492,9 +510,10 @@ func verifyGeneratedGitDiff(ctx context.Context, options auditOptions) error {
 }
 
 type exportOptions struct {
-	dbPath    string
-	outputDir string
-	staticDir string
+	dbPath     string
+	outputDir  string
+	staticDir  string
+	contentDir string
 }
 
 func executeExport(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -527,8 +546,9 @@ func executeExport(ctx context.Context, args []string, stdout, stderr io.Writer)
 	}
 
 	report, err := catalogexport.NewExportCatalog(database, filesystem.NewWriter()).Run(ctx, catalogexport.Options{
-		OutputDir: options.outputDir,
-		StaticDir: options.staticDir,
+		OutputDir:  options.outputDir,
+		StaticDir:  options.staticDir,
+		ContentDir: options.contentDir,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "export: %v\n", err)
@@ -547,7 +567,7 @@ func executeExport(ctx context.Context, args []string, stdout, stderr io.Writer)
 }
 
 func parseExportOptions(args []string) (exportOptions, error) {
-	options := exportOptions{dbPath: defaultDatabasePath, outputDir: defaultExportOutputDir, staticDir: defaultExportStaticDir}
+	options := exportOptions{dbPath: defaultDatabasePath, outputDir: defaultExportOutputDir, staticDir: defaultExportStaticDir, contentDir: defaultExportContentDir}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--db":
@@ -568,6 +588,12 @@ func parseExportOptions(args []string) (exportOptions, error) {
 				return exportOptions{}, fmt.Errorf("--static requires a value")
 			}
 			options.staticDir = args[i]
+		case "--content":
+			i++
+			if i >= len(args) {
+				return exportOptions{}, fmt.Errorf("--content requires a value")
+			}
+			options.contentDir = args[i]
 		default:
 			return exportOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -1890,7 +1916,7 @@ func printSyncHelp(w io.Writer) {
 }
 
 func printExportHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily export [--db data/catalog.db] [--output site/data/generated] [--static site/static]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily export [--db data/catalog.db] [--output site/data/generated] [--static site/static] [--content site/content/generated]")
 }
 
 func printSiteHelp(w io.Writer) {
@@ -1898,7 +1924,7 @@ func printSiteHelp(w io.Writer) {
 }
 
 func printAuditHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily audit [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql] [--output site/data/generated] [--static site/static] [--site-source site] [--site-destination /tmp/spotwufamily-site] [--skip-site] [--skip-git-diff]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily audit [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql] [--output site/data/generated] [--static site/static] [--content site/content/generated] [--site-source site] [--site-destination /tmp/spotwufamily-site] [--skip-site] [--skip-git-diff]")
 }
 
 func printDBHelp(w io.Writer) {

@@ -309,23 +309,14 @@ artists:
     image_url: https://i.scdn.co/image/ab6761610000e5eb78c93d346eb9c63fba2b1765
   - slug: orphanage
     name: Orphanage
-    spotify_id: 1yFECWZ2weONlh8oovXaI8
-    genres:
-      - doom metal
-      - gothic metal
-      - gothic rock
-      - groove metal
-      - melodic death metal
-      - symphonic metal
+    spotify_id: ""
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: true
+    enabled: false
     editorial_order: 25
     notes: ""
-    external_url: https://open.spotify.com/artist/1yFECWZ2weONlh8oovXaI8
-    image_url: https://i.scdn.co/image/ab67616d0000b273eebc75047c2a4a5071509397
   - slug: royal-fam
     name: Royal Fam
     spotify_id: 1G47XK3qlBueKLQXz4dSVM

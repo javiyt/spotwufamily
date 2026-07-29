@@ -10,8 +10,9 @@
           <span>12"</span>
         {{ end }}
       </div>
-      <h3>{{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">{{ .name }}</a>{{ else }}{{ .name }}{{ end }}</h3>
+      <h3><a href="{{ printf "albums/%s/" .spotify_id | relURL }}">{{ .name }}</a></h3>
       <p>{{ .album_type }}{{ if .release_date }} / {{ .release_date }}{{ end }}</p>
+      {{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
     </article>
   {{ else }}
     <p class="empty">No releases exported yet.</p>

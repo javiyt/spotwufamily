@@ -16,6 +16,7 @@ func TestExecuteArtistsSeedDBSeedsConfiguredArtistsFromYAML(t *testing.T) {
 	dbPath := filepath.Join(dir, "catalog.db")
 	outputDir := filepath.Join(dir, "site", "data", "generated")
 	staticDir := filepath.Join(dir, "site", "static")
+	contentDir := filepath.Join(dir, "site", "content", "generated")
 
 	require.NoError(t, os.WriteFile(catalogPath, []byte(`
 version: 1
@@ -41,7 +42,7 @@ artists:
 	require.Contains(t, stdout.String(), "seeded configured artists: artists=1 spotify_ids=2")
 
 	stdout.Reset()
-	code = cli.Execute([]string{"export", "--db", dbPath, "--output", outputDir, "--static", staticDir}, &stdout, &stderr)
+	code = cli.Execute([]string{"export", "--db", dbPath, "--output", outputDir, "--static", staticDir, "--content", contentDir}, &stdout, &stderr)
 	require.Equal(t, 0, code)
 	require.Empty(t, stderr.String())
 
@@ -50,6 +51,7 @@ artists:
 	require.Contains(t, string(artistsIndex), `"slug": "wu-tang-clan"`)
 	require.Contains(t, string(artistsIndex), `"34EP7KEpOjXcM2TCat1ISk"`)
 	require.Contains(t, string(artistsIndex), `"0H8YCcvC3MPLKnbDRasGiG"`)
+	require.FileExists(t, filepath.Join(contentDir, "artists", "wu-tang-clan.md"))
 
 	summary, err := os.ReadFile(filepath.Join(outputDir, "catalog-summary.json"))
 	require.NoError(t, err)

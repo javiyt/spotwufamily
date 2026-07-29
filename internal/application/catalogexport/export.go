@@ -30,8 +30,9 @@ func NewExportCatalog(reader Reader, writer Writer) ExportCatalog {
 }
 
 type Options struct {
-	OutputDir string
-	StaticDir string
+	OutputDir  string
+	StaticDir  string
+	ContentDir string
 }
 
 type Report struct {
@@ -153,6 +154,9 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 	if options.StaticDir == "" {
 		return Report{}, fmt.Errorf("static directory is required")
 	}
+	if options.ContentDir == "" {
+		return Report{}, fmt.Errorf("content directory is required")
+	}
 
 	catalog, err := e.reader.LoadExportCatalog(ctx)
 	if err != nil {
@@ -163,6 +167,7 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 	report := Report{Artists: len(catalog.Artists), Albums: len(catalog.Albums), Tracks: len(catalog.Tracks)}
 	keepGenerated := map[string]struct{}{}
 	keepStatic := map[string]struct{}{}
+	keepContent := map[string]struct{}{}
 
 	write := func(path string, data []byte, keep map[string]struct{}) error {
 		keep[path] = struct{}{}
@@ -181,11 +186,23 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 	if err := write(filepath.Join(options.OutputDir, "catalog-summary.json"), mustJSON(summary(catalog)), keepGenerated); err != nil {
 		return report, err
 	}
+	if err := write(filepath.Join(options.ContentDir, "_index.md"), generatedSectionPage("Generated catalog pages"), keepContent); err != nil {
+		return report, err
+	}
+	if err := write(filepath.Join(options.ContentDir, "artists", "_index.md"), generatedSectionPage("Generated artist pages"), keepContent); err != nil {
+		return report, err
+	}
+	if err := write(filepath.Join(options.ContentDir, "albums", "_index.md"), generatedSectionPage("Generated album pages"), keepContent); err != nil {
+		return report, err
+	}
 	if err := write(filepath.Join(options.OutputDir, "artists", "index.json"), mustJSON(Index[Artist]{FormatVersion: FormatVersion, Items: catalog.Artists}), keepGenerated); err != nil {
 		return report, err
 	}
 	for _, artist := range catalog.Artists {
 		if err := write(filepath.Join(options.OutputDir, "artists", artist.Slug+".json"), mustJSON(Index[Artist]{FormatVersion: FormatVersion, Items: []Artist{artist}}), keepGenerated); err != nil {
+			return report, err
+		}
+		if err := write(filepath.Join(options.ContentDir, "artists", artist.Slug+".md"), detailPage("artist", artist.Name, "/artists/"+artist.Slug+"/"), keepContent); err != nil {
 			return report, err
 		}
 	}
@@ -194,6 +211,9 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 	}
 	for _, album := range catalog.Albums {
 		if err := write(filepath.Join(options.OutputDir, "albums", album.SpotifyID+".json"), mustJSON(album), keepGenerated); err != nil {
+			return report, err
+		}
+		if err := write(filepath.Join(options.ContentDir, "albums", album.SpotifyID+".md"), detailPage("album", album.Name, "/albums/"+album.SpotifyID+"/"), keepContent); err != nil {
 			return report, err
 		}
 	}
@@ -216,8 +236,19 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 	if err := e.writer.PruneDir(options.StaticDir, keepStatic); err != nil {
 		return report, err
 	}
+	if err := e.writer.PruneDir(options.ContentDir, keepContent); err != nil {
+		return report, err
+	}
 
 	return report, nil
+}
+
+func detailPage(layout, title, url string) []byte {
+	return []byte(fmt.Sprintf("---\ntitle: %q\nlayout: %q\nurl: %q\nbuild:\n  list: never\n---\n", title, layout, url))
+}
+
+func generatedSectionPage(title string) []byte {
+	return []byte(fmt.Sprintf("---\ntitle: %q\nbuild:\n  render: never\n  list: never\n---\n", title))
 }
 
 func sortCatalog(catalog *Catalog) {
@@ -279,7 +310,7 @@ func searchIndex(catalog Catalog) SearchIndex {
 			ID:       artist.Slug,
 			Title:    artist.Name,
 			Subtitle: artist.Category,
-			URL:      "/artists/#" + artist.Slug,
+			URL:      "/artists/" + artist.Slug + "/",
 			Terms:    normalizeTerms(append([]string{artist.Name, artist.PublicName}, artist.Aliases...)),
 		})
 	}
@@ -289,7 +320,7 @@ func searchIndex(catalog Catalog) SearchIndex {
 			ID:       album.SpotifyID,
 			Title:    album.Name,
 			Subtitle: album.ReleaseDate,
-			URL:      "/releases/#" + album.SpotifyID,
+			URL:      "/albums/" + album.SpotifyID + "/",
 			Terms:    normalizeTerms([]string{album.Name, joinedCredits(album.Artists)}),
 		})
 	}

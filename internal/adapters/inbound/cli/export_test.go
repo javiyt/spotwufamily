@@ -14,6 +14,7 @@ func TestExecuteExport(t *testing.T) {
 	dbPath := filepath.Join(dir, "catalog.db")
 	outputDir := filepath.Join(dir, "site", "data", "generated")
 	staticDir := filepath.Join(dir, "site", "static")
+	contentDir := filepath.Join(dir, "site", "content", "generated")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -22,7 +23,7 @@ func TestExecuteExport(t *testing.T) {
 	require.Empty(t, stderr.String())
 
 	stdout.Reset()
-	code = cli.Execute([]string{"export", "--db", dbPath, "--output", outputDir, "--static", staticDir}, &stdout, &stderr)
+	code = cli.Execute([]string{"export", "--db", dbPath, "--output", outputDir, "--static", staticDir, "--content", contentDir}, &stdout, &stderr)
 	require.Equal(t, 0, code)
 	require.Empty(t, stderr.String())
 	require.Contains(t, stdout.String(), "exported catalog")

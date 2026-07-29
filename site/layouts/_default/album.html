@@ -1,0 +1,54 @@
+{{ define "main" }}
+  {{ $album := index hugo.Data.generated.albums .File.ContentBaseName }}
+  <section class="shell detail-hero">
+    <div class="detail-media">
+      {{ if $album.image_url }}
+        {{ if $album.spotify_url }}<a href="{{ $album.spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ $album.name }} on Spotify">{{ end }}
+        <img src="{{ $album.image_url }}" alt="">
+        {{ if $album.spotify_url }}</a>{{ end }}
+      {{ else }}
+        <span>12"</span>
+      {{ end }}
+    </div>
+    <div class="detail-copy">
+      <p class="eyebrow">{{ $album.album_type }}{{ if $album.release_date }} / {{ $album.release_date }}{{ end }}</p>
+      <h1>{{ $album.name }}</h1>
+      {{ if $album.label }}<p>{{ $album.label }}</p>{{ end }}
+      <p>{{ range $i, $artist := $album.artists }}{{ if $i }}, {{ end }}{{ $artist.name }}{{ end }}</p>
+      <dl class="detail-stats">
+        <div><dt>Tracks</dt><dd>{{ $album.total_tracks }}</dd></div>
+        <div><dt>Type</dt><dd>{{ $album.album_type }}</dd></div>
+      </dl>
+      <div class="action-row">
+        {{ if $album.spotify_url }}<a class="spotify-link" href="{{ $album.spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
+        <a class="spotify-link" href="{{ "releases/" | relURL }}">All releases</a>
+      </div>
+    </div>
+  </section>
+  {{ if $album.spotify_id }}
+    <section class="shell section">
+      <iframe class="spotify-embed" title="Spotify album player for {{ $album.name }}" src="https://open.spotify.com/embed/album/{{ $album.spotify_id }}?utm_source=generator" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+    </section>
+  {{ end }}
+  <section class="shell section">
+    <h2>Tracks</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Track</th><th>Artists</th><th>Duration</th><th>Explicit</th></tr></thead>
+        <tbody>
+          {{ range $album.tracks }}
+            <tr id="{{ .spotify_id }}">
+              <td>{{ .track_number }}</td>
+              <td>{{ .name }}</td>
+              <td>{{ range $i, $artist := .artists }}{{ if $i }}, {{ end }}{{ $artist.name }}{{ end }}</td>
+              <td>{{ div .duration_ms 1000 }}s</td>
+              <td>{{ if .explicit }}Yes{{ else }}No{{ end }}</td>
+            </tr>
+          {{ else }}
+            <tr><td colspan="5">No tracks exported yet.</td></tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{{ end }}
