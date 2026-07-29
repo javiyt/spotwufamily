@@ -19,14 +19,22 @@
     <div id="artist-list" class="card-grid">
       {{ range $artists }}
         <article class="item-card" data-category="{{ .category }}">
-          <div class="thumb">{{ if .image_url }}<img src="{{ .image_url }}" alt="" loading="lazy">{{ else }}<span>{{ substr .name 0 1 }}</span>{{ end }}</div>
+          <div class="thumb">
+            {{ if .image_url }}
+              {{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ .name }} on Spotify">{{ end }}
+              <img src="{{ .image_url }}" alt="" loading="lazy">
+              {{ if .spotify_url }}</a>{{ end }}
+            {{ else }}
+              <span>{{ substr .name 0 1 }}</span>
+            {{ end }}
+          </div>
           <h2>{{ .name }}</h2>
           <p>{{ replace .category "_" " " }}</p>
           <dl>
             <div><dt>Releases</dt><dd>{{ .release_count }}</dd></div>
             <div><dt>Tracks</dt><dd>{{ .track_count }}</dd></div>
           </dl>
-          {{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}">Open in Spotify</a>{{ end }}
+          {{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
         </article>
       {{ else }}
         <p class="empty">No artists exported yet. Enable reviewed artists and run sync.</p>

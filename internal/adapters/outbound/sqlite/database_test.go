@@ -129,7 +129,15 @@ func TestSaveArtistCatalogPersistsNormalizedCatalog(t *testing.T) {
 		ctx,
 		runID,
 		configuredArtist,
-		catalog.ArtistCandidate{SpotifyID: "artist-1", Name: "Wu-Tang Clan", URL: "https://artist", ImageURL: "https://artist/image.jpg", Popularity: 90, Followers: 100},
+		catalog.ArtistCandidate{
+			SpotifyID:  "artist-1",
+			Name:       "Wu-Tang Clan",
+			URL:        "https://artist",
+			ImageURL:   "https://artist/image.jpg",
+			Images:     []catalog.Image{{URL: "https://artist/image.jpg", Height: 640, Width: 640}, {URL: "https://artist/image-small.jpg", Height: 160, Width: 160}},
+			Popularity: 90,
+			Followers:  100,
+		},
 		[]catalog.ReleaseTracks{{
 			Release: catalog.Release{
 				SpotifyID:            "album-1",
@@ -175,6 +183,7 @@ func TestSaveArtistCatalogPersistsNormalizedCatalog(t *testing.T) {
 	requireRowCount(t, database, "artist_tracks", 1)
 	requireRowCount(t, database, "track_artists", 1)
 	requireRowCount(t, database, "album_artists", 1)
+	requireRowCount(t, database, "images", 3)
 
 	migrations, err := sqliteadapter.EmbeddedMigrations()
 	require.NoError(t, err)

@@ -7,6 +7,7 @@ type ArtistCandidate struct {
 	SpotifyID  string   `json:"spotify_id"`
 	URL        string   `json:"url"`
 	ImageURL   string   `json:"image_url"`
+	Images     []Image  `json:"images,omitempty"`
 	Popularity int      `json:"popularity"`
 	Followers  int      `json:"followers"`
 	Genres     []string `json:"genres"`

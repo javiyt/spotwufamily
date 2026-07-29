@@ -1,8 +1,16 @@
 <div class="album-grid">
   {{ range . }}
     <article class="album-card">
-      <div class="cover">{{ if .image_url }}<img src="{{ .image_url }}" alt="" loading="lazy">{{ else }}<span>12"</span>{{ end }}</div>
-      <h3>{{ if .spotify_url }}<a href="{{ .spotify_url }}">{{ .name }}</a>{{ else }}{{ .name }}{{ end }}</h3>
+      <div class="cover">
+        {{ if .image_url }}
+          {{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ .name }} on Spotify">{{ end }}
+          <img src="{{ .image_url }}" alt="" loading="lazy">
+          {{ if .spotify_url }}</a>{{ end }}
+        {{ else }}
+          <span>12"</span>
+        {{ end }}
+      </div>
+      <h3>{{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">{{ .name }}</a>{{ else }}{{ .name }}{{ end }}</h3>
       <p>{{ .album_type }}{{ if .release_date }} / {{ .release_date }}{{ end }}</p>
     </article>
   {{ else }}

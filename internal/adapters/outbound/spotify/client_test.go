@@ -66,6 +66,9 @@ func TestSearchArtistCandidatesUsesClientCredentialsAndMapsArtists(t *testing.T)
 	require.Equal(t, "Gravediggaz", candidates[0].Name)
 	require.Equal(t, "0CH4f9m2L3TRaA5oErU2p0", candidates[0].SpotifyID)
 	require.Equal(t, "https://image/large.jpg", candidates[0].ImageURL)
+	require.Equal(t, []catalog.Image{
+		{URL: "https://image/large.jpg", Height: 640, Width: 640},
+	}, candidates[0].Images)
 	require.Equal(t, 45, candidates[0].Popularity)
 	require.Equal(t, 1234, candidates[0].Followers)
 	require.Equal(t, []string{"hip hop"}, candidates[0].Genres)

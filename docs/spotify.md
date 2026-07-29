@@ -9,6 +9,8 @@ Expected secrets:
 
 The client uses Client Credentials, injects `http.Client` for tests, follows pagination, honors `Retry-After`, retries 429 and temporary 5xx responses, and avoids real API calls in unit tests or CI.
 
+Artist images and album artwork are stored as Spotify image URLs and rendered directly from Spotify's CDN. The project does not download, transform, crop, blur, overlay, rehost or cache Spotify visual content. When Spotify images or metadata are shown, the UI includes links back to the applicable Spotify artist or album.
+
 Implemented endpoints:
 
 - `POST https://accounts.spotify.com/api/token`

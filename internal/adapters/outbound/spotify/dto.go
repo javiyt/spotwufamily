@@ -82,12 +82,17 @@ func (a artistObject) toCandidate() catalog.ArtistCandidate {
 	if len(a.Images) > 0 {
 		imageURL = a.Images[0].URL
 	}
+	images := make([]catalog.Image, 0, len(a.Images))
+	for _, image := range a.Images {
+		images = append(images, catalog.Image{URL: image.URL, Height: image.Height, Width: image.Width})
+	}
 
 	return catalog.ArtistCandidate{
 		Name:       a.Name,
 		SpotifyID:  a.ID,
 		URL:        a.ExternalURLs["spotify"],
 		ImageURL:   imageURL,
+		Images:     images,
 		Popularity: a.Popularity,
 		Followers:  a.Followers.Total,
 		Genres:     append([]string(nil), a.Genres...),

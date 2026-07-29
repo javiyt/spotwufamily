@@ -153,11 +153,17 @@ func (d *Database) SaveArtistCatalog(
 			return stats, err
 		}
 		stats.ExternalURLsUpserted += changed
-		changed, err = repository.upsertImage(ctx, "artist", spotifyArtist.SpotifyID, catalog.Image{URL: spotifyArtist.ImageURL}, 0)
-		if err != nil {
-			return stats, err
+		artistImages := spotifyArtist.Images
+		if len(artistImages) == 0 && spotifyArtist.ImageURL != "" {
+			artistImages = []catalog.Image{{URL: spotifyArtist.ImageURL}}
 		}
-		stats.ImagesUpserted += changed
+		for index, image := range artistImages {
+			changed, err = repository.upsertImage(ctx, "artist", spotifyArtist.SpotifyID, image, index)
+			if err != nil {
+				return stats, err
+			}
+			stats.ImagesUpserted += changed
+		}
 	}
 
 	for _, item := range releases {
