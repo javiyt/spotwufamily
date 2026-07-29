@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/jsoncandidates"
@@ -162,7 +163,7 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 
 	var fetcher catalogsync.Fetcher
 	if !options.dryRun {
-		fetcher, err = syncFetcher(options)
+		fetcher, err = syncFetcher(options, spotifyProgress(stderr, options.quiet))
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
 			return 1
@@ -252,7 +253,7 @@ func parseSyncOptions(args []string) (syncOptions, error) {
 	return options, nil
 }
 
-func syncFetcher(options syncOptions) (catalogsync.Fetcher, error) {
+func syncFetcher(options syncOptions, progress func(spotifyadapter.ProgressEvent)) (catalogsync.Fetcher, error) {
 	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
 	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
 	if clientID == "" || clientSecret == "" {
@@ -265,9 +266,11 @@ func syncFetcher(options syncOptions) (catalogsync.Fetcher, error) {
 	}
 
 	return spotifyadapter.NewClient(spotifyadapter.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		Market:       market,
+		ClientID:      clientID,
+		ClientSecret:  clientSecret,
+		Market:        market,
+		MaxRetryAfter: spotifyMaxRetryAfter(),
+		Progress:      progress,
 	})
 }
 
@@ -314,6 +317,44 @@ func printSyncProgress(stderr io.Writer, event catalogsync.ProgressEvent) {
 	case catalogsync.ProgressRunFinished:
 		_, _ = fmt.Fprintf(stderr, "sync: run finished: id=%d albums=%d tracks=%d images=%d\n", event.RunID, event.Stats.AlbumsUpserted, event.Stats.TracksUpserted, event.Stats.ImagesUpserted)
 	}
+}
+
+func spotifyProgress(stderr io.Writer, quiet bool) func(spotifyadapter.ProgressEvent) {
+	if quiet {
+		return nil
+	}
+	return func(event spotifyadapter.ProgressEvent) {
+		printSpotifyProgress(stderr, event)
+	}
+}
+
+func printSpotifyProgress(stderr io.Writer, event spotifyadapter.ProgressEvent) {
+	switch event.Stage {
+	case "request_started":
+		_, _ = fmt.Fprintf(stderr, "spotify: request started %s %s attempt=%d/%d\n", event.Method, event.URL, event.Attempt, event.MaxRetries+1)
+	case "request_finished":
+		_, _ = fmt.Fprintf(stderr, "spotify: request finished %s %s status=%d attempt=%d/%d\n", event.Method, event.URL, event.StatusCode, event.Attempt, event.MaxRetries+1)
+	case "request_retrying":
+		_, _ = fmt.Fprintf(stderr, "spotify: request retrying %s %s status=%d wait=%s attempt=%d/%d error=%v\n", event.Method, event.URL, event.StatusCode, event.Wait, event.Attempt, event.MaxRetries+1, event.Err)
+	case "request_failed":
+		_, _ = fmt.Fprintf(stderr, "spotify: request failed %s %s status=%d attempt=%d/%d error=%v\n", event.Method, event.URL, event.StatusCode, event.Attempt, event.MaxRetries+1, event.Err)
+	}
+}
+
+func spotifyMaxRetryAfter() time.Duration {
+	value := strings.TrimSpace(os.Getenv("SPOTIFY_MAX_RETRY_AFTER"))
+	if value == "" {
+		return 0
+	}
+	duration, err := time.ParseDuration(value)
+	if err == nil {
+		return duration
+	}
+	seconds, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 type auditOptions struct {
@@ -1057,7 +1098,7 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 		return 2
 	}
 
-	fetcher, err := spotifyArtistFetcher(options.market)
+	fetcher, err := spotifyArtistFetcher(options.market, spotifyProgress(stderr, options.quiet))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: %v\n", err)
 		return 1
@@ -1123,21 +1164,23 @@ func parseArtistsRefreshGenresOptions(args []string) (artistsRefreshGenresOption
 }
 
 func printRefreshGenresProgress(stderr io.Writer, event artists.RefreshGenresProgress) {
-	switch {
-	case event.Err != nil:
+	switch event.Stage {
+	case "spotify_failed":
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: spotify id %d/%d %s failed: %v\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyIDIndex, event.SpotifyIDTotal, event.SpotifyID, event.Err)
-	case event.Updated:
+	case "artist_updated":
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: updated\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug)
-	case event.Unchanged:
+	case "artist_unchanged":
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: unchanged\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug)
-	case event.SpotifyID != "":
-		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: spotify id %d/%d %s\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyIDIndex, event.SpotifyIDTotal, event.SpotifyID)
-	default:
+	case "spotify_started":
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: fetching spotify id %d/%d %s\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyIDIndex, event.SpotifyIDTotal, event.SpotifyID)
+	case "spotify_finished":
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: fetched spotify id %d/%d %s\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyIDIndex, event.SpotifyIDTotal, event.SpotifyID)
+	case "artist_started":
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s (%s): start\n", event.ArtistIndex, event.ArtistTotal, event.ArtistName, event.ArtistSlug)
 	}
 }
 
-func spotifyArtistFetcher(market string) (artists.SpotifyArtistFetcher, error) {
+func spotifyArtistFetcher(market string, progress func(spotifyadapter.ProgressEvent)) (artists.SpotifyArtistFetcher, error) {
 	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
 	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
 	if clientID == "" || clientSecret == "" {
@@ -1147,9 +1190,11 @@ func spotifyArtistFetcher(market string) (artists.SpotifyArtistFetcher, error) {
 		market = os.Getenv("SPOTIFY_MARKET")
 	}
 	return spotifyadapter.NewClient(spotifyadapter.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		Market:       market,
+		ClientID:      clientID,
+		ClientSecret:  clientSecret,
+		Market:        market,
+		MaxRetryAfter: spotifyMaxRetryAfter(),
+		Progress:      progress,
 	})
 }
 
@@ -1247,7 +1292,7 @@ func executeArtistsAuditAlbums(ctx context.Context, args []string, stdout, stder
 		return 2
 	}
 
-	spotifyClient, err := artistAlbumAuditSpotifyFetcher(options)
+	spotifyClient, err := artistAlbumAuditSpotifyFetcher(options, spotifyProgress(stderr, options.quiet))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists audit-albums: %v\n", err)
 		return 1
@@ -1345,7 +1390,7 @@ func printAuditAlbumsProgress(stderr io.Writer, event artists.AuditAlbumsProgres
 	}
 }
 
-func artistAlbumAuditSpotifyFetcher(options artistAlbumAuditOptions) (artists.SpotifyAlbumFetcher, error) {
+func artistAlbumAuditSpotifyFetcher(options artistAlbumAuditOptions, progress func(spotifyadapter.ProgressEvent)) (artists.SpotifyAlbumFetcher, error) {
 	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
 	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
 	if clientID == "" || clientSecret == "" {
@@ -1358,9 +1403,11 @@ func artistAlbumAuditSpotifyFetcher(options artistAlbumAuditOptions) (artists.Sp
 	}
 
 	return spotifyadapter.NewClient(spotifyadapter.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		Market:       market,
+		ClientID:      clientID,
+		ClientSecret:  clientSecret,
+		Market:        market,
+		MaxRetryAfter: spotifyMaxRetryAfter(),
+		Progress:      progress,
 	})
 }
 
@@ -1375,7 +1422,7 @@ func executeArtistsResolve(ctx context.Context, args []string, stdin io.Reader, 
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
 		return 2
 	}
-	searcher, err := resolveSearcher(options)
+	searcher, err := resolveSearcher(options, spotifyProgress(stderr, options.quiet))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
 		return 1
@@ -1912,7 +1959,7 @@ func spotifyArtistURL(candidate catalog.ArtistCandidate) string {
 	return "https://open.spotify.com/artist/" + candidate.SpotifyID
 }
 
-func resolveSearcher(options resolveOptions) (artists.CandidateSearcher, error) {
+func resolveSearcher(options resolveOptions, progress func(spotifyadapter.ProgressEvent)) (artists.CandidateSearcher, error) {
 	if options.candidatesPath != "" {
 		return jsoncandidates.NewSearcher(options.candidatesPath)
 	}
@@ -1929,9 +1976,11 @@ func resolveSearcher(options resolveOptions) (artists.CandidateSearcher, error) 
 	}
 
 	spotifyClient, err := spotifyadapter.NewClient(spotifyadapter.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		Market:       market,
+		ClientID:      clientID,
+		ClientSecret:  clientSecret,
+		Market:        market,
+		MaxRetryAfter: spotifyMaxRetryAfter(),
+		Progress:      progress,
 	})
 	if err != nil {
 		return nil, err

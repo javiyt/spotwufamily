@@ -143,6 +143,38 @@ func TestRetriesRateLimitsAndTemporaryErrors(t *testing.T) {
 	require.Contains(t, slept, 2*time.Second)
 }
 
+func TestRateLimitAboveMaxRetryAfterReturnsError(t *testing.T) {
+	var calls atomic.Int32
+	var slept []time.Duration
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/token":
+			_, _ = fmt.Fprint(w, `{"access_token":"token-1","token_type":"Bearer","expires_in":3600}`)
+		case "/v1/search":
+			calls.Add(1)
+			w.Header().Set("Retry-After", "72000")
+			http.Error(w, `{"error":{"status":429,"message":"Too many requests","reason":"QUOTA_EXCEEDED"}}`, http.StatusTooManyRequests)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL, func(_ context.Context, duration time.Duration) error {
+		slept = append(slept, duration)
+		return nil
+	})
+
+	_, err := client.SearchArtists(context.Background(), "Wu-Tang Clan", 20)
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, spotifyadapter.ErrTemporary)
+	require.Contains(t, err.Error(), "above max wait")
+	require.Equal(t, int32(1), calls.Load())
+	require.Empty(t, slept)
+}
+
 func TestDoesNotRetryPermanentErrors(t *testing.T) {
 	var calls atomic.Int32
 
@@ -165,6 +197,32 @@ func TestDoesNotRetryPermanentErrors(t *testing.T) {
 
 	require.ErrorIs(t, err, spotifyadapter.ErrPermanent)
 	require.Equal(t, int32(1), calls.Load())
+}
+
+func TestTokenUnauthorizedReturnsErrorWithoutDeadlock(t *testing.T) {
+	var tokenCalls atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/token":
+			tokenCalls.Add(1)
+			http.Error(w, "invalid client", http.StatusUnauthorized)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	_, err := client.GetArtist(ctx, "artist-1")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, spotifyadapter.ErrPermanent)
+	require.Contains(t, err.Error(), "request Spotify token")
+	require.Equal(t, int32(1), tokenCalls.Load())
 }
 
 func TestGetAlbumTracksAndGetTracksMapTrackFields(t *testing.T) {

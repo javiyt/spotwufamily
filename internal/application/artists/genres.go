@@ -44,6 +44,7 @@ type RefreshGenresError struct {
 }
 
 type RefreshGenresProgress struct {
+	Stage          string
 	ArtistSlug     string
 	ArtistName     string
 	SpotifyID      string
@@ -73,6 +74,7 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		report.ArtistsWithIDs++
 		artistIndex := report.ArtistsWithIDs
 		emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
+			Stage:       "artist_started",
 			ArtistSlug:  artist.Slug,
 			ArtistName:  artist.Name,
 			ArtistIndex: artistIndex,
@@ -84,6 +86,7 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		imageURL := ""
 		for spotifyIndex, spotifyID := range ids {
 			progress := RefreshGenresProgress{
+				Stage:          "spotify_started",
 				ArtistSlug:     artist.Slug,
 				ArtistName:     artist.Name,
 				SpotifyID:      spotifyID,
@@ -96,10 +99,13 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 			spotifyArtist, err := r.fetcher.GetArtist(ctx, spotifyID)
 			if err != nil {
 				report.Errors = append(report.Errors, RefreshGenresError{Slug: artist.Slug, ID: spotifyID, Err: err})
+				progress.Stage = "spotify_failed"
 				progress.Err = err
 				emitRefreshGenresProgress(options.Progress, progress)
 				continue
 			}
+			progress.Stage = "spotify_finished"
+			emitRefreshGenresProgress(options.Progress, progress)
 			genres = append(genres, spotifyArtist.Genres...)
 			if externalURL == "" {
 				externalURL = spotifyArtist.URL
@@ -118,6 +124,7 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		if equalStringSlices(artist.Genres, genres) && artist.ExternalURL == externalURL && artist.ImageURL == imageURL {
 			report.Unchanged++
 			emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
+				Stage:       "artist_unchanged",
 				ArtistSlug:  artist.Slug,
 				ArtistName:  artist.Name,
 				ArtistIndex: artistIndex,
@@ -131,6 +138,7 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		artist.ImageURL = imageURL
 		report.Updated++
 		emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
+			Stage:       "artist_updated",
 			ArtistSlug:  artist.Slug,
 			ArtistName:  artist.Name,
 			ArtistIndex: artistIndex,

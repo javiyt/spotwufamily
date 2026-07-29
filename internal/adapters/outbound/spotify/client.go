@@ -19,11 +19,12 @@ import (
 )
 
 const (
-	defaultAPIBaseURL = "https://api.spotify.com"
-	defaultTokenURL   = "https://accounts.spotify.com/api/token"
-	defaultMarket     = "ES"
-	defaultTimeout    = 15 * time.Second
-	defaultRetries    = 3
+	defaultAPIBaseURL    = "https://api.spotify.com"
+	defaultTokenURL      = "https://accounts.spotify.com/api/token"
+	defaultMarket        = "ES"
+	defaultTimeout       = 15 * time.Second
+	defaultRetries       = 3
+	defaultMaxRetryAfter = 10 * time.Minute
 )
 
 var (
@@ -32,30 +33,49 @@ var (
 )
 
 type Config struct {
-	ClientID     string
-	ClientSecret string
-	Market       string
-	APIBaseURL   string
-	TokenURL     string
-	HTTPClient   *http.Client
-	MaxRetries   int
-	Sleep        func(context.Context, time.Duration) error
-	Now          func() time.Time
+	ClientID      string
+	ClientSecret  string
+	Market        string
+	APIBaseURL    string
+	TokenURL      string
+	HTTPClient    *http.Client
+	MaxRetries    int
+	MaxRetryAfter time.Duration
+	Sleep         func(context.Context, time.Duration) error
+	Now           func() time.Time
+	Progress      func(ProgressEvent)
 }
 
 type Client struct {
-	clientID     string
-	clientSecret string
-	market       string
-	apiBaseURL   string
-	tokenURL     string
-	httpClient   *http.Client
-	maxRetries   int
-	sleep        func(context.Context, time.Duration) error
-	now          func() time.Time
+	clientID      string
+	clientSecret  string
+	market        string
+	apiBaseURL    string
+	tokenURL      string
+	httpClient    *http.Client
+	maxRetries    int
+	maxRetryAfter time.Duration
+	sleep         func(context.Context, time.Duration) error
+	now           func() time.Time
+	progress      func(ProgressEvent)
 
 	tokenMu sync.Mutex
 	token   accessToken
+}
+
+type retryOptions struct {
+	expireTokenOnUnauthorized bool
+}
+
+type ProgressEvent struct {
+	Stage      string
+	Method     string
+	URL        string
+	Attempt    int
+	MaxRetries int
+	StatusCode int
+	Wait       time.Duration
+	Err        error
 }
 
 type accessToken struct {
@@ -92,6 +112,10 @@ func NewClient(config Config) (*Client, error) {
 	if maxRetries == 0 {
 		maxRetries = defaultRetries
 	}
+	maxRetryAfter := config.MaxRetryAfter
+	if maxRetryAfter == 0 {
+		maxRetryAfter = defaultMaxRetryAfter
+	}
 	sleep := config.Sleep
 	if sleep == nil {
 		sleep = sleepContext
@@ -102,15 +126,17 @@ func NewClient(config Config) (*Client, error) {
 	}
 
 	return &Client{
-		clientID:     config.ClientID,
-		clientSecret: config.ClientSecret,
-		market:       market,
-		apiBaseURL:   apiBaseURL,
-		tokenURL:     tokenURL,
-		httpClient:   httpClient,
-		maxRetries:   maxRetries,
-		sleep:        sleep,
-		now:          now,
+		clientID:      config.ClientID,
+		clientSecret:  config.ClientSecret,
+		market:        market,
+		apiBaseURL:    apiBaseURL,
+		tokenURL:      tokenURL,
+		httpClient:    httpClient,
+		maxRetries:    maxRetries,
+		maxRetryAfter: maxRetryAfter,
+		sleep:         sleep,
+		now:           now,
+		progress:      config.Progress,
 	}, nil
 }
 
@@ -251,7 +277,7 @@ func (c *Client) getJSON(ctx context.Context, path string, target any) error {
 
 func (c *Client) doAPI(ctx context.Context, method, path string, body io.Reader) ([]byte, error) {
 	requestURL := c.apiURL(path)
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
+	return c.doWithRetry(ctx, retryOptions{expireTokenOnUnauthorized: true}, func() (*http.Request, error) {
 		token, err := c.bearerToken(ctx)
 		if err != nil {
 			return nil, err
@@ -278,7 +304,7 @@ func (c *Client) bearerToken(ctx context.Context) (string, error) {
 	form.Set("grant_type", "client_credentials")
 
 	encodedCredentials := base64.StdEncoding.EncodeToString([]byte(c.clientID + ":" + c.clientSecret))
-	body, err := c.doWithRetry(ctx, func() (*http.Request, error) {
+	body, err := c.doWithRetry(ctx, retryOptions{}, func() (*http.Request, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenURL, strings.NewReader(form.Encode()))
 		if err != nil {
 			return nil, fmt.Errorf("build Spotify token request: %w", err)
@@ -315,7 +341,7 @@ func (c *Client) bearerToken(ctx context.Context) (string, error) {
 	return c.token.value, nil
 }
 
-func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Request, error)) ([]byte, error) {
+func (c *Client) doWithRetry(ctx context.Context, options retryOptions, buildRequest func() (*http.Request, error)) ([]byte, error) {
 	var lastErr error
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
 		if attempt > 0 {
@@ -328,41 +354,103 @@ func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Req
 		if err != nil {
 			return nil, err
 		}
+		event := ProgressEvent{
+			Stage:      "request_started",
+			Method:     req.Method,
+			URL:        requestLogURL(req.URL),
+			Attempt:    attempt + 1,
+			MaxRetries: c.maxRetries,
+		}
+		c.emitProgress(event)
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			lastErr = fmt.Errorf("%w: request failed: %w", ErrTemporary, err)
+			event.Stage = "request_failed"
+			event.Err = err
+			c.emitProgress(event)
 			continue
 		}
 
 		data, readErr := io.ReadAll(resp.Body)
 		closeErr := resp.Body.Close()
+		event.StatusCode = resp.StatusCode
 		if readErr != nil {
+			event.Stage = "request_failed"
+			event.Err = readErr
+			c.emitProgress(event)
 			return nil, fmt.Errorf("read Spotify response: %w", readErr)
 		}
 		if closeErr != nil {
+			event.Stage = "request_failed"
+			event.Err = closeErr
+			c.emitProgress(event)
 			return nil, fmt.Errorf("close Spotify response: %w", closeErr)
 		}
 
 		switch {
 		case resp.StatusCode >= 200 && resp.StatusCode < 300:
+			event.Stage = "request_finished"
+			c.emitProgress(event)
 			return data, nil
 		case resp.StatusCode == http.StatusTooManyRequests:
 			lastErr = spotifyHTTPError(resp.StatusCode, data, ErrTemporary)
-			if err := c.sleep(ctx, retryAfter(resp.Header)); err != nil {
+			wait := retryAfter(resp.Header)
+			event.Stage = "request_retrying"
+			event.Wait = wait
+			event.Err = lastErr
+			c.emitProgress(event)
+			if c.maxRetryAfter > 0 && wait > c.maxRetryAfter {
+				event.Stage = "request_failed"
+				event.Err = fmt.Errorf("%w: Spotify requested retry after %s, above max wait %s: %w", ErrTemporary, wait, c.maxRetryAfter, lastErr)
+				c.emitProgress(event)
+				return nil, event.Err
+			}
+			if err := c.sleep(ctx, wait); err != nil {
 				return nil, err
 			}
 		case resp.StatusCode >= 500:
 			lastErr = spotifyHTTPError(resp.StatusCode, data, ErrTemporary)
-		case resp.StatusCode == http.StatusUnauthorized && attempt == 0:
+			event.Stage = "request_retrying"
+			event.Wait = backoff(attempt + 1)
+			event.Err = lastErr
+			c.emitProgress(event)
+		case resp.StatusCode == http.StatusUnauthorized && options.expireTokenOnUnauthorized && attempt == 0:
 			c.expireToken()
 			lastErr = spotifyHTTPError(resp.StatusCode, data, ErrTemporary)
+			event.Stage = "request_retrying"
+			event.Wait = backoff(attempt + 1)
+			event.Err = lastErr
+			c.emitProgress(event)
 		default:
-			return nil, spotifyHTTPError(resp.StatusCode, data, ErrPermanent)
+			event.Stage = "request_failed"
+			event.Err = spotifyHTTPError(resp.StatusCode, data, ErrPermanent)
+			c.emitProgress(event)
+			return nil, event.Err
 		}
 	}
 
 	return nil, lastErr
+}
+
+func (c *Client) emitProgress(event ProgressEvent) {
+	if c.progress != nil {
+		c.progress(event)
+	}
+}
+
+func requestLogURL(u *url.URL) string {
+	if u == nil {
+		return ""
+	}
+	value := u.Path
+	if u.RawQuery != "" {
+		value += "?" + u.RawQuery
+	}
+	if len(value) > 180 {
+		value = value[:180] + "..."
+	}
+	return value
 }
 
 func (c *Client) apiURL(path string) string {
