@@ -79,16 +79,16 @@ artists-discover-wu-apply:
 	go run $(CLI) artists discover-wu --catalog $(CATALOG) --report $(DISCOVERY_REPORT) --apply
 
 artists-refresh-metadata:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --market $(MARKET)
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --db $(DB) --market $(MARKET)
 
 artists-refresh-metadata-dry-run:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --market $(MARKET) --dry-run
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --db $(DB) --market $(MARKET) --dry-run
 
 artists-refresh-genres:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --market $(MARKET)
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --db $(DB) --market $(MARKET)
 
 artists-refresh-genres-dry-run:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --market $(MARKET) --dry-run
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --db $(DB) --market $(MARKET) --dry-run
 
 artists-seed-db:
 	go run $(CLI) artists seed-db --catalog $(CATALOG) --db $(DB)

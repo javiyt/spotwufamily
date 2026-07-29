@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
@@ -13,25 +14,36 @@ type SpotifyArtistFetcher interface {
 	GetArtist(context.Context, string) (catalog.ArtistCandidate, error)
 }
 
+type MetadataRefreshCheckpointStore interface {
+	LastArtistMetadataRefresh(context.Context, string) (time.Time, bool, error)
+	SaveArtistMetadataRefresh(context.Context, string, []string, time.Time) error
+}
+
 type RefreshGenres struct {
 	store   CatalogStore
 	fetcher SpotifyArtistFetcher
 }
+
+const DefaultRefreshGenresTTL = 7 * 24 * time.Hour
 
 func NewRefreshGenres(store CatalogStore, fetcher SpotifyArtistFetcher) RefreshGenres {
 	return RefreshGenres{store: store, fetcher: fetcher}
 }
 
 type RefreshGenresOptions struct {
-	CatalogPath string
-	DryRun      bool
-	Progress    func(RefreshGenresProgress)
+	CatalogPath     string
+	DryRun          bool
+	Force           bool
+	RefreshTTL      time.Duration
+	CheckpointStore MetadataRefreshCheckpointStore
+	Progress        func(RefreshGenresProgress)
 }
 
 type RefreshGenresReport struct {
 	ArtistsWithIDs int
 	Updated        int
 	Unchanged      int
+	SkippedRecent  int
 	WithoutGenres  []string
 	WithoutImages  []string
 	Errors         []RefreshGenresError
@@ -52,6 +64,9 @@ type RefreshGenresProgress struct {
 	ArtistTotal    int
 	SpotifyIDIndex int
 	SpotifyIDTotal int
+	Skipped        bool
+	LastRefresh    time.Time
+	RefreshTTL     time.Duration
 	Updated        bool
 	Unchanged      bool
 	Err            error
@@ -64,6 +79,10 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 	}
 
 	report := RefreshGenresReport{}
+	refreshTTL := options.RefreshTTL
+	if refreshTTL == 0 {
+		refreshTTL = DefaultRefreshGenresTTL
+	}
 	artistsWithIDs := countArtistsWithSpotifyIDs(c.Artists)
 	for index := range c.Artists {
 		artist := &c.Artists[index]
@@ -73,6 +92,26 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		}
 		report.ArtistsWithIDs++
 		artistIndex := report.ArtistsWithIDs
+		if !options.Force && options.CheckpointStore != nil {
+			lastRefresh, ok, err := options.CheckpointStore.LastArtistMetadataRefresh(ctx, artist.Slug)
+			if err != nil {
+				return report, err
+			}
+			if ok && time.Since(lastRefresh) < refreshTTL {
+				report.SkippedRecent++
+				emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
+					Stage:       "artist_skipped",
+					ArtistSlug:  artist.Slug,
+					ArtistName:  artist.Name,
+					ArtistIndex: artistIndex,
+					ArtistTotal: artistsWithIDs,
+					Skipped:     true,
+					LastRefresh: lastRefresh,
+					RefreshTTL:  refreshTTL,
+				})
+				continue
+			}
+		}
 		emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
 			Stage:       "artist_started",
 			ArtistSlug:  artist.Slug,
@@ -84,6 +123,7 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		genres := []string{}
 		externalURL := ""
 		imageURL := ""
+		artistFailed := false
 		for spotifyIndex, spotifyID := range ids {
 			progress := RefreshGenresProgress{
 				Stage:          "spotify_started",
@@ -99,6 +139,7 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 			spotifyArtist, err := r.fetcher.GetArtist(ctx, spotifyID)
 			if err != nil {
 				report.Errors = append(report.Errors, RefreshGenresError{Slug: artist.Slug, ID: spotifyID, Err: err})
+				artistFailed = true
 				progress.Stage = "spotify_failed"
 				progress.Err = err
 				emitRefreshGenresProgress(options.Progress, progress)
@@ -114,6 +155,9 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 				imageURL = spotifyArtist.ImageURL
 			}
 		}
+		if artistFailed {
+			continue
+		}
 		genres = normalizeGenreList(genres)
 		if len(genres) == 0 {
 			report.WithoutGenres = append(report.WithoutGenres, artist.Slug)
@@ -123,6 +167,11 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		}
 		if equalStringSlices(artist.Genres, genres) && artist.ExternalURL == externalURL && artist.ImageURL == imageURL {
 			report.Unchanged++
+			if !options.DryRun && options.CheckpointStore != nil {
+				if err := options.CheckpointStore.SaveArtistMetadataRefresh(ctx, artist.Slug, ids, time.Now().UTC()); err != nil {
+					return report, err
+				}
+			}
 			emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
 				Stage:       "artist_unchanged",
 				ArtistSlug:  artist.Slug,
@@ -137,6 +186,19 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		artist.ExternalURL = externalURL
 		artist.ImageURL = imageURL
 		report.Updated++
+		if !options.DryRun {
+			if issues := catalog.ValidateEditorialCatalog(c); len(issues) > 0 {
+				return report, fmt.Errorf("refreshed catalog is invalid: %s", issues[0].Error())
+			}
+			if err := r.store.Save(ctx, options.CatalogPath, c); err != nil {
+				return report, fmt.Errorf("save artist catalog: %w", err)
+			}
+			if options.CheckpointStore != nil {
+				if err := options.CheckpointStore.SaveArtistMetadataRefresh(ctx, artist.Slug, ids, time.Now().UTC()); err != nil {
+					return report, err
+				}
+			}
+		}
 		emitRefreshGenresProgress(options.Progress, RefreshGenresProgress{
 			Stage:       "artist_updated",
 			ArtistSlug:  artist.Slug,
@@ -153,9 +215,6 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 	if !options.DryRun {
 		if issues := catalog.ValidateEditorialCatalog(c); len(issues) > 0 {
 			return report, fmt.Errorf("refreshed catalog is invalid: %s", issues[0].Error())
-		}
-		if err := r.store.Save(ctx, options.CatalogPath, c); err != nil {
-			return report, fmt.Errorf("save artist catalog: %w", err)
 		}
 	}
 

@@ -32,7 +32,7 @@ VALUES ('wu-tang-clan', 'Wu Tang Clan', 1);`)
 	require.NoError(t, err)
 	report, err := database.Verify(ctx, migrations)
 	require.NoError(t, err)
-	require.Equal(t, 2, report.Migrations)
+	require.Equal(t, 3, report.Migrations)
 	require.Contains(t, report.Checks, "integrity_check")
 	require.Contains(t, report.Checks, "foreign_key_check")
 
@@ -40,6 +40,8 @@ VALUES ('wu-tang-clan', 'Wu Tang Clan', 1);`)
 	require.NoError(t, err)
 	snapshotText := string(snapshot)
 	require.Contains(t, snapshotText, `DELETE FROM "configured_artists";`)
+	require.NotContains(t, snapshotText, `DELETE FROM "artist_metadata_refreshes";`)
+	require.NotContains(t, snapshotText, `INSERT INTO "artist_metadata_refreshes"`)
 	require.Contains(t, snapshotText, `'wu-tang-clan'`)
 	require.Contains(t, snapshotText, `'Wu Tang Clan'`)
 }
@@ -68,6 +70,25 @@ VALUES ('gravediggaz', 'Gravediggaz', 'affiliate_group', 0, 2);`)
 	err = rebuilt.DB().QueryRowContext(ctx, `SELECT name FROM configured_artists WHERE slug = 'gravediggaz'`).Scan(&name)
 	require.NoError(t, err)
 	require.Equal(t, "Gravediggaz", name)
+}
+
+func TestArtistMetadataRefreshCheckpoint(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	_, ok, err := database.LastArtistMetadataRefresh(ctx, "wu-tang-clan")
+	require.NoError(t, err)
+	require.False(t, ok)
+
+	refreshedAt := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	require.NoError(t, database.SaveArtistMetadataRefresh(ctx, "wu-tang-clan", []string{"34EP7KEpOjXcM2TCat1ISk"}, refreshedAt))
+
+	last, ok, err := database.LastArtistMetadataRefresh(ctx, "wu-tang-clan")
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, refreshedAt, last)
 }
 
 func TestVerifyFailsWhenMigrationMissing(t *testing.T) {

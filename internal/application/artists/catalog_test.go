@@ -12,7 +12,8 @@ import (
 )
 
 type memoryStore struct {
-	catalog catalog.EditorialCatalog
+	catalog   catalog.EditorialCatalog
+	saveCount int
 }
 
 func (m *memoryStore) Load(context.Context, string) (catalog.EditorialCatalog, error) {
@@ -21,6 +22,7 @@ func (m *memoryStore) Load(context.Context, string) (catalog.EditorialCatalog, e
 
 func (m *memoryStore) Save(_ context.Context, _ string, c catalog.EditorialCatalog) error {
 	m.catalog = c
+	m.saveCount++
 	return nil
 }
 

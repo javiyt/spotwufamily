@@ -93,6 +93,9 @@ ORDER BY name`)
 		if err := rows.Scan(&table); err != nil {
 			return nil, fmt.Errorf("scan snapshot table: %w", err)
 		}
+		if isTransientSnapshotTable(table) {
+			continue
+		}
 		tables = append(tables, table)
 	}
 	if err := rows.Err(); err != nil {
@@ -100,6 +103,15 @@ ORDER BY name`)
 	}
 
 	return tables, nil
+}
+
+func isTransientSnapshotTable(table string) bool {
+	switch table {
+	case "artist_metadata_refreshes":
+		return true
+	default:
+		return false
+	}
 }
 
 func appendTableSnapshot(buf *bytes.Buffer, db *sql.DB, table string) error {

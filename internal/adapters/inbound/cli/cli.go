@@ -1081,14 +1081,17 @@ func printDiscoverWuFamilyProgress(stderr io.Writer, event artists.DiscoverWuFam
 
 type artistsRefreshGenresOptions struct {
 	catalogPath string
+	dbPath      string
 	market      string
 	dryRun      bool
 	quiet       bool
+	force       bool
+	refreshTTL  time.Duration
 }
 
 func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists refresh-genres [--catalog data/artists.yaml] [--market ES] [--dry-run] [--quiet]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists refresh-genres [--catalog data/artists.yaml] [--db data/catalog.db] [--market ES] [--checkpoint-ttl 168h] [--force] [--dry-run] [--quiet]")
 		return 0
 	}
 
@@ -1104,6 +1107,21 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 		return 1
 	}
 
+	var checkpointStore artists.MetadataRefreshCheckpointStore
+	if !options.dryRun && options.dbPath != "" {
+		database, err := sqliteadapter.Open(options.dbPath)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "artists refresh-genres: %v\n", err)
+			return 1
+		}
+		defer func() { _ = database.Close() }()
+		if err := database.Migrate(ctx); err != nil {
+			_, _ = fmt.Fprintf(stderr, "artists refresh-genres: migrate database: %v\n", err)
+			return 1
+		}
+		checkpointStore = database
+	}
+
 	var progress func(artists.RefreshGenresProgress)
 	if !options.quiet {
 		progress = func(event artists.RefreshGenresProgress) {
@@ -1111,15 +1129,18 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 		}
 	}
 	report, err := artists.NewRefreshGenres(store, fetcher).Run(ctx, artists.RefreshGenresOptions{
-		CatalogPath: options.catalogPath,
-		DryRun:      options.dryRun,
-		Progress:    progress,
+		CatalogPath:     options.catalogPath,
+		DryRun:          options.dryRun,
+		Force:           options.force,
+		RefreshTTL:      options.refreshTTL,
+		CheckpointStore: checkpointStore,
+		Progress:        progress,
 	})
 	mode := "updated"
 	if options.dryRun {
 		mode = "dry-run"
 	}
-	_, _ = fmt.Fprintf(stdout, "artists refresh-genres %s: artists_with_ids=%d updated=%d unchanged=%d without_genres=%d without_images=%d catalog=%s\n", mode, report.ArtistsWithIDs, report.Updated, report.Unchanged, len(report.WithoutGenres), len(report.WithoutImages), options.catalogPath)
+	_, _ = fmt.Fprintf(stdout, "artists refresh-genres %s: artists_with_ids=%d updated=%d unchanged=%d skipped_recent=%d without_genres=%d without_images=%d catalog=%s\n", mode, report.ArtistsWithIDs, report.Updated, report.Unchanged, report.SkippedRecent, len(report.WithoutGenres), len(report.WithoutImages), options.catalogPath)
 	if len(report.WithoutGenres) > 0 {
 		_, _ = fmt.Fprintf(stdout, "artists without Spotify genres: %s\n", strings.Join(report.WithoutGenres, ", "))
 	}
@@ -1137,7 +1158,7 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 }
 
 func parseArtistsRefreshGenresOptions(args []string) (artistsRefreshGenresOptions, error) {
-	options := artistsRefreshGenresOptions{catalogPath: defaultCatalogPath}
+	options := artistsRefreshGenresOptions{catalogPath: defaultCatalogPath, dbPath: defaultDatabasePath, refreshTTL: artists.DefaultRefreshGenresTTL}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--catalog":
@@ -1146,12 +1167,30 @@ func parseArtistsRefreshGenresOptions(args []string) (artistsRefreshGenresOption
 				return artistsRefreshGenresOptions{}, fmt.Errorf("--catalog requires a value")
 			}
 			options.catalogPath = args[i]
+		case "--db":
+			i++
+			if i >= len(args) {
+				return artistsRefreshGenresOptions{}, fmt.Errorf("--db requires a value")
+			}
+			options.dbPath = args[i]
 		case "--market":
 			i++
 			if i >= len(args) {
 				return artistsRefreshGenresOptions{}, fmt.Errorf("--market requires a value")
 			}
 			options.market = args[i]
+		case "--checkpoint-ttl":
+			i++
+			if i >= len(args) {
+				return artistsRefreshGenresOptions{}, fmt.Errorf("--checkpoint-ttl requires a value")
+			}
+			duration, err := time.ParseDuration(args[i])
+			if err != nil {
+				return artistsRefreshGenresOptions{}, fmt.Errorf("--checkpoint-ttl must be a duration")
+			}
+			options.refreshTTL = duration
+		case "--force":
+			options.force = true
 		case "--dry-run":
 			options.dryRun = true
 		case "--quiet":
@@ -1171,6 +1210,8 @@ func printRefreshGenresProgress(stderr io.Writer, event artists.RefreshGenresPro
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: updated\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug)
 	case "artist_unchanged":
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: unchanged\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug)
+	case "artist_skipped":
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: skipped, refreshed at %s within ttl=%s\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.LastRefresh.Format(time.RFC3339), event.RefreshTTL)
 	case "spotify_started":
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s: fetching spotify id %d/%d %s\n", event.ArtistIndex, event.ArtistTotal, event.ArtistSlug, event.SpotifyIDIndex, event.SpotifyIDTotal, event.SpotifyID)
 	case "spotify_finished":
