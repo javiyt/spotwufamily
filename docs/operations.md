@@ -5,7 +5,7 @@
 Run the full local audit before merging catalog or automation changes:
 
 ```bash
-go run ./cmd/spotwufamily audit
+make audit
 ```
 
 The audit validates `data/artists.yaml`, verifies `data/catalog.db`, checks that `data/catalog.snapshot.sql` is fresh, regenerates JSON exports, verifies generated artifacts, checks that generated files have no uncommitted diff and builds the Hugo site into `/tmp/spotwufamily-site`.
@@ -13,17 +13,26 @@ The audit validates `data/artists.yaml`, verifies `data/catalog.db`, checks that
 For unit-test style runs without Hugo or Git checks:
 
 ```bash
-go run ./cmd/spotwufamily audit --skip-site --skip-git-diff
+make audit-fast
 ```
+
+## Bootstrap From YAML
+
+Initialize the local project state from `data/artists.yaml`:
+
+```bash
+make init-from-yaml
+```
+
+This validates the YAML, migrates SQLite, writes a fresh logical snapshot, verifies the database, exports JSON, builds Hugo and runs the audit gate.
 
 ## Catalog Sync
 
 Resolve reviewed artist IDs with as much automation as possible:
 
 ```bash
-SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
-  go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
-go run ./cmd/spotwufamily artists validate
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-apply
+make artists-validate
 ```
 
 Review `resolve.md` for skipped or ambiguous entries before manually editing YAML.
@@ -31,25 +40,31 @@ Review `resolve.md` for skipped or ambiguous entries before manually editing YAM
 If an artist is skipped because candidates are ambiguous, use interactive mode:
 
 ```bash
-SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
-  go run ./cmd/spotwufamily artists resolve
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-interactive
 ```
 
 Select the candidate number to write its Spotify ID to YAML, `s` to skip, or `q` to save and stop.
 
+To review the full YAML, including artists that already have a Spotify ID:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-review-interactive
+```
+
+For artists with an existing ID, the prompt shows the current Spotify profile and lets you keep it, replace it with a candidate, clear it, skip it, or save and quit.
+
 Manual sync for one reviewed artist:
 
 ```bash
-SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
-  go run ./cmd/spotwufamily sync --artist wu-tang-clan
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-artist ARTIST=wu-tang-clan
 ```
 
 After sync, run:
 
 ```bash
-go run ./cmd/spotwufamily db verify
-go run ./cmd/spotwufamily export
-go run ./cmd/spotwufamily audit
+make db-verify
+make export
+make audit
 ```
 
 ## Rebuild From Snapshot
@@ -57,8 +72,8 @@ go run ./cmd/spotwufamily audit
 Use this to prove the logical snapshot can recreate the versioned database:
 
 ```bash
-go run ./cmd/spotwufamily db rebuild
-go run ./cmd/spotwufamily db verify
+make db-rebuild
+make db-verify
 ```
 
 ## Static Site
@@ -66,7 +81,7 @@ go run ./cmd/spotwufamily db verify
 Build locally:
 
 ```bash
-go run ./cmd/spotwufamily site build
+make site-build
 ```
 
 Serve locally while editing templates:

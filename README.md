@@ -17,6 +17,33 @@ The current build has the CLI, editorial YAML validation, Spotify sync, SQLite p
 
 ## Commands
 
+Recommended Make targets:
+
+```bash
+make help
+make init-from-yaml
+make artists-resolve-offline
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-apply
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-interactive
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-review-interactive
+make sync-dry-run
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-artist ARTIST=wu-tang-clan
+make db-rebuild
+make ci
+```
+
+`make init-from-yaml` is the local bootstrap path from `data/artists.yaml`: it validates the YAML, migrates/verifies SQLite, refreshes the snapshot, exports JSON, builds Hugo and runs the audit gate.
+
+Useful variables:
+
+```bash
+make sync-artist ARTIST=gravediggaz MARKET=ES
+make artists-resolve-apply REPORT=resolve.md MARKET=ES
+make init-from-yaml CATALOG=data/artists.yaml DB=data/catalog.db
+```
+
+Equivalent CLI commands:
+
 ```bash
 go run ./cmd/spotwufamily version
 go run ./cmd/spotwufamily artists validate
@@ -55,20 +82,19 @@ See [docs/architecture.md](docs/architecture.md).
 Run:
 
 ```bash
-go run ./cmd/spotwufamily artists validate
+make artists-validate
 ```
 
 The non-interactive resolver uses Spotify when credentials are present. It also accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access:
 
 ```bash
-go run ./cmd/spotwufamily artists resolve --non-interactive --candidates data/artist-candidates.example.json --report resolve.md
+make artists-resolve-offline
 ```
 
 To write strong, unambiguous matches back to `data/artists.yaml` automatically:
 
 ```bash
-SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
-  go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-apply
 ```
 
 By default, `--apply` only writes matches scoring at least `95` with a score gap of at least `10` over the next candidate. It leaves artists disabled; use `--enable-applied` only after deciding that resolved artists should be included in sync.
@@ -77,7 +103,14 @@ For manual review with less typing, run interactive mode and pick the candidate 
 
 ```bash
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
-  go run ./cmd/spotwufamily artists resolve
+  make artists-resolve-interactive
+```
+
+To audit the whole YAML, including artists that already have a Spotify ID:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  make artists-review-interactive
 ```
 
 ## Sync
@@ -87,14 +120,13 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
 Current catalog entries are disabled until reviewed Spotify IDs are assigned, so this is expected:
 
 ```bash
-go run ./cmd/spotwufamily sync --dry-run
+make sync-dry-run
 ```
 
 Use real sync only after enabling reviewed artists:
 
 ```bash
-SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
-  go run ./cmd/spotwufamily sync --artist wu-tang-clan
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-artist ARTIST=wu-tang-clan
 ```
 
 ## Database
@@ -104,7 +136,7 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
 Run:
 
 ```bash
-go run ./cmd/spotwufamily db verify
+make db-verify
 ```
 
 ## Export
@@ -112,7 +144,7 @@ go run ./cmd/spotwufamily db verify
 `export` reads SQLite and writes deterministic JSON for Hugo:
 
 ```bash
-go run ./cmd/spotwufamily export
+make export
 ```
 
 Outputs:
@@ -134,7 +166,7 @@ https://javiyt.github.io/spotwufamily/
 Build it with:
 
 ```bash
-go run ./cmd/spotwufamily site build
+make site-build
 ```
 
 ## Documentation

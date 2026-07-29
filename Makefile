@@ -1,7 +1,33 @@
-.PHONY: setup format lint test test-race validate sync export build serve audit db-migrate db-snapshot db-rebuild db-verify site-build ci
+.DEFAULT_GOAL := help
+
+.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
+CATALOG ?= data/artists.yaml
+GROUPS ?= data/groups.txt
+DB ?= data/catalog.db
+SNAPSHOT ?= data/catalog.snapshot.sql
+EXPORT_DIR ?= site/data/generated
+STATIC_DIR ?= site/static
+CANDIDATES ?= data/artist-candidates.example.json
+REPORT ?= resolve.md
+ARTIST ?= wu-tang-clan
+MARKET ?= ES
+SITE_SOURCE ?= site
+SITE_DESTINATION ?= /tmp/spotwufamily-site
+
+help:
+	@printf 'Spot Wu Family targets:\n'
+	@printf '  make init-from-yaml          Validate YAML, prepare DB, export JSON, build site, audit\n'
+	@printf '  make refresh-from-spotify    Resolve strong IDs, sync one artist, snapshot/export/audit\n'
+	@printf '  make artists-resolve-apply   Apply strong Spotify ID matches to YAML\n'
+	@printf '  make artists-resolve-interactive  Pick Spotify IDs interactively\n'
+	@printf '  make artists-review-interactive   Review all artists, including existing Spotify IDs\n'
+	@printf '  make artists-resolve-offline Generate resolve report from local candidate fixture\n'
+	@printf '  make sync-artist ARTIST=slug Sync one enabled artist from Spotify\n'
+	@printf '  make ci                      Local CI gate\n'
+	@printf '\nVariables: CATALOG=%s DB=%s SNAPSHOT=%s ARTIST=%s MARKET=%s REPORT=%s\n' "$(CATALOG)" "$(DB)" "$(SNAPSHOT)" "$(ARTIST)" "$(MARKET)" "$(REPORT)"
 
 setup:
 	go mod download
@@ -18,14 +44,43 @@ test:
 test-race:
 	go test -race ./...
 
-validate:
-	go run $(CLI) artists validate
+version:
+	go run $(CLI) version
+
+validate: artists-validate
+
+artists-validate:
+	go run $(CLI) artists validate $(CATALOG)
+
+artists-import-groups:
+	go run $(CLI) artists import-groups $(GROUPS) $(CATALOG)
+
+artists-resolve-report:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --non-interactive --catalog $(CATALOG) --market $(MARKET) --report $(REPORT)
+
+artists-resolve-apply:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --non-interactive --apply --catalog $(CATALOG) --market $(MARKET) --report $(REPORT)
+
+artists-resolve-interactive:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --interactive --catalog $(CATALOG) --market $(MARKET)
+
+artists-review-interactive:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --interactive --review-all --catalog $(CATALOG) --market $(MARKET)
+
+artists-resolve-offline:
+	go run $(CLI) artists resolve --non-interactive --catalog $(CATALOG) --candidates $(CANDIDATES) --report $(REPORT)
 
 sync:
-	go run $(CLI) sync
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
+
+sync-dry-run:
+	go run $(CLI) sync --dry-run --catalog $(CATALOG) --market $(MARKET)
+
+sync-artist:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --artist $(ARTIST) --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
 
 export:
-	go run $(CLI) export
+	go run $(CLI) export --db $(DB) --output $(EXPORT_DIR) --static $(STATIC_DIR)
 
 build:
 	go build -o $(BUILD_DIR)/spotwufamily $(CLI)
@@ -34,21 +89,28 @@ serve:
 	hugo server --source site --bind 127.0.0.1
 
 audit:
-	go run $(CLI) audit
+	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --site-source $(SITE_SOURCE) --site-destination $(SITE_DESTINATION)
+
+audit-fast:
+	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --skip-site --skip-git-diff
 
 db-verify:
-	go run $(CLI) db verify
+	go run $(CLI) db verify --db $(DB) --snapshot $(SNAPSHOT)
 
 db-migrate:
-	go run $(CLI) db migrate
+	go run $(CLI) db migrate --db $(DB) --snapshot $(SNAPSHOT)
 
 db-snapshot:
-	go run $(CLI) db snapshot
+	go run $(CLI) db snapshot --db $(DB) --snapshot $(SNAPSHOT)
 
 db-rebuild:
-	go run $(CLI) db rebuild
+	go run $(CLI) db rebuild --db $(DB) --snapshot $(SNAPSHOT)
 
 site-build:
-	go run $(CLI) site build
+	go run $(CLI) site build --source $(SITE_SOURCE) --destination $(SITE_DESTINATION)
 
-ci: format validate db-verify export site-build audit test lint build
+init-from-yaml: artists-validate db-migrate db-snapshot db-verify export site-build audit
+
+refresh-from-spotify: artists-resolve-apply artists-validate sync-artist db-verify export audit
+
+ci: format artists-validate db-verify export site-build audit test lint build

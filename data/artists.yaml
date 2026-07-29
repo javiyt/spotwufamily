@@ -18,7 +18,7 @@ artists:
     notes: ""
   - slug: wu-tang-killa-beez
     name: Wu-Tang Killa Beez
-    spotify_id: ""
+    spotify_id: 6UEytD2shU7Z8fMKj08puK
     category: affiliate_group
     roles:
       - affiliate_group
@@ -48,7 +48,7 @@ artists:
     notes: ""
   - slug: achozen
     name: Achozen
-    spotify_id: ""
+    spotify_id: 5UPlyCkzUI01KalZWpmaMr
     category: affiliate_group
     roles:
       - affiliate_group
@@ -58,7 +58,7 @@ artists:
     notes: ""
   - slug: american-cream-team
     name: American Cream Team
-    spotify_id: ""
+    spotify_id: 53kDI3KVrY4ZVj1yPLxy8U
     category: affiliate_group
     roles:
       - affiliate_group
@@ -68,7 +68,7 @@ artists:
     notes: ""
   - slug: black-knights
     name: Black Knights
-    spotify_id: ""
+    spotify_id: 0AF5FJR5VgrhPw6qcLkEBA
     category: affiliate_group
     roles:
       - affiliate_group
@@ -108,7 +108,7 @@ artists:
     notes: ""
   - slug: c-c-f-division
     name: C.C.F. Division
-    spotify_id: ""
+    spotify_id: 0RhBRiD7TkjokNCJPw8yK1
     category: affiliate_group
     roles:
       - affiliate_group
@@ -118,7 +118,7 @@ artists:
     notes: ""
   - slug: da-manchuz
     name: Da Manchuz
-    spotify_id: ""
+    spotify_id: 6QMm5lohv2eBZRmt7KDQbw
     category: affiliate_group
     roles:
       - affiliate_group
@@ -148,7 +148,7 @@ artists:
     notes: ""
   - slug: gravediggaz
     name: Gravediggaz
-    spotify_id: ""
+    spotify_id: 5NIhgQ08PBzMux08ndi8Ae
     category: affiliate_group
     roles:
       - affiliate_group
@@ -208,7 +208,7 @@ artists:
     notes: ""
   - slug: killarmy
     name: Killarmy
-    spotify_id: ""
+    spotify_id: 5wwleY8YnxnutxOExPVoJb
     category: affiliate_group
     roles:
       - affiliate_group
@@ -228,7 +228,7 @@ artists:
     notes: ""
   - slug: m-m-o
     name: M.M.O.
-    spotify_id: ""
+    spotify_id: 2hOq10IeawxqftIahsIITz
     category: affiliate_group
     roles:
       - affiliate_group
@@ -238,7 +238,7 @@ artists:
     notes: ""
   - slug: northstar
     name: Northstar
-    spotify_id: ""
+    spotify_id: 1WOFD00y6IbUDRlMPHgVVZ
     category: affiliate_group
     roles:
       - affiliate_group
@@ -278,7 +278,7 @@ artists:
     notes: ""
   - slug: stone-mecca
     name: Stone Mecca
-    spotify_id: ""
+    spotify_id: 1TGwUWwVcKAYoXSuXVZUxt
     category: affiliate_group
     roles:
       - affiliate_group
@@ -288,7 +288,7 @@ artists:
     notes: ""
   - slug: sunz-of-man
     name: Sunz of Man
-    spotify_id: ""
+    spotify_id: 5PtIZ9EIXAYnZKhBZZuRsA
     category: affiliate_group
     roles:
       - affiliate_group
@@ -298,7 +298,7 @@ artists:
     notes: ""
   - slug: tha-beggas
     name: Tha Beggas
-    spotify_id: ""
+    spotify_id: 3KoWNgHihU3OzEuoouuycC
     category: affiliate_group
     roles:
       - affiliate_group
@@ -308,7 +308,7 @@ artists:
     notes: ""
   - slug: theodore-unit
     name: Theodore Unit
-    spotify_id: ""
+    spotify_id: 3etQyCmhwVq3MCsOWAqgSq
     category: affiliate_group
     roles:
       - affiliate_group
@@ -318,7 +318,7 @@ artists:
     notes: ""
   - slug: t-m-f
     name: T.M.F.
-    spotify_id: ""
+    spotify_id: 2CjKVGzo9RfscIwGAt0FfN
     category: affiliate_group
     roles:
       - affiliate_group
