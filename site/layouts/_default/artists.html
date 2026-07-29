@@ -18,7 +18,7 @@
   <section class="shell section">
     <div id="artist-list" class="card-grid">
       {{ range $artists }}
-        <article class="item-card" data-category="{{ .category }}">
+        <article id="{{ .slug }}" class="item-card" data-category="{{ .category }}">
           <div class="thumb">
             {{ if .image_url }}
               {{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ .name }} on Spotify">{{ end }}

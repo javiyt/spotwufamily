@@ -279,7 +279,7 @@ func searchIndex(catalog Catalog) SearchIndex {
 			ID:       artist.Slug,
 			Title:    artist.Name,
 			Subtitle: artist.Category,
-			URL:      "/artists/" + artist.Slug + "/",
+			URL:      "/artists/#" + artist.Slug,
 			Terms:    normalizeTerms(append([]string{artist.Name, artist.PublicName}, artist.Aliases...)),
 		})
 	}
@@ -289,7 +289,7 @@ func searchIndex(catalog Catalog) SearchIndex {
 			ID:       album.SpotifyID,
 			Title:    album.Name,
 			Subtitle: album.ReleaseDate,
-			URL:      "/albums/" + album.SpotifyID + "/",
+			URL:      "/releases/#" + album.SpotifyID,
 			Terms:    normalizeTerms([]string{album.Name, joinedCredits(album.Artists)}),
 		})
 	}
@@ -299,7 +299,7 @@ func searchIndex(catalog Catalog) SearchIndex {
 			ID:       track.SpotifyID,
 			Title:    track.Name,
 			Subtitle: joinedCredits(track.Artists),
-			URL:      "/tracks/" + track.SpotifyID + "/",
+			URL:      "/tracks/#" + track.SpotifyID,
 			Terms:    normalizeTerms([]string{track.Name, track.ISRC, joinedCredits(track.Artists)}),
 		})
 	}

@@ -29,6 +29,10 @@ func TestExportCatalogWritesDeterministicFiles(t *testing.T) {
 	require.Contains(t, string(writer.files["generated/albums/album-1.json"]), `"Track One"`)
 	require.Contains(t, string(writer.files["generated/tracks/track-1.json"]), `"Album One"`)
 	require.Contains(t, string(writer.files["static/search-index.json"]), `"type": "artist"`)
+	require.Contains(t, string(writer.files["static/search-index.json"]), `"url": "/artists/#wu-tang-clan"`)
+	require.Contains(t, string(writer.files["static/search-index.json"]), `"url": "/releases/#album-1"`)
+	require.Contains(t, string(writer.files["static/search-index.json"]), `"url": "/tracks/#track-1"`)
+	require.NotContains(t, string(writer.files["static/search-index.json"]), `"/albums/album-1/"`)
 }
 
 func TestExportCatalogSecondRunKeepsUnchangedFiles(t *testing.T) {

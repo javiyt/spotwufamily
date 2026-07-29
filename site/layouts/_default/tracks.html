@@ -10,7 +10,7 @@
         <thead><tr><th>Track</th><th>Artists</th><th>Duration</th><th>Explicit</th></tr></thead>
         <tbody>
           {{ range $tracks }}
-            <tr>
+            <tr id="{{ .spotify_id }}">
               <td>{{ if .spotify_url }}<a href="{{ .spotify_url }}">{{ .name }}</a>{{ else }}{{ .name }}{{ end }}</td>
               <td>{{ range $i, $artist := .artists }}{{ if $i }}, {{ end }}{{ $artist.name }}{{ end }}</td>
               <td>{{ div .duration_ms 1000 }}s</td>
