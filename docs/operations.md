@@ -41,6 +41,13 @@ make artists-validate
 
 Review `resolve.md` for skipped or ambiguous entries before manually editing YAML.
 
+Enable every reviewed artist that has at least one Spotify ID:
+
+```bash
+make artists-enable-with-ids-dry-run
+make artists-enable-with-ids
+```
+
 If an artist is skipped because candidates are ambiguous, use interactive mode:
 
 ```bash

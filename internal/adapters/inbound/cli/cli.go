@@ -766,6 +766,8 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsValidate(ctx, args[1:], stdout, stderr, store)
 	case "import-groups":
 		return executeArtistsImportGroups(ctx, args[1:], stdout, stderr, store)
+	case "enable-with-ids":
+		return executeArtistsEnableWithIDs(ctx, args[1:], stdout, stderr, store)
 	case "resolve":
 		return executeArtistsResolve(ctx, args[1:], stdin, stdout, stderr, store)
 	case "audit-albums":
@@ -780,6 +782,84 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		printArtistsHelp(stderr)
 		return 2
 	}
+}
+
+type artistsEnableWithIDsOptions struct {
+	catalogPath string
+	dryRun      bool
+}
+
+func executeArtistsEnableWithIDs(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists enable-with-ids [--catalog data/artists.yaml] [--dry-run]")
+		return 0
+	}
+
+	options, err := parseArtistsEnableWithIDsOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists enable-with-ids: %v\n", err)
+		return 2
+	}
+
+	c, err := store.Load(ctx, options.catalogPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists enable-with-ids: load artist catalog: %v\n", err)
+		return 1
+	}
+
+	enabled := 0
+	alreadyEnabled := 0
+	withoutIDs := 0
+	for i := range c.Artists {
+		if len(c.Artists[i].AllSpotifyIDs()) == 0 {
+			withoutIDs++
+			continue
+		}
+		if c.Artists[i].Enabled {
+			alreadyEnabled++
+			continue
+		}
+		c.Artists[i].Enabled = true
+		enabled++
+	}
+
+	if issues := catalog.ValidateEditorialCatalog(c); len(issues) > 0 {
+		_, _ = fmt.Fprintf(stderr, "artists enable-with-ids: enabled catalog is invalid: %s\n", issues[0].Error())
+		return 1
+	}
+
+	if !options.dryRun {
+		if err := store.Save(ctx, options.catalogPath, c); err != nil {
+			_, _ = fmt.Fprintf(stderr, "artists enable-with-ids: save artist catalog: %v\n", err)
+			return 1
+		}
+	}
+
+	mode := "updated"
+	if options.dryRun {
+		mode = "dry-run"
+	}
+	_, _ = fmt.Fprintf(stdout, "artists enable-with-ids %s: enabled=%d already_enabled=%d without_spotify_ids=%d catalog=%s\n", mode, enabled, alreadyEnabled, withoutIDs, options.catalogPath)
+	return 0
+}
+
+func parseArtistsEnableWithIDsOptions(args []string) (artistsEnableWithIDsOptions, error) {
+	options := artistsEnableWithIDsOptions{catalogPath: defaultCatalogPath}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return artistsEnableWithIDsOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+		case "--dry-run":
+			options.dryRun = true
+		default:
+			return artistsEnableWithIDsOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	return options, nil
 }
 
 type artistsSeedDBOptions struct {
@@ -1573,6 +1653,7 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  version")
 	_, _ = fmt.Fprintln(w, "  artists import-groups")
 	_, _ = fmt.Fprintln(w, "  artists validate")
+	_, _ = fmt.Fprintln(w, "  artists enable-with-ids")
 	_, _ = fmt.Fprintln(w, "  artists resolve")
 	_, _ = fmt.Fprintln(w, "  artists seed-db")
 	_, _ = fmt.Fprintln(w, "  artists audit-albums")
@@ -1589,6 +1670,7 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "commands:")
 	_, _ = fmt.Fprintln(w, "  import-groups [groups-path] [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
+	_, _ = fmt.Fprintln(w, "  enable-with-ids")
 	_, _ = fmt.Fprintln(w, "  resolve")
 	_, _ = fmt.Fprintln(w, "  seed-db")
 	_, _ = fmt.Fprintln(w, "  audit-albums")

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-enable-with-ids artists-enable-with-ids-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -23,6 +23,7 @@ help:
 	@printf '  make init-from-yaml          Validate YAML, prepare DB, export JSON, build site, audit\n'
 	@printf '  make refresh-from-spotify    Resolve strong IDs, sync one artist, snapshot/export/audit\n'
 	@printf '  make artists-resolve-apply   Apply strong Spotify ID matches to YAML\n'
+	@printf '  make artists-enable-with-ids Enable YAML artists that have Spotify IDs\n'
 	@printf '  make artists-seed-db         Seed configured artists from YAML into SQLite\n'
 	@printf '  make artists-resolve-interactive  Pick Spotify IDs interactively\n'
 	@printf '  make artists-review-interactive   Review all artists, including existing Spotify IDs\n'
@@ -57,6 +58,12 @@ artists-validate:
 
 artists-import-groups:
 	go run $(CLI) artists import-groups $(GROUPS) $(CATALOG)
+
+artists-enable-with-ids:
+	go run $(CLI) artists enable-with-ids --catalog $(CATALOG)
+
+artists-enable-with-ids-dry-run:
+	go run $(CLI) artists enable-with-ids --catalog $(CATALOG) --dry-run
 
 artists-seed-db:
 	go run $(CLI) artists seed-db --catalog $(CATALOG) --db $(DB)
