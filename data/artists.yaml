@@ -21,6 +21,8 @@ artists:
   - slug: wu-tang-killa-beez
     name: Wu-Tang Killa Beez
     spotify_id: 6UEytD2shU7Z8fMKj08puK
+    spotify_ids:
+      - 6g1mStOYDxXonJEPqiU7xd
     category: affiliate_group
     roles:
       - affiliate_group

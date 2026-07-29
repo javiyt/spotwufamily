@@ -1135,7 +1135,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				printInteractiveMatches(stdout, matches, limit)
 			}
 			if len(artist.AllSpotifyIDs()) > 0 {
-				_, _ = fmt.Fprint(stdout, "select candidate number to replace primary, aN=add candidate as extra ID, repeat aN to add more, k=keep current, c=clear all IDs, s=skip, q=save and quit: ")
+				_, _ = fmt.Fprint(stdout, "select candidate number to replace primary, aN or aN,aM=add extra IDs, k=keep current, c=clear all IDs, s=skip, q=save and quit: ")
 			} else {
 				_, _ = fmt.Fprint(stdout, "select candidate number, s=skip, q=save and quit: ")
 			}
@@ -1169,6 +1169,25 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				return 0
 			}
 
+			if strings.Contains(choice, ",") {
+				additionalSelections, ok := parseAdditionalSelections(choice, limit)
+				if !ok {
+					_, _ = fmt.Fprintf(stdout, "invalid selection %q\n", choice)
+					if readErr == io.EOF {
+						skipped++
+						break
+					}
+					continue
+				}
+				for _, selected := range additionalSelections {
+					result := applyInteractiveCandidate(stdout, c, artist, matches[selected-1].Candidate, true, options.enableApplied)
+					if result.applied {
+						applied++
+					}
+				}
+				continue
+			}
+
 			additional := false
 			selectedChoice := choice
 			if strings.HasPrefix(choice, "a") && len(choice) > 1 {
@@ -1185,43 +1204,18 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				continue
 			}
 
-			candidate := matches[selected-1].Candidate
-			if candidate.SpotifyID == "" {
-				_, _ = fmt.Fprintln(stdout, "candidate has no Spotify ID; skipped")
-				if additional {
-					continue
-				}
-				skipped++
-				break
+			result := applyInteractiveCandidate(stdout, c, artist, matches[selected-1].Candidate, additional, options.enableApplied)
+			if result.applied {
+				applied++
 			}
-			if artist.HasSpotifyID(candidate.SpotifyID) {
-				_, _ = fmt.Fprintf(stdout, "Spotify ID already configured for %s\n", artist.Name)
-				if additional {
-					continue
-				}
-				kept++
-				break
-			}
-			if existing := spotifyIDOwner(c, candidate.SpotifyID, artist.Slug); existing != "" {
-				_, _ = fmt.Fprintf(stdout, "Spotify ID already belongs to %s; skipped\n", existing)
-				if additional {
-					continue
-				}
-				skipped++
-				break
-			}
-			if additional {
-				artist.SpotifyIDs = append(artist.SpotifyIDs, candidate.SpotifyID)
-				_, _ = fmt.Fprintf(stdout, "added extra Spotify ID: %s | %s\n", candidate.SpotifyID, spotifyArtistURL(candidate))
-			} else {
-				artist.SpotifyID = candidate.SpotifyID
-			}
-			if options.enableApplied {
-				artist.Enabled = true
-			}
-			applied++
 			if additional {
 				continue
+			}
+			if result.kept {
+				kept++
+			}
+			if result.skipped {
+				skipped++
 			}
 			break
 		}
@@ -1293,6 +1287,62 @@ func printInteractiveMatches(stdout io.Writer, matches []catalog.CandidateMatch,
 			candidate.Followers,
 		)
 	}
+}
+
+type interactiveCandidateResult struct {
+	applied bool
+	kept    bool
+	skipped bool
+}
+
+func applyInteractiveCandidate(stdout io.Writer, c catalog.EditorialCatalog, artist *catalog.Artist, candidate catalog.ArtistCandidate, additional, enableApplied bool) interactiveCandidateResult {
+	if candidate.SpotifyID == "" {
+		_, _ = fmt.Fprintln(stdout, "candidate has no Spotify ID; skipped")
+		return interactiveCandidateResult{skipped: true}
+	}
+	if artist.HasSpotifyID(candidate.SpotifyID) {
+		_, _ = fmt.Fprintf(stdout, "Spotify ID already configured for %s\n", artist.Name)
+		return interactiveCandidateResult{kept: true}
+	}
+	if existing := spotifyIDOwner(c, candidate.SpotifyID, artist.Slug); existing != "" {
+		_, _ = fmt.Fprintf(stdout, "Spotify ID already belongs to %s; skipped\n", existing)
+		return interactiveCandidateResult{skipped: true}
+	}
+	if additional {
+		artist.SpotifyIDs = append(artist.SpotifyIDs, candidate.SpotifyID)
+		_, _ = fmt.Fprintf(stdout, "added extra Spotify ID: %s | %s\n", candidate.SpotifyID, spotifyArtistURL(candidate))
+	} else {
+		artist.SpotifyID = candidate.SpotifyID
+	}
+	if enableApplied {
+		artist.Enabled = true
+	}
+	return interactiveCandidateResult{applied: true}
+}
+
+func parseAdditionalSelections(choice string, limit int) ([]int, bool) {
+	parts := strings.Split(choice, ",")
+	selected := make([]int, 0, len(parts))
+	seen := map[int]struct{}{}
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if !strings.HasPrefix(part, "a") || len(part) < 2 {
+			return nil, false
+		}
+		value, err := strconv.Atoi(strings.TrimPrefix(part, "a"))
+		if err != nil || value < 1 || value > limit {
+			return nil, false
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		selected = append(selected, value)
+	}
+	if len(selected) == 0 {
+		return nil, false
+	}
+	return selected, true
 }
 
 func filterCurrentArtistMatches(matches []catalog.CandidateMatch, artist catalog.Artist) []catalog.CandidateMatch {

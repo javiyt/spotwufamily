@@ -260,12 +260,11 @@ artists:
 		catalogPath,
 		"--candidates",
 		candidatesPath,
-	}, strings.NewReader("a1\na1\nk\n"), &stdout, &stderr)
+	}, strings.NewReader("a1,a2\nk\n"), &stdout, &stderr)
 
 	require.Equal(t, 0, code)
 	require.Empty(t, stderr.String())
-	require.Contains(t, stdout.String(), "aN=add candidate as extra ID")
-	require.Contains(t, stdout.String(), "repeat aN to add more")
+	require.Contains(t, stdout.String(), "aN or aN,aM=add extra IDs")
 	require.Contains(t, stdout.String(), "added extra Spotify ID: 0H8YCcvC3MPLKnbDRasGiG")
 	require.Contains(t, stdout.String(), "added extra Spotify ID: 1WuLegacySpotifyArtist")
 
@@ -322,6 +321,54 @@ artists:
 	require.Contains(t, stdout.String(), "- 6UEytD2shU7Z8fMKj08puK | https://open.spotify.com/artist/6UEytD2shU7Z8fMKj08puK | primary")
 	require.NotContains(t, stdout.String(), "1. Wu Tang Killa Beez | 6UEytD2shU7Z8fMKj08puK")
 	require.Contains(t, stdout.String(), "1. Eternal of Wu Tang Killa Beez | 5txM0FfDbF5hcAR5wRCt1Y")
+}
+
+func TestExecuteArtistsResolveInteractiveRejectsMixedCommaSelection(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	candidatesPath := filepath.Join(dir, "candidates.json")
+
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`
+version: 1
+artists:
+  - slug: wu-tang-clan
+    name: Wu-Tang Clan
+    spotify_id: "34EP7KEpOjXcM2TCat1ISk"
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+`), 0o644))
+	require.NoError(t, os.WriteFile(candidatesPath, []byte(`{
+  "wu-tang-clan": [
+    {"name": "Wu-Tang Clan", "spotify_id": "0H8YCcvC3MPLKnbDRasGiG", "popularity": 40, "followers": 500},
+    {"name": "Wu-Tang Clan Legacy", "spotify_id": "1WuLegacySpotifyArtist", "popularity": 20, "followers": 200}
+  ]
+}`), 0o644))
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := cli.ExecuteWithInput([]string{
+		"artists",
+		"resolve",
+		"--interactive",
+		"--review-all",
+		"--catalog",
+		catalogPath,
+		"--candidates",
+		candidatesPath,
+	}, strings.NewReader("a1,2\nk\n"), &stdout, &stderr)
+
+	require.Equal(t, 0, code)
+	require.Empty(t, stderr.String())
+	require.Contains(t, stdout.String(), `invalid selection "a1,2"`)
+
+	updated, err := os.ReadFile(catalogPath)
+	require.NoError(t, err)
+	require.NotContains(t, string(updated), "spotify_ids:")
 }
 
 func TestExecuteUnknownCommand(t *testing.T) {
