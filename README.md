@@ -93,6 +93,20 @@ Run:
 make artists-validate
 ```
 
+To discover possible new Wu Family entries from Wikipedia without changing the YAML:
+
+```bash
+make artists-discover-wu
+```
+
+Review `wu-discovery.md`, then apply newly discovered entries as disabled YAML artists:
+
+```bash
+make artists-discover-wu-apply
+```
+
+Discovery is intentionally conservative: it never removes artists, never enables artists and never assigns Spotify IDs. Follow it with Spotify resolution and interactive review.
+
 The non-interactive resolver uses Spotify when credentials are present. It also accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access:
 
 ```bash

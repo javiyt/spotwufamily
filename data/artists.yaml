@@ -301,6 +301,8 @@ artists:
   - slug: sunz-of-man
     name: Sunz of Man
     spotify_id: 5PtIZ9EIXAYnZKhBZZuRsA
+    spotify_ids:
+      - 2BLi7tO8z8oHfsy1Q3K9tb
     category: affiliate_group
     roles:
       - affiliate_group
@@ -311,6 +313,8 @@ artists:
   - slug: tha-beggas
     name: Tha Beggas
     spotify_id: 3KoWNgHihU3OzEuoouuycC
+    spotify_ids:
+      - 2DVZz7RkwtlLIxvruS7AYD
     category: affiliate_group
     roles:
       - affiliate_group
@@ -321,6 +325,8 @@ artists:
   - slug: theodore-unit
     name: Theodore Unit
     spotify_id: 3etQyCmhwVq3MCsOWAqgSq
+    spotify_ids:
+      - 5IWGIMFNr8cyIsHTOTKDR2
     category: affiliate_group
     roles:
       - affiliate_group
@@ -380,7 +386,7 @@ artists:
     notes: ""
   - slug: zu-ninjaz
     name: Zu Ninjaz
-    spotify_id: ""
+    spotify_id: 6WWD54LZfwes6Nl6IQQDL0
     category: affiliate_group
     roles:
       - affiliate_group
@@ -390,7 +396,7 @@ artists:
     notes: ""
   - slug: 9th-prince
     name: 9th Prince
-    spotify_id: ""
+    spotify_id: 68vZ1TKfHl8C1tMUfTooFc
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -400,7 +406,7 @@ artists:
     notes: ""
   - slug: 12-o-clock
     name: 12 O'Clock
-    spotify_id: ""
+    spotify_id: 45jICGqV9F6TTd6YF6kv3L
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -420,7 +426,7 @@ artists:
     notes: ""
   - slug: beretta-9
     name: Beretta 9
-    spotify_id: ""
+    spotify_id: 3TTUz7m8TuRU8yBcUbQTKI
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -430,7 +436,7 @@ artists:
     notes: ""
   - slug: bronze-nazareth
     name: Bronze Nazareth
-    spotify_id: ""
+    spotify_id: 4VhYUWpDsLraUG6Sd8g9TF
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -441,7 +447,7 @@ artists:
     notes: ""
   - slug: buddha-monk
     name: Buddha Monk
-    spotify_id: ""
+    spotify_id: 4QTIR7KM0trauXspUNduhh
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -451,7 +457,7 @@ artists:
     notes: ""
   - slug: cilvaringz
     name: Cilvaringz
-    spotify_id: ""
+    spotify_id: 2v8ABtQy5LkGqPbrwwKQcj
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -462,7 +468,7 @@ artists:
     notes: ""
   - slug: darkim-be-allah
     name: Darkim Be Allah
-    spotify_id: ""
+    spotify_id: 1kVxIOLoDQhladQfYBIOdd
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -482,7 +488,7 @@ artists:
     notes: ""
   - slug: dom-pachino
     name: Dom Pachino
-    spotify_id: ""
+    spotify_id: 7CRWPXETWBXqVw8rzEoGtn
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -492,7 +498,7 @@ artists:
     notes: ""
   - slug: don-staten
     name: Don Staten
-    spotify_id: 6ibKjQlrvEUbIggU7N1bUX
+    spotify_id: 49o2DS2tAQf2DMjkOtdv5J
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -515,6 +521,8 @@ artists:
   - slug: dreddy-krueger
     name: Dreddy Krueger
     spotify_id: 4DFFHbyOLhS79zbAX1T1M9
+    spotify_ids:
+      - 0Ljv2YoYC1aaFPbBlKvDwI
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -535,6 +543,8 @@ artists:
   - slug: free-murda
     name: Free Murda
     spotify_id: 7bcaPLwtiAQbJUcYYvHPlq
+    spotify_ids:
+      - 2n2CyLQNyTcScQCuqnqp81
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -554,7 +564,7 @@ artists:
     notes: ""
   - slug: hell-razah
     name: Hell Razah
-    spotify_id: ""
+    spotify_id: 59h4urZSPlBLaT0YharjOM
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -564,7 +574,7 @@ artists:
     notes: ""
   - slug: intell
     name: Intell
-    spotify_id: ""
+    spotify_id: 4jITyKWjSTPCdzK1iM5eaA
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -584,7 +594,7 @@ artists:
     notes: ""
   - slug: killah-priest
     name: Killah Priest
-    spotify_id: ""
+    spotify_id: 0JYmatsiEQMn2v5KchV8u2
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -594,7 +604,7 @@ artists:
     notes: ""
   - slug: killa-sin
     name: Killa Sin
-    spotify_id: ""
+    spotify_id: 67XIntxIqJFHkWpewJcrOb
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -604,7 +614,7 @@ artists:
     notes: ""
   - slug: krumbsnatcha
     name: Krumbsnatcha
-    spotify_id: ""
+    spotify_id: 4StWnbDC5LLdf3socfu0gx
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -614,7 +624,7 @@ artists:
     notes: ""
   - slug: la-the-darkman
     name: LA the Darkman
-    spotify_id: ""
+    spotify_id: 130JkW1WwUswzofZ2paOvs
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -625,7 +635,7 @@ artists:
     notes: ""
   - slug: lord-superb
     name: Lord Superb
-    spotify_id: ""
+    spotify_id: 5NZmO3Be6xZVNMZgxoxdtZ
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -635,7 +645,7 @@ artists:
     notes: ""
   - slug: lounge-lo
     name: Lounge Lo
-    spotify_id: ""
+    spotify_id: 3nksXkEKKByUQDyUB23ftO
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -665,7 +675,7 @@ artists:
     notes: ""
   - slug: prodigal-sunn
     name: Prodigal Sunn
-    spotify_id: ""
+    spotify_id: 3QnwfdgJNhOjR1i7jPBGi8
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -675,7 +685,7 @@ artists:
     notes: ""
   - slug: redman
     name: Redman
-    spotify_id: ""
+    spotify_id: 7xTKLpo7UCzXSnlH7fOIoM
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -686,7 +696,7 @@ artists:
     notes: ""
   - slug: remedy
     name: Remedy
-    spotify_id: ""
+    spotify_id: 0Z5hmVxMatrIWgNi989seP
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -696,7 +706,7 @@ artists:
     notes: ""
   - slug: sav-killz
     name: Sav Killz
-    spotify_id: ""
+    spotify_id: 3PIEghHoWzGDpdiWv84mVm
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -706,7 +716,7 @@ artists:
     notes: ""
   - slug: shabazz-the-disciple
     name: Shabazz the Disciple
-    spotify_id: ""
+    spotify_id: 4KdOlzgquyDPqR2Fi8EcnB
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -726,7 +736,7 @@ artists:
     notes: ""
   - slug: shyheim
     name: Shyheim
-    spotify_id: ""
+    spotify_id: 0rqb5s3Cxj0lGr6jTrWc0P
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -756,7 +766,7 @@ artists:
     notes: ""
   - slug: streetlife
     name: Streetlife
-    spotify_id: ""
+    spotify_id: 0FCYBhXjpfQIQWNKiVEDg5
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -776,7 +786,7 @@ artists:
     notes: ""
   - slug: timbo-king
     name: Timbo King
-    spotify_id: ""
+    spotify_id: 4b4EjCPu3Al1RBinELuIPJ
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -797,7 +807,7 @@ artists:
     notes: ""
   - slug: warcloud
     name: Warcloud
-    spotify_id: ""
+    spotify_id: 0ZL948orsY5yM2hlESNF6O
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -817,7 +827,7 @@ artists:
     notes: ""
   - slug: young-dirty-bastard
     name: Young Dirty Bastard
-    spotify_id: ""
+    spotify_id: 67XpRJysiiPNXzPe3RRicV
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -827,7 +837,7 @@ artists:
     notes: ""
   - slug: allah-real
     name: Allah Real
-    spotify_id: ""
+    spotify_id: 5dj7eEqnNGXnT3JppnyF7f
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -837,7 +847,7 @@ artists:
     notes: ""
   - slug: blue-raspberry
     name: Blue Raspberry
-    spotify_id: ""
+    spotify_id: 60FWCT8KxqA3J5Ny7g6ZXT
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -857,7 +867,7 @@ artists:
     notes: ""
   - slug: makeba-mooncycle
     name: Makeba Mooncycle
-    spotify_id: ""
+    spotify_id: 3oOqjHsHAnRNaHlSflwYpt
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -867,7 +877,7 @@ artists:
     notes: ""
   - slug: suga-bang-bang
     name: Suga Bang Bang
-    spotify_id: ""
+    spotify_id: 4Ri221vy0Nd7G9TNSmoh6e
     category: affiliate_artist
     roles:
       - affiliate_artist

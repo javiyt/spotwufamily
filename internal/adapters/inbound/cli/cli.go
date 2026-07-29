@@ -17,6 +17,7 @@ import (
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/musicbrainz"
 	spotifyadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/spotify"
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
+	"github.com/javiyt/spotwufamily/internal/adapters/outbound/wikipedia"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/catalogexport"
@@ -768,6 +769,8 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsImportGroups(ctx, args[1:], stdout, stderr, store)
 	case "enable-with-ids":
 		return executeArtistsEnableWithIDs(ctx, args[1:], stdout, stderr, store)
+	case "discover-wu":
+		return executeArtistsDiscoverWu(ctx, args[1:], stdout, stderr, store)
 	case "resolve":
 		return executeArtistsResolve(ctx, args[1:], stdin, stdout, stderr, store)
 	case "audit-albums":
@@ -857,6 +860,90 @@ func parseArtistsEnableWithIDsOptions(args []string) (artistsEnableWithIDsOption
 			options.dryRun = true
 		default:
 			return artistsEnableWithIDsOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	return options, nil
+}
+
+type artistsDiscoverWuOptions struct {
+	catalogPath     string
+	reportPath      string
+	wikipediaAPIURL string
+	wikipediaPage   string
+	apply           bool
+}
+
+func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists discover-wu [--catalog data/artists.yaml] [--report wu-discovery.md] [--apply] [--wikipedia-api-url URL] [--wikipedia-page TITLE]")
+		return 0
+	}
+
+	options, err := parseArtistsDiscoverWuOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists discover-wu: %v\n", err)
+		return 2
+	}
+
+	source := wikipedia.NewClient(wikipedia.Config{APIURL: options.wikipediaAPIURL, Page: options.wikipediaPage})
+	report, err := artists.NewDiscoverWuFamily(store, source).Run(ctx, artists.DiscoverWuFamilyOptions{
+		CatalogPath: options.catalogPath,
+		Apply:       options.apply,
+	})
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists discover-wu: %v\n", err)
+		return 1
+	}
+
+	markdown := artists.FormatDiscoverWuFamilyMarkdown(report)
+	if options.reportPath != "" {
+		if err := os.WriteFile(options.reportPath, markdown, 0o644); err != nil {
+			_, _ = fmt.Fprintf(stderr, "artists discover-wu: write report: %v\n", err)
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "wrote Wu Family discovery report: %s\n", options.reportPath)
+	}
+
+	mode := "reported"
+	if options.apply {
+		mode = "applied"
+	}
+	_, _ = fmt.Fprintf(stdout, "artists discover-wu %s: found=%d existing=%d new=%d added=%d catalog=%s\n", mode, report.Found, len(report.Existing), len(report.New), len(report.Added), options.catalogPath)
+	return 0
+}
+
+func parseArtistsDiscoverWuOptions(args []string) (artistsDiscoverWuOptions, error) {
+	options := artistsDiscoverWuOptions{catalogPath: defaultCatalogPath, reportPath: "wu-discovery.md"}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return artistsDiscoverWuOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+		case "--report":
+			i++
+			if i >= len(args) {
+				return artistsDiscoverWuOptions{}, fmt.Errorf("--report requires a value")
+			}
+			options.reportPath = args[i]
+		case "--wikipedia-api-url":
+			i++
+			if i >= len(args) {
+				return artistsDiscoverWuOptions{}, fmt.Errorf("--wikipedia-api-url requires a value")
+			}
+			options.wikipediaAPIURL = args[i]
+		case "--wikipedia-page":
+			i++
+			if i >= len(args) {
+				return artistsDiscoverWuOptions{}, fmt.Errorf("--wikipedia-page requires a value")
+			}
+			options.wikipediaPage = args[i]
+		case "--apply":
+			options.apply = true
+		default:
+			return artistsDiscoverWuOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
 	}
 	return options, nil
@@ -1675,6 +1762,7 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  artists import-groups")
 	_, _ = fmt.Fprintln(w, "  artists validate")
 	_, _ = fmt.Fprintln(w, "  artists enable-with-ids")
+	_, _ = fmt.Fprintln(w, "  artists discover-wu")
 	_, _ = fmt.Fprintln(w, "  artists resolve")
 	_, _ = fmt.Fprintln(w, "  artists seed-db")
 	_, _ = fmt.Fprintln(w, "  artists audit-albums")
@@ -1692,6 +1780,7 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  import-groups [groups-path] [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  enable-with-ids")
+	_, _ = fmt.Fprintln(w, "  discover-wu")
 	_, _ = fmt.Fprintln(w, "  resolve")
 	_, _ = fmt.Fprintln(w, "  seed-db")
 	_, _ = fmt.Fprintln(w, "  audit-albums")
