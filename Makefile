@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -23,6 +23,7 @@ help:
 	@printf '  make init-from-yaml          Validate YAML, prepare DB, export JSON, build site, audit\n'
 	@printf '  make refresh-from-spotify    Resolve strong IDs, sync one artist, snapshot/export/audit\n'
 	@printf '  make artists-resolve-apply   Apply strong Spotify ID matches to YAML\n'
+	@printf '  make artists-seed-db         Seed configured artists from YAML into SQLite\n'
 	@printf '  make artists-resolve-interactive  Pick Spotify IDs interactively\n'
 	@printf '  make artists-review-interactive   Review all artists, including existing Spotify IDs\n'
 	@printf '  make artists-resolve-offline Generate resolve report from local candidate fixture\n'
@@ -56,6 +57,9 @@ artists-validate:
 
 artists-import-groups:
 	go run $(CLI) artists import-groups $(GROUPS) $(CATALOG)
+
+artists-seed-db:
+	go run $(CLI) artists seed-db --catalog $(CATALOG) --db $(DB)
 
 artists-resolve-report:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --non-interactive --catalog $(CATALOG) --market $(MARKET) --report $(REPORT)
@@ -94,7 +98,7 @@ serve:
 	hugo server --source site --bind 127.0.0.1
 
 audit:
-	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --site-source $(SITE_SOURCE) --site-destination $(SITE_DESTINATION)
+	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --site-source $(SITE_SOURCE) --site-destination $(SITE_DESTINATION) --skip-git-diff
 
 audit-fast:
 	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --skip-site --skip-git-diff
@@ -114,8 +118,8 @@ db-rebuild:
 site-build:
 	go run $(CLI) site build --source $(SITE_SOURCE) --destination $(SITE_DESTINATION)
 
-init-from-yaml: artists-validate db-migrate db-snapshot db-verify export site-build audit
+init-from-yaml: artists-validate db-migrate artists-seed-db db-snapshot db-verify export site-build audit-fast
 
 refresh-from-spotify: artists-resolve-apply artists-validate sync-artist db-verify export audit
 
-ci: format artists-validate db-verify export site-build audit test lint build
+ci: format artists-validate db-verify export site-build audit-fast test lint build

@@ -9,6 +9,8 @@
 /build/
 /public/
 /site/public/
+site/data/generated/
+site/static/search-index.json
 .hugo_build.lock
 site/.hugo_build.lock
 

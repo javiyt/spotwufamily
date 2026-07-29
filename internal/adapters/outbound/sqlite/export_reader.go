@@ -358,8 +358,8 @@ func (d *Database) exportStats(ctx context.Context) (catalogexport.Stats, error)
 		target *int
 		sql    string
 	}{
-		{&stats.Artists, `SELECT COUNT(*) FROM configured_artists WHERE enabled = 1`},
-		{&stats.Groups, `SELECT COUNT(*) FROM configured_artists WHERE enabled = 1 AND category IN ('core', 'affiliate_group')`},
+		{&stats.Artists, `SELECT COUNT(*) FROM configured_artists WHERE active = 1`},
+		{&stats.Groups, `SELECT COUNT(*) FROM configured_artists WHERE active = 1 AND category IN ('core', 'affiliate_group')`},
 		{&stats.Albums, `SELECT COUNT(*) FROM albums WHERE active = 1`},
 		{&stats.Tracks, `SELECT COUNT(*) FROM tracks WHERE active = 1`},
 		{&stats.Appearances, `SELECT COUNT(*) FROM albums WHERE active = 1 AND album_type = 'appears_on'`},

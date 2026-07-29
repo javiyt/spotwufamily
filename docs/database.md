@@ -45,5 +45,6 @@ Export:
 - Reads the normalized SQLite schema.
 - Writes deterministic JSON to `site/data/generated`.
 - Writes a compact static search index to `site/static/search-index.json`.
+- Treats those JSON files as ignored build artifacts; CI and Pages regenerate them from SQLite.
 - Does not rewrite unchanged files.
 - Removes obsolete generated JSON files under the export directories.

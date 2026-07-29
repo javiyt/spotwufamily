@@ -770,6 +770,8 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsResolve(ctx, args[1:], stdin, stdout, stderr, store)
 	case "audit-albums":
 		return executeArtistsAuditAlbums(ctx, args[1:], stdout, stderr, store)
+	case "seed-db":
+		return executeArtistsSeedDB(ctx, args[1:], stdout, stderr, store)
 	case "help", "--help", "-h":
 		printArtistsHelp(stdout)
 		return 0
@@ -778,6 +780,80 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		printArtistsHelp(stderr)
 		return 2
 	}
+}
+
+type artistsSeedDBOptions struct {
+	catalogPath string
+	dbPath      string
+}
+
+func executeArtistsSeedDB(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists seed-db [--catalog data/artists.yaml] [--db data/catalog.db]")
+		return 0
+	}
+
+	options, err := parseArtistsSeedDBOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists seed-db: %v\n", err)
+		return 2
+	}
+
+	c, err := store.Load(ctx, options.catalogPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists seed-db: load artist catalog: %v\n", err)
+		return 1
+	}
+	if issues := catalog.ValidateEditorialCatalog(c); len(issues) > 0 {
+		_, _ = fmt.Fprintf(stderr, "artists seed-db: artist catalog is invalid: %s\n", issues[0].Error())
+		return 1
+	}
+
+	database, err := sqliteadapter.Open(options.dbPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists seed-db: %v\n", err)
+		return 1
+	}
+	defer func() { _ = database.Close() }()
+
+	if err := database.Migrate(ctx); err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists seed-db: migrate database: %v\n", err)
+		return 1
+	}
+	if err := database.SaveConfiguredArtists(ctx, c.Artists); err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists seed-db: save configured artists: %v\n", err)
+		return 1
+	}
+
+	spotifyIDs := 0
+	for _, artist := range c.Artists {
+		spotifyIDs += len(artist.AllSpotifyIDs())
+	}
+	_, _ = fmt.Fprintf(stdout, "seeded configured artists: artists=%d spotify_ids=%d db=%s\n", len(c.Artists), spotifyIDs, options.dbPath)
+	return 0
+}
+
+func parseArtistsSeedDBOptions(args []string) (artistsSeedDBOptions, error) {
+	options := artistsSeedDBOptions{catalogPath: defaultCatalogPath, dbPath: defaultDatabasePath}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return artistsSeedDBOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+		case "--db":
+			i++
+			if i >= len(args) {
+				return artistsSeedDBOptions{}, fmt.Errorf("--db requires a value")
+			}
+			options.dbPath = args[i]
+		default:
+			return artistsSeedDBOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	return options, nil
 }
 
 type artistAlbumAuditOptions struct {
@@ -1498,6 +1574,7 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  artists import-groups")
 	_, _ = fmt.Fprintln(w, "  artists validate")
 	_, _ = fmt.Fprintln(w, "  artists resolve")
+	_, _ = fmt.Fprintln(w, "  artists seed-db")
 	_, _ = fmt.Fprintln(w, "  artists audit-albums")
 	_, _ = fmt.Fprintln(w, "  sync")
 	_, _ = fmt.Fprintln(w, "  db migrate|verify|snapshot|rebuild")
@@ -1513,6 +1590,7 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  import-groups [groups-path] [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  resolve")
+	_, _ = fmt.Fprintln(w, "  seed-db")
 	_, _ = fmt.Fprintln(w, "  audit-albums")
 }
 

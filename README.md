@@ -33,7 +33,9 @@ make db-rebuild
 make ci
 ```
 
-`make init-from-yaml` is the local bootstrap path from `data/artists.yaml`: it validates the YAML, migrates/verifies SQLite, refreshes the snapshot, exports JSON, builds Hugo and runs the audit gate.
+`make init-from-yaml` is the local bootstrap path from `data/artists.yaml`: it validates the YAML, migrates SQLite, seeds configured artists and Spotify IDs into the database, refreshes the snapshot, exports JSON, builds Hugo and runs the audit gate. Album and track content still requires a Spotify sync.
+
+Generated site JSON under `site/data/generated` and `site/static/search-index.json` is not committed. Run `make export` locally when serving the site; the Pages workflow exports these files during deployment.
 
 Useful variables:
 
@@ -157,7 +159,7 @@ make db-verify
 
 ## Export
 
-`export` reads SQLite and writes deterministic JSON for Hugo:
+`export` reads SQLite and writes deterministic JSON for Hugo. These files are build artifacts and are ignored by Git:
 
 ```bash
 make export

@@ -6,6 +6,7 @@ on:
     paths:
       - "data/catalog.db"
       - "data/catalog.snapshot.sql"
+      - "data/artists.yaml"
       - "site/**"
       - "cmd/**"
       - "internal/**"
@@ -51,7 +52,6 @@ jobs:
         run: |
           go run ./cmd/spotwufamily db verify
           go run ./cmd/spotwufamily export
-          git diff --exit-code -- site/data/generated site/static/search-index.json
 
       - name: Build Hugo
         run: hugo --source site --destination public --minify

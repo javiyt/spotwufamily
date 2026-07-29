@@ -8,7 +8,7 @@ Run the full local audit before merging catalog or automation changes:
 make audit
 ```
 
-The audit validates `data/artists.yaml`, verifies `data/catalog.db`, checks that `data/catalog.snapshot.sql` is fresh, regenerates JSON exports, verifies generated artifacts, checks that generated files have no uncommitted diff and builds the Hugo site into `/tmp/spotwufamily-site`.
+The audit validates `data/artists.yaml`, verifies `data/catalog.db`, checks that `data/catalog.snapshot.sql` is fresh, regenerates ignored JSON exports, verifies generated artifacts and builds the Hugo site into `/tmp/spotwufamily-site`.
 
 For unit-test style runs without Hugo or Git checks:
 
@@ -24,7 +24,11 @@ Initialize the local project state from `data/artists.yaml`:
 make init-from-yaml
 ```
 
-This validates the YAML, migrates SQLite, writes a fresh logical snapshot, verifies the database, exports JSON, builds Hugo and runs the audit gate.
+This validates the YAML, migrates SQLite, seeds configured artists and Spotify IDs into the database, writes a fresh logical snapshot, verifies the database, exports JSON, builds Hugo and runs the audit gate.
+
+This bootstrap populates configured artists in SQLite and generated JSON. Album and track rows remain empty until a Spotify sync runs for enabled artists.
+
+Generated site JSON is ignored by Git. Run `make export` before local Hugo work if `site/data/generated` or `site/static/search-index.json` is missing. GitHub Pages runs the export step during deployment.
 
 ## Catalog Sync
 
