@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -34,6 +34,8 @@ help:
 	@printf '  make artists-resolve-offline Generate resolve report from local candidate fixture\n'
 	@printf '  make artists-audit-albums ARTIST=slug Compare Spotify albums with MusicBrainz\n'
 	@printf '  make sync-artist ARTIST=slug Sync one enabled artist from Spotify\n'
+	@printf '  make sync-all                 Sync every enabled artist from Spotify\n'
+	@printf '  make refresh-all-from-spotify Refresh metadata, sync all artists, export/build/audit\n'
 	@printf '  make ci                      Local CI gate\n'
 	@printf '\nVariables: CATALOG=%s DB=%s SNAPSHOT=%s ARTIST=%s MARKET=%s REPORT=%s ALBUM_REPORT=%s DISCOVERY_REPORT=%s\n' "$(CATALOG)" "$(DB)" "$(SNAPSHOT)" "$(ARTIST)" "$(MARKET)" "$(REPORT)" "$(ALBUM_REPORT)" "$(DISCOVERY_REPORT)"
 
@@ -111,6 +113,8 @@ artists-audit-albums:
 sync:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
 
+sync-all: sync
+
 sync-dry-run:
 	go run $(CLI) sync --dry-run --catalog $(CATALOG) --market $(MARKET)
 
@@ -150,5 +154,7 @@ site-build:
 init-from-yaml: artists-validate db-migrate artists-seed-db db-snapshot db-verify export site-build audit-fast
 
 refresh-from-spotify: artists-resolve-apply artists-validate sync-artist db-verify export audit
+
+refresh-all-from-spotify: artists-refresh-metadata artists-enable-with-ids artists-validate sync-all db-verify export site-build audit-fast
 
 ci: format artists-validate db-verify export site-build audit-fast test lint build

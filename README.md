@@ -170,6 +170,26 @@ Use real sync only after enabling reviewed artists:
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-artist ARTIST=wu-tang-clan
 ```
 
+To populate releases and tracks for one reviewed artist:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-artist ARTIST=cilvaringz
+make export
+```
+
+To populate releases and tracks for every enabled artist:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-all
+make export
+```
+
+For a full refresh from Spotify into the local site:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make refresh-all-from-spotify
+```
+
 ## Database
 
 `data/catalog.db` is the versioned SQLite catalog. `data/catalog.snapshot.sql` is the deterministic logical snapshot used for reviewable diffs and rebuild verification.
