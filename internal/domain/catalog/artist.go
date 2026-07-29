@@ -37,6 +37,7 @@ type Artist struct {
 	EditorialOrder int
 	Notes          string
 	ExternalURL    string
+	ImageURL       string
 	AddedAt        string
 }
 
@@ -260,6 +261,9 @@ func validateArtist(prefix string, artist Artist) []ValidationIssue {
 
 	if artist.ExternalURL != "" && !httpsURLPattern.MatchString(artist.ExternalURL) {
 		issues = append(issues, ValidationIssue{Field: prefix + ".external_url", Message: "must be an https URL"})
+	}
+	if artist.ImageURL != "" && !httpsURLPattern.MatchString(artist.ImageURL) {
+		issues = append(issues, ValidationIssue{Field: prefix + ".image_url", Message: "must be an https URL"})
 	}
 	if artist.AddedAt != "" {
 		if _, err := time.Parse(time.DateOnly, artist.AddedAt); err != nil {

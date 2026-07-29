@@ -983,9 +983,12 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 	if options.dryRun {
 		mode = "dry-run"
 	}
-	_, _ = fmt.Fprintf(stdout, "artists refresh-genres %s: artists_with_ids=%d updated=%d unchanged=%d without_genres=%d catalog=%s\n", mode, report.ArtistsWithIDs, report.Updated, report.Unchanged, len(report.WithoutGenres), options.catalogPath)
+	_, _ = fmt.Fprintf(stdout, "artists refresh-genres %s: artists_with_ids=%d updated=%d unchanged=%d without_genres=%d without_images=%d catalog=%s\n", mode, report.ArtistsWithIDs, report.Updated, report.Unchanged, len(report.WithoutGenres), len(report.WithoutImages), options.catalogPath)
 	if len(report.WithoutGenres) > 0 {
 		_, _ = fmt.Fprintf(stdout, "artists without Spotify genres: %s\n", strings.Join(report.WithoutGenres, ", "))
+	}
+	if len(report.WithoutImages) > 0 {
+		_, _ = fmt.Fprintf(stdout, "artists without Spotify images: %s\n", strings.Join(report.WithoutImages, ", "))
 	}
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: %v\n", err)

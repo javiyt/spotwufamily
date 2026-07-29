@@ -76,6 +76,13 @@ VALUES (?, ?, ?, ?)`,
 				return fmt.Errorf("upsert configured Spotify ID for %s: %w", artist.Slug, err)
 			}
 		}
+
+		if artist.SpotifyID != "" && artist.ImageURL != "" {
+			repository := syncRepository{tx: tx}
+			if _, err := repository.upsertImage(ctx, "artist", artist.SpotifyID, catalog.Image{URL: artist.ImageURL}, 0); err != nil {
+				return fmt.Errorf("upsert configured artist image for %s: %w", artist.Slug, err)
+			}
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

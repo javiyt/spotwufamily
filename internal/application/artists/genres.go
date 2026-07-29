@@ -32,6 +32,7 @@ type RefreshGenresReport struct {
 	Updated        int
 	Unchanged      int
 	WithoutGenres  []string
+	WithoutImages  []string
 	Errors         []RefreshGenresError
 }
 
@@ -57,6 +58,8 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 		report.ArtistsWithIDs++
 
 		genres := []string{}
+		externalURL := ""
+		imageURL := ""
 		for _, spotifyID := range ids {
 			spotifyArtist, err := r.fetcher.GetArtist(ctx, spotifyID)
 			if err != nil {
@@ -64,16 +67,27 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 				continue
 			}
 			genres = append(genres, spotifyArtist.Genres...)
+			if externalURL == "" {
+				externalURL = spotifyArtist.URL
+			}
+			if imageURL == "" {
+				imageURL = spotifyArtist.ImageURL
+			}
 		}
 		genres = normalizeGenreList(genres)
 		if len(genres) == 0 {
 			report.WithoutGenres = append(report.WithoutGenres, artist.Slug)
 		}
-		if equalStringSlices(artist.Genres, genres) {
+		if imageURL == "" {
+			report.WithoutImages = append(report.WithoutImages, artist.Slug)
+		}
+		if equalStringSlices(artist.Genres, genres) && artist.ExternalURL == externalURL && artist.ImageURL == imageURL {
 			report.Unchanged++
 			continue
 		}
 		artist.Genres = genres
+		artist.ExternalURL = externalURL
+		artist.ImageURL = imageURL
 		report.Updated++
 	}
 

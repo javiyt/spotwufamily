@@ -32,6 +32,7 @@ type artistRecord struct {
 	EditorialOrder int                `yaml:"editorial_order,omitempty"`
 	Notes          string             `yaml:"notes"`
 	ExternalURL    string             `yaml:"external_url,omitempty"`
+	ImageURL       string             `yaml:"image_url,omitempty"`
 	AddedAt        string             `yaml:"added_at,omitempty"`
 }
 
@@ -143,6 +144,7 @@ func (r artistRecord) toDomain() catalog.Artist {
 		EditorialOrder: r.EditorialOrder,
 		Notes:          r.Notes,
 		ExternalURL:    r.ExternalURL,
+		ImageURL:       r.ImageURL,
 		AddedAt:        r.AddedAt,
 	}
 }
@@ -172,6 +174,7 @@ func fromDomain(a catalog.Artist) artistRecord {
 		EditorialOrder: a.EditorialOrder,
 		Notes:          a.Notes,
 		ExternalURL:    a.ExternalURL,
+		ImageURL:       a.ImageURL,
 		AddedAt:        a.AddedAt,
 	}
 }

@@ -118,6 +118,9 @@ ORDER BY COALESCE(ca.editorial_order, 999999), ca.name`)
 		artist.Enabled = enabled == 1
 		artist.Aliases = aliases[artist.Slug]
 		artist.SpotifyIDs = spotifyIDs[artist.Slug]
+		if artist.SpotifyURL == "" && artist.SpotifyID != "" {
+			artist.SpotifyURL = spotifyArtistURL(artist.SpotifyID)
+		}
 		artists = append(artists, artist)
 	}
 	if err := rows.Err(); err != nil {
@@ -125,6 +128,13 @@ ORDER BY COALESCE(ca.editorial_order, 999999), ca.name`)
 	}
 
 	return artists, nil
+}
+
+func spotifyArtistURL(spotifyID string) string {
+	if spotifyID == "" {
+		return ""
+	}
+	return "https://open.spotify.com/artist/" + spotifyID
 }
 
 func (d *Database) configuredArtistSpotifyIDs(ctx context.Context) (map[string][]string, error) {

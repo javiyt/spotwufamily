@@ -24,6 +24,8 @@ artists:
     enabled: true
     editorial_order: 1
     notes: ""
+    external_url: https://open.spotify.com/artist/34EP7KEpOjXcM2TCat1ISk
+    image_url: https://i.scdn.co/image/ab6761610000e5ebe60866298962b71792b2bf1a
   - slug: wu-tang-killa-beez
     name: Wu-Tang Killa Beez
     spotify_id: 6UEytD2shU7Z8fMKj08puK
@@ -36,6 +38,8 @@ artists:
     enabled: true
     editorial_order: 2
     notes: ""
+    external_url: https://open.spotify.com/artist/6UEytD2shU7Z8fMKj08puK
+    image_url: https://i.scdn.co/image/ab67616d0000b273776fcf5336bdc742f59e4e3f
   - slug: 1-4-0-productions
     name: 1.4.0. Productions
     spotify_id: 4tceeg5s2WPnnJzQZwDCIZ
@@ -46,6 +50,7 @@ artists:
     enabled: true
     editorial_order: 3
     notes: ""
+    external_url: https://open.spotify.com/artist/4tceeg5s2WPnnJzQZwDCIZ
   - slug: a-i-g
     name: A.I.G.
     spotify_id: 4W91zWkx3syrUDACiK5Jxh
@@ -58,6 +63,8 @@ artists:
     enabled: true
     editorial_order: 4
     notes: ""
+    external_url: https://open.spotify.com/artist/4W91zWkx3syrUDACiK5Jxh
+    image_url: https://i.scdn.co/image/ab67616d0000b273264de14892a5c9e5d7829b9d
   - slug: achozen
     name: Achozen
     spotify_id: ""
@@ -80,6 +87,8 @@ artists:
     enabled: true
     editorial_order: 6
     notes: ""
+    external_url: https://open.spotify.com/artist/53kDI3KVrY4ZVj1yPLxy8U
+    image_url: https://i.scdn.co/image/ab6742d3000053b77161f466c556cf62d50873c2
   - slug: black-knights
     name: Black Knights
     spotify_id: 0AF5FJR5VgrhPw6qcLkEBA
@@ -90,6 +99,8 @@ artists:
     enabled: true
     editorial_order: 7
     notes: ""
+    external_url: https://open.spotify.com/artist/0AF5FJR5VgrhPw6qcLkEBA
+    image_url: https://i.scdn.co/image/ab67616d0000b273c8e73ce18d981f52f053cd6c
   - slug: hat-2-da-back-productions
     name: Hat 2 Da Back Productions
     spotify_id: ""
@@ -112,6 +123,8 @@ artists:
     enabled: true
     editorial_order: 9
     notes: ""
+    external_url: https://open.spotify.com/artist/3jcyrGTj2QAkZOjriBOr9a
+    image_url: https://i.scdn.co/image/ab67616d0000b273ebad209dedb4cf434b042ba8
   - slug: brooklyn-zu
     name: Brooklyn Zu
     spotify_id: ""
@@ -134,6 +147,7 @@ artists:
     enabled: true
     editorial_order: 11
     notes: ""
+    external_url: https://open.spotify.com/artist/0RhBRiD7TkjokNCJPw8yK1
   - slug: da-manchuz
     name: Da Manchuz
     spotify_id: 6QMm5lohv2eBZRmt7KDQbw
@@ -146,6 +160,8 @@ artists:
     enabled: true
     editorial_order: 12
     notes: ""
+    external_url: https://open.spotify.com/artist/6QMm5lohv2eBZRmt7KDQbw
+    image_url: https://i.scdn.co/image/ab67616d0000b273f508b63d8a89debfb36886b9
   - slug: deadly-venoms
     name: Deadly Venoms
     spotify_id: 65qelf3gvWxMQew3vIp5bS
@@ -158,6 +174,8 @@ artists:
     enabled: true
     editorial_order: 13
     notes: ""
+    external_url: https://open.spotify.com/artist/65qelf3gvWxMQew3vIp5bS
+    image_url: https://i.scdn.co/image/ab67616d0000b273fc93d720c7d7a8295589e1eb
   - slug: gp-wu
     name: GP Wu
     spotify_id: 7FTrXLdYYvZ9LYUBgDA6vu
@@ -168,6 +186,8 @@ artists:
     enabled: true
     editorial_order: 14
     notes: ""
+    external_url: https://open.spotify.com/artist/7FTrXLdYYvZ9LYUBgDA6vu
+    image_url: https://i.scdn.co/image/ab67616d0000b2730de02d68ba09d783a47a2379
   - slug: gravediggaz
     name: Gravediggaz
     spotify_id: 5NIhgQ08PBzMux08ndi8Ae
@@ -184,6 +204,8 @@ artists:
     enabled: true
     editorial_order: 15
     notes: ""
+    external_url: https://open.spotify.com/artist/5NIhgQ08PBzMux08ndi8Ae
+    image_url: https://i.scdn.co/image/11c9c61bee6e89768d831dec5d4b58ebae1a9d05
   - slug: harlem-6
     name: Harlem 6
     spotify_id: 35LzkvRooyAAgLaY8zkuz0
@@ -194,6 +216,8 @@ artists:
     enabled: true
     editorial_order: 16
     notes: ""
+    external_url: https://open.spotify.com/artist/35LzkvRooyAAgLaY8zkuz0
+    image_url: https://i.scdn.co/image/ab6761610000e5eb30036fe4fcb5e28e9d85986d
   - slug: hillside-scramblers
     name: Hillside Scramblers
     spotify_id: 4b1oxfH1Zbcjh9CpV9zqZr
@@ -204,6 +228,7 @@ artists:
     enabled: true
     editorial_order: 17
     notes: ""
+    external_url: https://open.spotify.com/artist/4b1oxfH1Zbcjh9CpV9zqZr
   - slug: house-gang
     name: House Gang
     spotify_id: ""
@@ -247,6 +272,8 @@ artists:
     enabled: true
     editorial_order: 21
     notes: ""
+    external_url: https://open.spotify.com/artist/5wwleY8YnxnutxOExPVoJb
+    image_url: https://i.scdn.co/image/ab6761610000e5ebfd0eca23ac1a8532b222aabc
   - slug: maccabeez
     name: Maccabeez
     spotify_id: ""
@@ -267,6 +294,7 @@ artists:
     enabled: true
     editorial_order: 23
     notes: ""
+    external_url: https://open.spotify.com/artist/2hOq10IeawxqftIahsIITz
   - slug: northstar
     name: Northstar
     spotify_id: 1WOFD00y6IbUDRlMPHgVVZ
@@ -277,6 +305,8 @@ artists:
     enabled: true
     editorial_order: 24
     notes: ""
+    external_url: https://open.spotify.com/artist/1WOFD00y6IbUDRlMPHgVVZ
+    image_url: https://i.scdn.co/image/ab6761610000e5eb78c93d346eb9c63fba2b1765
   - slug: orphanage
     name: Orphanage
     spotify_id: 1yFECWZ2weONlh8oovXaI8
@@ -294,6 +324,8 @@ artists:
     enabled: true
     editorial_order: 25
     notes: ""
+    external_url: https://open.spotify.com/artist/1yFECWZ2weONlh8oovXaI8
+    image_url: https://i.scdn.co/image/ab67616d0000b273eebc75047c2a4a5071509397
   - slug: royal-fam
     name: Royal Fam
     spotify_id: 1G47XK3qlBueKLQXz4dSVM
@@ -304,6 +336,8 @@ artists:
     enabled: true
     editorial_order: 26
     notes: ""
+    external_url: https://open.spotify.com/artist/1G47XK3qlBueKLQXz4dSVM
+    image_url: https://i.scdn.co/image/ab67616d0000b2735189be0d9c721a30fa1f973d
   - slug: school-of-the-gifted
     name: School of the Gifted
     spotify_id: 3amOMus2rGDPRrdH968jGL
@@ -314,6 +348,8 @@ artists:
     enabled: true
     editorial_order: 27
     notes: ""
+    external_url: https://open.spotify.com/artist/3amOMus2rGDPRrdH968jGL
+    image_url: https://i.scdn.co/image/ab6761610000e5ebd59d2a0d7823ba7024cba3d6
   - slug: stone-mecca
     name: Stone Mecca
     spotify_id: 1TGwUWwVcKAYoXSuXVZUxt
@@ -324,6 +360,8 @@ artists:
     enabled: true
     editorial_order: 28
     notes: ""
+    external_url: https://open.spotify.com/artist/1TGwUWwVcKAYoXSuXVZUxt
+    image_url: https://i.scdn.co/image/ab6761610000e5eb8dd69dc9de4a9c87b6b6a77f
   - slug: sunz-of-man
     name: Sunz of Man
     spotify_id: 5PtIZ9EIXAYnZKhBZZuRsA
@@ -339,6 +377,8 @@ artists:
     enabled: true
     editorial_order: 29
     notes: ""
+    external_url: https://open.spotify.com/artist/5PtIZ9EIXAYnZKhBZZuRsA
+    image_url: https://i.scdn.co/image/ab67616d0000b2736d1edba4a223845ea86616ab
   - slug: tha-beggas
     name: Tha Beggas
     spotify_id: 3KoWNgHihU3OzEuoouuycC
@@ -351,6 +391,8 @@ artists:
     enabled: true
     editorial_order: 30
     notes: ""
+    external_url: https://open.spotify.com/artist/3KoWNgHihU3OzEuoouuycC
+    image_url: https://i.scdn.co/image/ab67616d0000b27347375f55881b37edac2c295d
   - slug: theodore-unit
     name: Theodore Unit
     spotify_id: 3etQyCmhwVq3MCsOWAqgSq
@@ -363,6 +405,8 @@ artists:
     enabled: true
     editorial_order: 31
     notes: ""
+    external_url: https://open.spotify.com/artist/3etQyCmhwVq3MCsOWAqgSq
+    image_url: https://i.scdn.co/image/ab67616d0000b2735c2eecd6bd37d5bb5b5bbaae
   - slug: t-m-f
     name: T.M.F.
     spotify_id: 2CjKVGzo9RfscIwGAt0FfN
@@ -373,6 +417,7 @@ artists:
     enabled: true
     editorial_order: 32
     notes: ""
+    external_url: https://open.spotify.com/artist/2CjKVGzo9RfscIwGAt0FfN
   - slug: two-on-da-road
     name: Two On Da Road
     spotify_id: ""
@@ -393,6 +438,8 @@ artists:
     enabled: true
     editorial_order: 34
     notes: ""
+    external_url: https://open.spotify.com/artist/0YyxZ6HTVgyBvJW3RPzUZF
+    image_url: https://i.scdn.co/image/ab6761610000e5eba2c0f80636f17ab3da70b1c9
   - slug: wu-syndicate
     name: Wu-Syndicate
     spotify_id: 7Kiy2CEjPnhXePyLiBoscc
@@ -406,6 +453,8 @@ artists:
     enabled: true
     editorial_order: 35
     notes: ""
+    external_url: https://open.spotify.com/artist/7Kiy2CEjPnhXePyLiBoscc
+    image_url: https://i.scdn.co/image/ab67616d0000b273157f0b77912b4bbff540318c
   - slug: yellow-jacketz
     name: Yellow Jacketz
     spotify_id: 4h45LoknPVdea6ePNiia1K
@@ -418,6 +467,8 @@ artists:
     enabled: true
     editorial_order: 36
     notes: ""
+    external_url: https://open.spotify.com/artist/4h45LoknPVdea6ePNiia1K
+    image_url: https://i.scdn.co/image/ab67616d0000b273eda5d81fcc0962457a76dee9
   - slug: zu-ninjaz
     name: Zu Ninjaz
     spotify_id: 6WWD54LZfwes6Nl6IQQDL0
@@ -428,6 +479,8 @@ artists:
     enabled: true
     editorial_order: 37
     notes: ""
+    external_url: https://open.spotify.com/artist/6WWD54LZfwes6Nl6IQQDL0
+    image_url: https://i.scdn.co/image/ab67616d0000b273eda23bbcf0f491fdea93bd7c
   - slug: 9th-prince
     name: 9th Prince
     spotify_id: 68vZ1TKfHl8C1tMUfTooFc
@@ -438,6 +491,8 @@ artists:
     enabled: true
     editorial_order: 38
     notes: ""
+    external_url: https://open.spotify.com/artist/68vZ1TKfHl8C1tMUfTooFc
+    image_url: https://i.scdn.co/image/ab6761610000e5eb95d59067588f714004054e93
   - slug: 12-o-clock
     name: 12 O'Clock
     spotify_id: 45jICGqV9F6TTd6YF6kv3L
@@ -448,6 +503,7 @@ artists:
     enabled: true
     editorial_order: 39
     notes: ""
+    external_url: https://open.spotify.com/artist/45jICGqV9F6TTd6YF6kv3L
   - slug: armel
     name: Armel
     spotify_id: ""
@@ -468,6 +524,7 @@ artists:
     enabled: true
     editorial_order: 41
     notes: ""
+    external_url: https://open.spotify.com/artist/3TTUz7m8TuRU8yBcUbQTKI
   - slug: bronze-nazareth
     name: Bronze Nazareth
     spotify_id: 4VhYUWpDsLraUG6Sd8g9TF
@@ -481,6 +538,8 @@ artists:
     enabled: true
     editorial_order: 42
     notes: ""
+    external_url: https://open.spotify.com/artist/4VhYUWpDsLraUG6Sd8g9TF
+    image_url: https://i.scdn.co/image/ab6761610000e5eb89ba8bce4767f9e486d8b6bc
   - slug: buddha-monk
     name: Buddha Monk
     spotify_id: 4QTIR7KM0trauXspUNduhh
@@ -494,6 +553,8 @@ artists:
     enabled: true
     editorial_order: 43
     notes: ""
+    external_url: https://open.spotify.com/artist/4QTIR7KM0trauXspUNduhh
+    image_url: https://i.scdn.co/image/ab67616d0000b2730396f4a47d643c04f386c987
   - slug: cilvaringz
     name: Cilvaringz
     spotify_id: 2v8ABtQy5LkGqPbrwwKQcj
@@ -507,6 +568,8 @@ artists:
     enabled: true
     editorial_order: 44
     notes: ""
+    external_url: https://open.spotify.com/artist/2v8ABtQy5LkGqPbrwwKQcj
+    image_url: https://i.scdn.co/image/ab6761610000e5eb013ff2b76a9c6ff0e727a1df
   - slug: darkim-be-allah
     name: Darkim Be Allah
     spotify_id: 1kVxIOLoDQhladQfYBIOdd
@@ -519,6 +582,8 @@ artists:
     enabled: true
     editorial_order: 45
     notes: ""
+    external_url: https://open.spotify.com/artist/1kVxIOLoDQhladQfYBIOdd
+    image_url: https://i.scdn.co/image/ab6761610000e5eb9947b3ba599cb11dce3a6427
   - slug: dj-ace-nyc
     name: DJ ACE NYC
     spotify_id: 3NggH17RWRTlazacK3wG0o
@@ -529,6 +594,8 @@ artists:
     enabled: true
     editorial_order: 46
     notes: ""
+    external_url: https://open.spotify.com/artist/3NggH17RWRTlazacK3wG0o
+    image_url: https://i.scdn.co/image/ab6761610000e5ebae3079d52a12a60405813bae
   - slug: dom-pachino
     name: Dom Pachino
     spotify_id: 7CRWPXETWBXqVw8rzEoGtn
@@ -541,6 +608,8 @@ artists:
     enabled: true
     editorial_order: 47
     notes: ""
+    external_url: https://open.spotify.com/artist/7CRWPXETWBXqVw8rzEoGtn
+    image_url: https://i.scdn.co/image/ab67616d0000b273a31041c86803171f6d98914c
   - slug: don-staten
     name: Don Staten
     spotify_id: 49o2DS2tAQf2DMjkOtdv5J
@@ -551,6 +620,8 @@ artists:
     enabled: true
     editorial_order: 48
     notes: ""
+    external_url: https://open.spotify.com/artist/49o2DS2tAQf2DMjkOtdv5J
+    image_url: https://i.scdn.co/image/ab67616d0000b273a8843d7b06b0f916b21595aa
   - slug: dr-ama-aka-dark-skinned-assassin
     name: Dr. Ama Aka Dark Skinned Assassin
     spotify_id: ""
@@ -577,6 +648,7 @@ artists:
     enabled: true
     editorial_order: 50
     notes: ""
+    external_url: https://open.spotify.com/artist/4DFFHbyOLhS79zbAX1T1M9
   - slug: dungeon-masta
     name: Dungeon Masta
     spotify_id: ""
@@ -601,6 +673,8 @@ artists:
     enabled: true
     editorial_order: 52
     notes: ""
+    external_url: https://open.spotify.com/artist/7bcaPLwtiAQbJUcYYvHPlq
+    image_url: https://i.scdn.co/image/ab67616d0000b2734eca4e8444cc45dded91a747
   - slug: hanz-on
     name: Hanz On
     spotify_id: 7ifoWUchkVgZUnNy6PTl4D
@@ -611,6 +685,8 @@ artists:
     enabled: true
     editorial_order: 53
     notes: ""
+    external_url: https://open.spotify.com/artist/7ifoWUchkVgZUnNy6PTl4D
+    image_url: https://i.scdn.co/image/ab67616d0000b273621ebfb0e7c496115cf959d6
   - slug: hell-razah
     name: Hell Razah
     spotify_id: 59h4urZSPlBLaT0YharjOM
@@ -624,6 +700,8 @@ artists:
     enabled: true
     editorial_order: 54
     notes: ""
+    external_url: https://open.spotify.com/artist/59h4urZSPlBLaT0YharjOM
+    image_url: https://i.scdn.co/image/ab6761610000e5eb6a7ca61e271800d2fdb92e16
   - slug: intell
     name: Intell
     spotify_id: 4jITyKWjSTPCdzK1iM5eaA
@@ -636,6 +714,8 @@ artists:
     enabled: true
     editorial_order: 55
     notes: ""
+    external_url: https://open.spotify.com/artist/4jITyKWjSTPCdzK1iM5eaA
+    image_url: https://i.scdn.co/image/ab6761610000e5ebe9cee557e792d5dc47070eb0
   - slug: islord
     name: Islord
     spotify_id: ""
@@ -659,6 +739,8 @@ artists:
     enabled: true
     editorial_order: 57
     notes: ""
+    external_url: https://open.spotify.com/artist/0JYmatsiEQMn2v5KchV8u2
+    image_url: https://i.scdn.co/image/8b92e8deb3dd5a68f86f31b2ff8738b4afcde682
   - slug: killa-sin
     name: Killa Sin
     spotify_id: 67XIntxIqJFHkWpewJcrOb
@@ -671,6 +753,7 @@ artists:
     enabled: true
     editorial_order: 58
     notes: ""
+    external_url: https://open.spotify.com/artist/67XIntxIqJFHkWpewJcrOb
   - slug: krumbsnatcha
     name: Krumbsnatcha
     spotify_id: 4StWnbDC5LLdf3socfu0gx
@@ -685,6 +768,8 @@ artists:
     enabled: true
     editorial_order: 59
     notes: ""
+    external_url: https://open.spotify.com/artist/4StWnbDC5LLdf3socfu0gx
+    image_url: https://i.scdn.co/image/ab6761610000e5eba19eeef053acb46190e7246f
   - slug: la-the-darkman
     name: LA the Darkman
     spotify_id: 130JkW1WwUswzofZ2paOvs
@@ -699,6 +784,8 @@ artists:
     enabled: true
     editorial_order: 60
     notes: ""
+    external_url: https://open.spotify.com/artist/130JkW1WwUswzofZ2paOvs
+    image_url: https://i.scdn.co/image/ab67616d0000b2736bde7ac185a28defcdfebf9d
   - slug: lord-superb
     name: Lord Superb
     spotify_id: 5NZmO3Be6xZVNMZgxoxdtZ
@@ -709,6 +796,8 @@ artists:
     enabled: true
     editorial_order: 61
     notes: ""
+    external_url: https://open.spotify.com/artist/5NZmO3Be6xZVNMZgxoxdtZ
+    image_url: https://i.scdn.co/image/ab67616d0000b2738ce90a971cfffd49573c68cc
   - slug: lounge-lo
     name: Lounge Lo
     spotify_id: 3nksXkEKKByUQDyUB23ftO
@@ -719,6 +808,7 @@ artists:
     enabled: true
     editorial_order: 62
     notes: ""
+    external_url: https://open.spotify.com/artist/3nksXkEKKByUQDyUB23ftO
   - slug: piro
     name: PiRo
     spotify_id: 06jtqet6GMetHMxOznw0zK
@@ -729,6 +819,8 @@ artists:
     enabled: true
     editorial_order: 63
     notes: ""
+    external_url: https://open.spotify.com/artist/06jtqet6GMetHMxOznw0zK
+    image_url: https://i.scdn.co/image/ab6761610000e5eb83bf648399edbfeefc1f2464
   - slug: popa-wu
     name: Popa Wu
     spotify_id: ""
@@ -749,6 +841,8 @@ artists:
     enabled: true
     editorial_order: 65
     notes: ""
+    external_url: https://open.spotify.com/artist/3QnwfdgJNhOjR1i7jPBGi8
+    image_url: https://i.scdn.co/image/ab6761610000e5ebd2b1cfba97a6d95de1c0cb5a
   - slug: redman
     name: Redman
     spotify_id: 7xTKLpo7UCzXSnlH7fOIoM
@@ -765,6 +859,8 @@ artists:
     enabled: true
     editorial_order: 66
     notes: ""
+    external_url: https://open.spotify.com/artist/7xTKLpo7UCzXSnlH7fOIoM
+    image_url: https://i.scdn.co/image/ab6761610000e5ebb3abe39a345181d9ec8f985f
   - slug: remedy
     name: Remedy
     spotify_id: 0Z5hmVxMatrIWgNi989seP
@@ -777,6 +873,8 @@ artists:
     enabled: true
     editorial_order: 67
     notes: ""
+    external_url: https://open.spotify.com/artist/0Z5hmVxMatrIWgNi989seP
+    image_url: https://i.scdn.co/image/ab6761610000e5eb00efe4cff1bb6bdac31f177c
   - slug: sav-killz
     name: Sav Killz
     spotify_id: 3PIEghHoWzGDpdiWv84mVm
@@ -789,6 +887,8 @@ artists:
     enabled: true
     editorial_order: 68
     notes: ""
+    external_url: https://open.spotify.com/artist/3PIEghHoWzGDpdiWv84mVm
+    image_url: https://i.scdn.co/image/ab67616d0000b273e50cd94cd0b22ab6451bc04b
   - slug: shabazz-the-disciple
     name: Shabazz the Disciple
     spotify_id: 4KdOlzgquyDPqR2Fi8EcnB
@@ -801,6 +901,8 @@ artists:
     enabled: true
     editorial_order: 69
     notes: ""
+    external_url: https://open.spotify.com/artist/4KdOlzgquyDPqR2Fi8EcnB
+    image_url: https://i.scdn.co/image/ab67616d0000b27305c6586ffbbd96b23b31e02a
   - slug: shaka-amazulu-the-7th
     name: Shaka Amazulu the 7th
     spotify_id: 7rDn5lYbCFDYLL6ZirkSuR
@@ -813,6 +915,8 @@ artists:
     enabled: true
     editorial_order: 70
     notes: ""
+    external_url: https://open.spotify.com/artist/7rDn5lYbCFDYLL6ZirkSuR
+    image_url: https://i.scdn.co/image/ab6761610000e5eb0fb6148a2a9e3984ed2a6714
   - slug: shyheim
     name: Shyheim
     spotify_id: 0rqb5s3Cxj0lGr6jTrWc0P
@@ -828,6 +932,8 @@ artists:
     enabled: true
     editorial_order: 71
     notes: ""
+    external_url: https://open.spotify.com/artist/0rqb5s3Cxj0lGr6jTrWc0P
+    image_url: https://i.scdn.co/image/ab6761610000e5eb41366dc920db7e66fd5361fb
   - slug: silkski
     name: Silkski
     spotify_id: 5CWrorrSfRWfz0dYT4bLHu
@@ -838,6 +944,8 @@ artists:
     enabled: true
     editorial_order: 72
     notes: ""
+    external_url: https://open.spotify.com/artist/5CWrorrSfRWfz0dYT4bLHu
+    image_url: https://i.scdn.co/image/ab67616d0000b273786ca892971448a1111b5dc0
   - slug: solomon-childs
     name: Solomon Childs
     spotify_id: ""
@@ -861,6 +969,8 @@ artists:
     enabled: true
     editorial_order: 74
     notes: ""
+    external_url: https://open.spotify.com/artist/0FCYBhXjpfQIQWNKiVEDg5
+    image_url: https://i.scdn.co/image/ab67616d0000b273e5d4f3b2f0641a51d48c114a
   - slug: sun-god
     name: Sun God
     spotify_id: ""
@@ -881,6 +991,8 @@ artists:
     enabled: true
     editorial_order: 76
     notes: ""
+    external_url: https://open.spotify.com/artist/4b4EjCPu3Al1RBinELuIPJ
+    image_url: https://i.scdn.co/image/ab6761610000e5ebb41057e98ab4ecf7052b0cd7
   - slug: truvillain
     name: TrūVillain
     spotify_id: ""
@@ -905,6 +1017,8 @@ artists:
     enabled: true
     editorial_order: 78
     notes: ""
+    external_url: https://open.spotify.com/artist/0ZL948orsY5yM2hlESNF6O
+    image_url: https://i.scdn.co/image/ab67616d0000b273b3e40941f62881b981ffd9cc
   - slug: young-justice
     name: Young Justice
     spotify_id: ""
@@ -925,6 +1039,8 @@ artists:
     enabled: true
     editorial_order: 80
     notes: ""
+    external_url: https://open.spotify.com/artist/67XpRJysiiPNXzPe3RRicV
+    image_url: https://i.scdn.co/image/ab6761610000e5ebad73c4eb6c4bc116bdfc5c49
   - slug: allah-real
     name: Allah Real
     spotify_id: 5dj7eEqnNGXnT3JppnyF7f
@@ -935,6 +1051,7 @@ artists:
     enabled: true
     editorial_order: 81
     notes: ""
+    external_url: https://open.spotify.com/artist/5dj7eEqnNGXnT3JppnyF7f
   - slug: blue-raspberry
     name: Blue Raspberry
     spotify_id: 60FWCT8KxqA3J5Ny7g6ZXT
@@ -945,6 +1062,8 @@ artists:
     enabled: true
     editorial_order: 82
     notes: ""
+    external_url: https://open.spotify.com/artist/60FWCT8KxqA3J5Ny7g6ZXT
+    image_url: https://i.scdn.co/image/ab67616d0000b273e145b7f38f3a9e4240dcf137
   - slug: jamie-sommers
     name: Jamie Sommers
     spotify_id: ""
@@ -965,6 +1084,7 @@ artists:
     enabled: true
     editorial_order: 84
     notes: ""
+    external_url: https://open.spotify.com/artist/3oOqjHsHAnRNaHlSflwYpt
   - slug: suga-bang-bang
     name: Suga Bang Bang
     spotify_id: 4Ri221vy0Nd7G9TNSmoh6e
@@ -975,6 +1095,8 @@ artists:
     enabled: true
     editorial_order: 85
     notes: ""
+    external_url: https://open.spotify.com/artist/4Ri221vy0Nd7G9TNSmoh6e
+    image_url: https://i.scdn.co/image/ab67616d0000b273e81b60e6e48065794f7569e1
   - slug: tash-mahogany
     name: Tash Mahogany
     spotify_id: 0BcokUkzsWLNntN2QCSsYw
@@ -985,6 +1107,7 @@ artists:
     enabled: true
     editorial_order: 86
     notes: ""
+    external_url: https://open.spotify.com/artist/0BcokUkzsWLNntN2QCSsYw
   - slug: tekitha
     name: Tekitha
     spotify_id: ""
@@ -1007,6 +1130,8 @@ artists:
     enabled: true
     editorial_order: 88
     notes: ""
+    external_url: https://open.spotify.com/artist/2tpSqPZjUTXghpgDsQDi9I
+    image_url: https://i.scdn.co/image/ab6761610000e5eb0132e94938a5530ca99c9da4
   - slug: arabian-knight
     name: Arabian Knight
     spotify_id: ""
@@ -1039,6 +1164,8 @@ artists:
     enabled: true
     editorial_order: 91
     notes: ""
+    external_url: https://open.spotify.com/artist/6T7ap0aCwj4aJVj3bJ0EWh
+    image_url: https://i.scdn.co/image/ab67616d0000b273564bc0f6cde071300da2341b
   - slug: popsoundz
     name: Popsoundz
     spotify_id: 7iE9hHrF1NaG70SKjYM9oP
@@ -1049,6 +1176,7 @@ artists:
     enabled: true
     editorial_order: 92
     notes: ""
+    external_url: https://open.spotify.com/artist/7iE9hHrF1NaG70SKjYM9oP
   - slug: rns
     name: RNS
     spotify_id: ""
@@ -1081,6 +1209,8 @@ artists:
     enabled: true
     editorial_order: 95
     notes: ""
+    external_url: https://open.spotify.com/artist/41gTa5cSf7Zg5eErVb0aOS
+    image_url: https://i.scdn.co/image/ab6761610000e5eba972eeaaea1ed43bbf5534a5
   - slug: y-kim-the-illfigure
     name: Y-Kim the Illfigure
     spotify_id: ""
@@ -1105,6 +1235,8 @@ artists:
     enabled: true
     editorial_order: 97
     notes: ""
+    external_url: https://open.spotify.com/artist/20qISvAhX20dpIbOOzGK3q
+    image_url: https://i.scdn.co/image/ab6761610000e5eb153198caeef9e3bda92f9285
   - slug: mobb-deep
     name: Mobb Deep
     spotify_id: 6O2zJ0tId7g07yzHtX0yap
@@ -1121,6 +1253,8 @@ artists:
     enabled: true
     editorial_order: 98
     notes: ""
+    external_url: https://open.spotify.com/artist/6O2zJ0tId7g07yzHtX0yap
+    image_url: https://i.scdn.co/image/ab6761610000e5ebf85a8db4c66d84f796d2afe5
   - slug: the-l-o-x
     name: The L.O.X.
     spotify_id: 0A7g2YbCA9FlyZvAG6VmKP
@@ -1137,6 +1271,8 @@ artists:
     enabled: true
     editorial_order: 99
     notes: ""
+    external_url: https://open.spotify.com/artist/0A7g2YbCA9FlyZvAG6VmKP
+    image_url: https://i.scdn.co/image/ab6761610000e5ebdeaecca1879726b131fd71c9
   - slug: az
     name: AZ
     spotify_id: ""
@@ -1159,6 +1295,8 @@ artists:
     enabled: true
     editorial_order: 101
     notes: ""
+    external_url: https://open.spotify.com/artist/1YfEcTuGvBQ8xSD1f53UnK
+    image_url: https://i.scdn.co/image/ab6761610000e5eb7b31aba081ef084510cde4e3
   - slug: kool-g-rap
     name: Kool G Rap
     spotify_id: 099tLNCZZvtjC7myKD0mFp
@@ -1175,6 +1313,8 @@ artists:
     enabled: true
     editorial_order: 102
     notes: ""
+    external_url: https://open.spotify.com/artist/099tLNCZZvtjC7myKD0mFp
+    image_url: https://i.scdn.co/image/fd61510dc68309087e06154abf9b097a454e3ce1
   - slug: mf-doom
     name: MF DOOM
     spotify_id: ""
@@ -1209,6 +1349,8 @@ artists:
     enabled: true
     editorial_order: 105
     notes: ""
+    external_url: https://open.spotify.com/artist/3BeQqzKdlARoOd6y30kCO2
+    image_url: https://i.scdn.co/image/ab6761610000e5ebeec4209972c20ba63730bb00
   - slug: kanye-west
     name: Kanye West
     spotify_id: 5K4W6rqBFWDnAN6FQUkS6x
@@ -1221,6 +1363,8 @@ artists:
     enabled: true
     editorial_order: 106
     notes: ""
+    external_url: https://open.spotify.com/artist/5K4W6rqBFWDnAN6FQUkS6x
+    image_url: https://i.scdn.co/image/ab6761610000e5eb6e835a500e791bf9c27a422a
   - slug: dj-muggs
     name: DJ Muggs
     spotify_id: 7pDkjftAxiFHomWsPNkapS
@@ -1235,6 +1379,8 @@ artists:
     enabled: true
     editorial_order: 107
     notes: ""
+    external_url: https://open.spotify.com/artist/7pDkjftAxiFHomWsPNkapS
+    image_url: https://i.scdn.co/image/ab6761610000e5eb6bef2dcf0dded8ba9845dbc6
   - slug: b-nasty
     name: B-Nasty
     spotify_id: 467SPuTPxrtBs0BcHLFenU
@@ -1245,6 +1391,8 @@ artists:
     enabled: true
     editorial_order: 108
     notes: ""
+    external_url: https://open.spotify.com/artist/467SPuTPxrtBs0BcHLFenU
+    image_url: https://i.scdn.co/image/ab6761610000e5eba92cfb66c499bddbba7573bc
   - slug: dj-symphony
     name: DJ Symphony
     spotify_id: 75nXQyLeB5YjzE7LV8l5gx
@@ -1258,6 +1406,8 @@ artists:
     enabled: true
     editorial_order: 109
     notes: ""
+    external_url: https://open.spotify.com/artist/75nXQyLeB5YjzE7LV8l5gx
+    image_url: https://i.scdn.co/image/ab67616d0000b27318182d0ffc1ebe8de504f3bc
   - slug: j-love
     name: J-Love
     spotify_id: 5eGENdlc6kQZeuzUJZ4W8B
@@ -1271,3 +1421,5 @@ artists:
     enabled: true
     editorial_order: 110
     notes: ""
+    external_url: https://open.spotify.com/artist/5eGENdlc6kQZeuzUJZ4W8B
+    image_url: https://i.scdn.co/image/ab6761610000e5eb6d7a970acc57f827bfaf44f6

@@ -39,7 +39,7 @@ func TestRefreshGenresStoresMergedSpotifyGenres(t *testing.T) {
 		},
 	}}
 	fetcher := artistFetcher{artists: map[string]catalog.ArtistCandidate{
-		"34EP7KEpOjXcM2TCat1ISk": {Genres: []string{"east coast hip hop", "hardcore hip hop"}},
+		"34EP7KEpOjXcM2TCat1ISk": {URL: "https://open.spotify.com/artist/34EP7KEpOjXcM2TCat1ISk", ImageURL: "https://i.scdn.co/image/artist-large", Genres: []string{"east coast hip hop", "hardcore hip hop"}},
 		"0H8YCcvC3MPLKnbDRasGiG": {Genres: []string{"Hardcore Hip Hop", "rap"}},
 	}}
 
@@ -49,6 +49,8 @@ func TestRefreshGenresStoresMergedSpotifyGenres(t *testing.T) {
 	require.Equal(t, 1, report.ArtistsWithIDs)
 	require.Equal(t, 1, report.Updated)
 	require.Equal(t, []string{"east coast hip hop", "hardcore hip hop", "rap"}, store.catalog.Artists[0].Genres)
+	require.Equal(t, "https://open.spotify.com/artist/34EP7KEpOjXcM2TCat1ISk", store.catalog.Artists[0].ExternalURL)
+	require.Equal(t, "https://i.scdn.co/image/artist-large", store.catalog.Artists[0].ImageURL)
 }
 
 func TestRefreshGenresDoesNotSaveWhenSpotifyErrors(t *testing.T) {

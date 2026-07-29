@@ -201,6 +201,32 @@ func TestSaveArtistCatalogPersistsNormalizedCatalog(t *testing.T) {
 	require.Equal(t, "Wu-Tang Clan", exported.Tracks[0].Artists[0].Name)
 }
 
+func TestLoadExportCatalogBuildsSpotifyURLForConfiguredArtistsWithoutSyncedMetadata(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	require.NoError(t, database.SaveConfiguredArtists(ctx, []catalog.Artist{{
+		Slug:           "killarmy",
+		Name:           "Killarmy",
+		SpotifyID:      "5wwleY8YnxnutxOExPVoJb",
+		ImageURL:       "https://i.scdn.co/image/killarmy",
+		Category:       catalog.CategoryAffiliateGroup,
+		Roles:          []catalog.Category{catalog.CategoryAffiliateGroup},
+		Aliases:        []string{},
+		Enabled:        true,
+		EditorialOrder: 1,
+	}}))
+
+	exported, err := database.LoadExportCatalog(ctx)
+
+	require.NoError(t, err)
+	require.Len(t, exported.Artists, 1)
+	require.Equal(t, "https://open.spotify.com/artist/5wwleY8YnxnutxOExPVoJb", exported.Artists[0].SpotifyURL)
+	require.Equal(t, "https://i.scdn.co/image/killarmy", exported.Artists[0].ImageURL)
+}
+
 func openMigratedDatabase(t *testing.T, ctx context.Context, path string) *sqliteadapter.Database {
 	t.Helper()
 

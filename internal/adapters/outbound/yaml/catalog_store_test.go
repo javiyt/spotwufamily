@@ -28,6 +28,7 @@ func TestStoreSaveAndLoad(t *testing.T) {
 			Enabled:        true,
 			EditorialOrder: 1,
 			Notes:          "",
+			ImageURL:       "https://i.scdn.co/image/artist-large",
 		}},
 	}
 
@@ -36,6 +37,7 @@ func TestStoreSaveAndLoad(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(first), "genres:")
 	require.Contains(t, string(first), "east coast hip hop")
+	require.Contains(t, string(first), "image_url: https://i.scdn.co/image/artist-large")
 
 	require.NoError(t, store.Save(context.Background(), path, c))
 	second, err := os.ReadFile(path)
