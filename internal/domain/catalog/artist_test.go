@@ -22,6 +22,16 @@ func TestValidateEditorialCatalogAcceptsDisabledArtistsWithoutSpotifyID(t *testi
 	require.Empty(t, catalog.ValidateEditorialCatalog(c))
 }
 
+func TestArtistSupportsMultipleSpotifyIDs(t *testing.T) {
+	artist := catalog.Artist{
+		SpotifyID:  "34EP7KEpOjXcM2TCat1ISk",
+		SpotifyIDs: []string{"0H8YCcvC3MPLKnbDRasGiG", "34EP7KEpOjXcM2TCat1ISk"},
+	}
+
+	require.Equal(t, []string{"34EP7KEpOjXcM2TCat1ISk", "0H8YCcvC3MPLKnbDRasGiG"}, artist.AllSpotifyIDs())
+	require.True(t, artist.HasSpotifyID("0H8YCcvC3MPLKnbDRasGiG"))
+}
+
 func TestValidateEditorialCatalogReportsInvalidEntries(t *testing.T) {
 	c := catalog.EditorialCatalog{
 		Version: 1,
@@ -31,6 +41,7 @@ func TestValidateEditorialCatalogReportsInvalidEntries(t *testing.T) {
 				Name:       "Wu-Tang Clan",
 				PublicName: "Wu-Tang Clan",
 				SpotifyID:  "bad",
+				SpotifyIDs: []string{"bad", "bad"},
 				Category:   catalog.Category("unknown"),
 				Aliases:    []string{"Clan", " clan "},
 				Enabled:    true,
@@ -48,7 +59,7 @@ func TestValidateEditorialCatalogReportsInvalidEntries(t *testing.T) {
 	issues := catalog.ValidateEditorialCatalog(c)
 
 	require.ErrorContains(t, issues[0], "slug")
-	require.Len(t, issues, 8)
+	require.Len(t, issues, 13)
 }
 
 func TestValidateEditorialCatalogReportsEditorialIssues(t *testing.T) {

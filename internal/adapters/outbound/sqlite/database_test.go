@@ -32,7 +32,7 @@ VALUES ('wu-tang-clan', 'Wu Tang Clan', 1);`)
 	require.NoError(t, err)
 	report, err := database.Verify(ctx, migrations)
 	require.NoError(t, err)
-	require.Equal(t, 1, report.Migrations)
+	require.Equal(t, 2, report.Migrations)
 	require.Contains(t, report.Checks, "integrity_check")
 	require.Contains(t, report.Checks, "foreign_key_check")
 
@@ -165,6 +165,7 @@ func TestSaveArtistCatalogPersistsNormalizedCatalog(t *testing.T) {
 	require.Equal(t, 1, stats.ArtistTracksUpserted)
 
 	requireRowCount(t, database, "configured_artists", 1)
+	requireRowCount(t, database, "configured_artist_spotify_ids", 1)
 	requireRowCount(t, database, "artist_aliases", 1)
 	requireRowCount(t, database, "artists", 1)
 	requireRowCount(t, database, "albums", 1)

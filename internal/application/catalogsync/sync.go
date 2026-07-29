@@ -175,41 +175,45 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 }
 
 func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArtist catalog.Artist) (SyncStats, error) {
-	spotifyArtist, err := s.fetcher.GetArtist(ctx, configuredArtist.SpotifyID)
-	if err != nil {
-		return SyncStats{}, fmt.Errorf("get Spotify artist: %w", err)
-	}
-
-	releases, err := s.fetcher.GetArtistAlbums(ctx, configuredArtist.SpotifyID, []string{"album", "single", "compilation", "appears_on"})
-	if err != nil {
-		return SyncStats{}, fmt.Errorf("get Spotify artist albums: %w", err)
-	}
-
-	releaseTracks := make([]catalog.ReleaseTracks, 0, len(releases))
+	stats := SyncStats{}
 	seenReleases := map[string]struct{}{}
-	for _, release := range releases {
-		if release.SpotifyID == "" {
-			continue
-		}
-		if _, ok := seenReleases[release.SpotifyID]; ok {
-			continue
-		}
-		seenReleases[release.SpotifyID] = struct{}{}
-
-		fullRelease, err := s.fetcher.GetAlbum(ctx, release.SpotifyID)
+	for _, spotifyID := range configuredArtist.AllSpotifyIDs() {
+		spotifyArtist, err := s.fetcher.GetArtist(ctx, spotifyID)
 		if err != nil {
-			return SyncStats{}, fmt.Errorf("get Spotify album %s: %w", release.SpotifyID, err)
+			return SyncStats{}, fmt.Errorf("get Spotify artist %s: %w", spotifyID, err)
 		}
-		tracks, err := s.fetcher.GetAlbumTracks(ctx, release.SpotifyID)
-		if err != nil {
-			return SyncStats{}, fmt.Errorf("get Spotify album tracks %s: %w", release.SpotifyID, err)
-		}
-		releaseTracks = append(releaseTracks, catalog.ReleaseTracks{Release: fullRelease, Tracks: deduplicateTracks(tracks)})
-	}
 
-	stats, err := s.repository.SaveArtistCatalog(ctx, runID, configuredArtist, spotifyArtist, releaseTracks, s.clock.Now())
-	if err != nil {
-		return SyncStats{}, fmt.Errorf("save artist catalog: %w", err)
+		releases, err := s.fetcher.GetArtistAlbums(ctx, spotifyID, []string{"album", "single", "compilation", "appears_on"})
+		if err != nil {
+			return SyncStats{}, fmt.Errorf("get Spotify artist albums %s: %w", spotifyID, err)
+		}
+
+		releaseTracks := make([]catalog.ReleaseTracks, 0, len(releases))
+		for _, release := range releases {
+			if release.SpotifyID == "" {
+				continue
+			}
+			if _, ok := seenReleases[release.SpotifyID]; ok {
+				continue
+			}
+			seenReleases[release.SpotifyID] = struct{}{}
+
+			fullRelease, err := s.fetcher.GetAlbum(ctx, release.SpotifyID)
+			if err != nil {
+				return SyncStats{}, fmt.Errorf("get Spotify album %s: %w", release.SpotifyID, err)
+			}
+			tracks, err := s.fetcher.GetAlbumTracks(ctx, release.SpotifyID)
+			if err != nil {
+				return SyncStats{}, fmt.Errorf("get Spotify album tracks %s: %w", release.SpotifyID, err)
+			}
+			releaseTracks = append(releaseTracks, catalog.ReleaseTracks{Release: fullRelease, Tracks: deduplicateTracks(tracks)})
+		}
+
+		artistStats, err := s.repository.SaveArtistCatalog(ctx, runID, configuredArtist, spotifyArtist, releaseTracks, s.clock.Now())
+		if err != nil {
+			return SyncStats{}, fmt.Errorf("save artist catalog %s: %w", spotifyID, err)
+		}
+		stats = stats.Add(artistStats)
 	}
 
 	return stats, nil
@@ -218,7 +222,7 @@ func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArti
 func enabledArtists(artists []catalog.Artist, slug string) []catalog.Artist {
 	enabled := make([]catalog.Artist, 0, len(artists))
 	for _, artist := range artists {
-		if !artist.Enabled || artist.SpotifyID == "" {
+		if !artist.Enabled || len(artist.AllSpotifyIDs()) == 0 {
 			continue
 		}
 		if slug != "" && artist.Slug != slug {

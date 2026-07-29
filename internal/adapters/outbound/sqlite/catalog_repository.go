@@ -60,6 +60,22 @@ ON CONFLICT(artist_slug, alias) DO UPDATE SET position = excluded.position`,
 				return fmt.Errorf("upsert alias for %s: %w", artist.Slug, err)
 			}
 		}
+
+		if _, err := tx.ExecContext(ctx, `DELETE FROM configured_artist_spotify_ids WHERE artist_slug = ?`, artist.Slug); err != nil {
+			return fmt.Errorf("delete configured Spotify IDs for %s: %w", artist.Slug, err)
+		}
+		for index, spotifyID := range artist.AllSpotifyIDs() {
+			if _, err := tx.ExecContext(ctx, `
+INSERT INTO configured_artist_spotify_ids(artist_slug, spotify_id, position, primary_id)
+VALUES (?, ?, ?, ?)`,
+				artist.Slug,
+				spotifyID,
+				index,
+				boolInt(index == 0 && spotifyID == artist.SpotifyID),
+			); err != nil {
+				return fmt.Errorf("upsert configured Spotify ID for %s: %w", artist.Slug, err)
+			}
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

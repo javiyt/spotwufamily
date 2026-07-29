@@ -28,6 +28,7 @@ type Artist struct {
 	Name           string
 	PublicName     string
 	SpotifyID      string
+	SpotifyIDs     []string
 	Category       Category
 	Roles          []Category
 	Aliases        []string
@@ -94,7 +95,13 @@ func ValidateEditorialCatalog(c EditorialCatalog) []ValidationIssue {
 		addDuplicateIssue(slugs, artist.Slug, prefix+".slug", "duplicate slug")
 		addDuplicateIssue(names, normalizeIdentity(artist.Name), prefix+".name", "duplicate name")
 		addDuplicateIssue(publicNames, normalizeIdentity(artist.PublicName), prefix+".public_name", "duplicate public name")
-		addDuplicateIssue(spotifyIDs, artist.SpotifyID, prefix+".spotify_id", "duplicate Spotify ID")
+		for idIndex, spotifyID := range artist.AllSpotifyIDs() {
+			field := prefix + ".spotify_id"
+			if idIndex > 0 || artist.SpotifyID == "" {
+				field = fmt.Sprintf("%s.spotify_ids[%d]", prefix, idIndex)
+			}
+			addDuplicateIssue(spotifyIDs, spotifyID, field, "duplicate Spotify ID")
+		}
 
 		if artist.EditorialOrder > 0 {
 			if previous, ok := editorialOrders[artist.EditorialOrder]; ok {
@@ -178,8 +185,35 @@ func validateArtist(prefix string, artist Artist) []ValidationIssue {
 	if artist.SpotifyID != "" && !spotifyIDPattern.MatchString(artist.SpotifyID) {
 		issues = append(issues, ValidationIssue{Field: prefix + ".spotify_id", Message: "has invalid format"})
 	}
+	for index, spotifyID := range artist.SpotifyIDs {
+		if spotifyID == "" {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.spotify_ids[%d]", prefix, index), Message: "must not be empty"})
+			continue
+		}
+		if !spotifyIDPattern.MatchString(spotifyID) {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.spotify_ids[%d]", prefix, index), Message: "has invalid format"})
+		}
+	}
+	if artist.SpotifyID != "" {
+		for index, spotifyID := range artist.SpotifyIDs {
+			if spotifyID == artist.SpotifyID {
+				issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.spotify_ids[%d]", prefix, index), Message: "duplicates primary Spotify ID"})
+			}
+		}
+	}
+	seenSpotifyIDs := map[string]int{}
+	for index, spotifyID := range artist.SpotifyIDs {
+		if spotifyID == "" {
+			continue
+		}
+		if previous, ok := seenSpotifyIDs[spotifyID]; ok {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.spotify_ids[%d]", prefix, index), Message: fmt.Sprintf("duplicate Spotify ID; first seen at spotify_ids[%d]", previous)})
+			continue
+		}
+		seenSpotifyIDs[spotifyID] = index
+	}
 
-	if artist.Enabled && artist.SpotifyID == "" {
+	if artist.Enabled && len(artist.AllSpotifyIDs()) == 0 {
 		issues = append(issues, ValidationIssue{Field: prefix + ".spotify_id", Message: "is required when artist is enabled"})
 	}
 
@@ -213,6 +247,36 @@ func validateArtist(prefix string, artist Artist) []ValidationIssue {
 	}
 
 	return issues
+}
+
+func (a Artist) AllSpotifyIDs() []string {
+	ids := make([]string, 0, 1+len(a.SpotifyIDs))
+	seen := map[string]struct{}{}
+	add := func(id string) {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	add(a.SpotifyID)
+	for _, id := range a.SpotifyIDs {
+		add(id)
+	}
+	return ids
+}
+
+func (a Artist) HasSpotifyID(id string) bool {
+	for _, existing := range a.AllSpotifyIDs() {
+		if existing == id {
+			return true
+		}
+	}
+	return false
 }
 
 func IsKnownCategory(category Category) bool {

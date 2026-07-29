@@ -23,6 +23,7 @@ type artistRecord struct {
 	Name           string             `yaml:"name"`
 	PublicName     string             `yaml:"public_name,omitempty"`
 	SpotifyID      string             `yaml:"spotify_id"`
+	SpotifyIDs     []string           `yaml:"spotify_ids,omitempty"`
 	Category       catalog.Category   `yaml:"category"`
 	Roles          []catalog.Category `yaml:"roles,omitempty"`
 	Aliases        []string           `yaml:"aliases"`
@@ -132,6 +133,7 @@ func (r artistRecord) toDomain() catalog.Artist {
 		Name:           r.Name,
 		PublicName:     r.PublicName,
 		SpotifyID:      r.SpotifyID,
+		SpotifyIDs:     r.SpotifyIDs,
 		Category:       r.Category,
 		Roles:          r.Roles,
 		Aliases:        r.Aliases,
@@ -147,12 +149,16 @@ func fromDomain(a catalog.Artist) artistRecord {
 	if a.Aliases == nil {
 		a.Aliases = []string{}
 	}
+	if a.SpotifyIDs == nil {
+		a.SpotifyIDs = []string{}
+	}
 
 	return artistRecord{
 		Slug:           a.Slug,
 		Name:           a.Name,
 		PublicName:     a.PublicName,
 		SpotifyID:      a.SpotifyID,
+		SpotifyIDs:     a.SpotifyIDs,
 		Category:       a.Category,
 		Roles:          a.Roles,
 		Aliases:        a.Aliases,

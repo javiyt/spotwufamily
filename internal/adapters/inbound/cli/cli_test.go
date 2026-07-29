@@ -212,7 +212,8 @@ artists:
 
 	require.Equal(t, 0, code)
 	require.Empty(t, stderr.String())
-	require.Contains(t, stdout.String(), "current: 1111111111111111111111")
+	require.Contains(t, stdout.String(), "current Spotify IDs:")
+	require.Contains(t, stdout.String(), "1111111111111111111111")
 	require.Contains(t, stdout.String(), "k=keep current")
 	require.Contains(t, stdout.String(), "interactive resolve: applied=1 skipped=0 kept=0 cleared=0")
 
@@ -220,6 +221,55 @@ artists:
 	require.NoError(t, err)
 	require.Contains(t, string(updated), "spotify_id: 0CH4f9m2L3TRaA5oErU2p0")
 	require.NotContains(t, string(updated), "spotify_id: \"1111111111111111111111\"")
+}
+
+func TestExecuteArtistsResolveInteractiveReviewAllCanAddAdditionalID(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	candidatesPath := filepath.Join(dir, "candidates.json")
+
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`
+version: 1
+artists:
+  - slug: wu-tang-clan
+    name: Wu-Tang Clan
+    spotify_id: "34EP7KEpOjXcM2TCat1ISk"
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+`), 0o644))
+	require.NoError(t, os.WriteFile(candidatesPath, []byte(`{
+  "wu-tang-clan": [
+    {"name": "Wu-Tang Clan", "spotify_id": "0H8YCcvC3MPLKnbDRasGiG", "popularity": 40, "followers": 500}
+  ]
+}`), 0o644))
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := cli.ExecuteWithInput([]string{
+		"artists",
+		"resolve",
+		"--interactive",
+		"--review-all",
+		"--catalog",
+		catalogPath,
+		"--candidates",
+		candidatesPath,
+	}, strings.NewReader("a1\n"), &stdout, &stderr)
+
+	require.Equal(t, 0, code)
+	require.Empty(t, stderr.String())
+	require.Contains(t, stdout.String(), "aN=add candidate as extra ID")
+
+	updated, err := os.ReadFile(catalogPath)
+	require.NoError(t, err)
+	require.Contains(t, string(updated), "spotify_id: 34EP7KEpOjXcM2TCat1ISk")
+	require.Contains(t, string(updated), "spotify_ids:")
+	require.Contains(t, string(updated), "- 0H8YCcvC3MPLKnbDRasGiG")
 }
 
 func TestExecuteUnknownCommand(t *testing.T) {

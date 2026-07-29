@@ -5,6 +5,7 @@
 Rules:
 
 - Do not use artist name as internal identity once a Spotify ID is known.
+- Use `spotify_id` as the primary Spotify profile and `spotify_ids` for additional Spotify profiles that represent the same editorial artist or group.
 - Keep artists disabled until their Spotify ID has been reviewed.
 - Use categories: `core`, `affiliate_group`, `affiliate_artist`, `producer`, `collaborator`.
 - Keep the primary `category` present in `roles` whenever roles are listed.

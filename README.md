@@ -79,6 +79,8 @@ See [docs/architecture.md](docs/architecture.md).
 
 `data/groups.txt` is the original prototype list. `data/artists.yaml` is the v2 editorial catalog and keeps entries disabled until Spotify IDs are reviewed.
 
+Use `spotify_id` for the primary Spotify profile and `spotify_ids` for additional Spotify profiles that represent the same editorial artist or group.
+
 Run:
 
 ```bash

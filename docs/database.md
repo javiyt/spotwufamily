@@ -34,6 +34,7 @@ The initial schema includes configured artists, aliases, Spotify artists, albums
 Sync persistence:
 
 - `configured_artists` and `artist_aliases` are populated from `data/artists.yaml`.
+- `configured_artist_spotify_ids` stores the primary Spotify ID plus any additional Spotify profile IDs configured for the same editorial artist or group.
 - Spotify artist, album and track rows are deduplicated by Spotify ID.
 - `artist_albums` and `artist_tracks` record which configured artist discovered a release or track.
 - `album_tracks`, `album_artists` and `track_artists` preserve album placement and credited artists.

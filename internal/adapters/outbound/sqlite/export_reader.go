@@ -66,6 +66,10 @@ func (d *Database) exportArtists(ctx context.Context) ([]catalogexport.Artist, e
 	if err != nil {
 		return nil, err
 	}
+	spotifyIDs, err := d.configuredArtistSpotifyIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	rows, err := d.db.QueryContext(ctx, `
 SELECT
@@ -113,6 +117,7 @@ ORDER BY COALESCE(ca.editorial_order, 999999), ca.name`)
 		}
 		artist.Enabled = enabled == 1
 		artist.Aliases = aliases[artist.Slug]
+		artist.SpotifyIDs = spotifyIDs[artist.Slug]
 		artists = append(artists, artist)
 	}
 	if err := rows.Err(); err != nil {
@@ -120,6 +125,29 @@ ORDER BY COALESCE(ca.editorial_order, 999999), ca.name`)
 	}
 
 	return artists, nil
+}
+
+func (d *Database) configuredArtistSpotifyIDs(ctx context.Context) (map[string][]string, error) {
+	rows, err := d.db.QueryContext(ctx, `SELECT artist_slug, spotify_id FROM configured_artist_spotify_ids ORDER BY artist_slug, position, spotify_id`)
+	if err != nil {
+		return nil, fmt.Errorf("export configured artist Spotify IDs: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := map[string][]string{}
+	for rows.Next() {
+		var slug string
+		var spotifyID string
+		if err := rows.Scan(&slug, &spotifyID); err != nil {
+			return nil, fmt.Errorf("scan configured artist Spotify ID: %w", err)
+		}
+		result[slug] = append(result[slug], spotifyID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate configured artist Spotify IDs: %w", err)
+	}
+
+	return result, nil
 }
 
 func (d *Database) exportAlbums(ctx context.Context) ([]catalogexport.Album, error) {

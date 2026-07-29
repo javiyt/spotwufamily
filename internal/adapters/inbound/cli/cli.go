@@ -937,7 +937,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 	cleared := 0
 	for i := range c.Artists {
 		artist := &c.Artists[i]
-		if artist.SpotifyID != "" && !options.reviewAll {
+		if len(artist.AllSpotifyIDs()) > 0 && !options.reviewAll {
 			continue
 		}
 
@@ -948,15 +948,23 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 		}
 		matches := catalog.RankCandidates(*artist, candidates)
 		_, _ = fmt.Fprintf(stdout, "\n%s (%s)\n", artist.Name, artist.Slug)
-		if artist.SpotifyID != "" {
-			_, _ = fmt.Fprintf(stdout, "current: %s | %s\n", artist.SpotifyID, spotifyArtistURL(catalog.ArtistCandidate{SpotifyID: artist.SpotifyID}))
+		currentSpotifyIDs := artist.AllSpotifyIDs()
+		if len(currentSpotifyIDs) > 0 {
+			_, _ = fmt.Fprintln(stdout, "current Spotify IDs:")
+			for index, spotifyID := range currentSpotifyIDs {
+				marker := "additional"
+				if index == 0 && spotifyID == artist.SpotifyID {
+					marker = "primary"
+				}
+				_, _ = fmt.Fprintf(stdout, "  - %s | %s | %s\n", spotifyID, spotifyArtistURL(catalog.ArtistCandidate{SpotifyID: spotifyID}), marker)
+			}
 		}
 		if len(artist.Aliases) > 0 {
 			_, _ = fmt.Fprintf(stdout, "aliases: %s\n", strings.Join(artist.Aliases, ", "))
 		}
 		if len(matches) == 0 {
 			_, _ = fmt.Fprintln(stdout, "no candidates found")
-			if artist.SpotifyID == "" {
+			if len(artist.AllSpotifyIDs()) == 0 {
 				skipped++
 				continue
 			}
@@ -969,6 +977,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				kept++
 			case "clear":
 				artist.SpotifyID = ""
+				artist.SpotifyIDs = nil
 				artist.Enabled = false
 				cleared++
 			default:
@@ -997,8 +1006,8 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 		}
 
 		for {
-			if artist.SpotifyID != "" {
-				_, _ = fmt.Fprint(stdout, "select candidate number, k=keep current, c=clear current, s=skip, q=save and quit: ")
+			if len(artist.AllSpotifyIDs()) > 0 {
+				_, _ = fmt.Fprint(stdout, "select candidate number to replace primary, aN=add candidate as extra ID, k=keep current, c=clear all IDs, s=skip, q=save and quit: ")
 			} else {
 				_, _ = fmt.Fprint(stdout, "select candidate number, s=skip, q=save and quit: ")
 			}
@@ -1012,12 +1021,13 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				skipped++
 				break
 			}
-			if artist.SpotifyID != "" && (choice == "k" || choice == "keep") {
+			if len(artist.AllSpotifyIDs()) > 0 && (choice == "k" || choice == "keep") {
 				kept++
 				break
 			}
-			if artist.SpotifyID != "" && (choice == "c" || choice == "clear") {
+			if len(artist.AllSpotifyIDs()) > 0 && (choice == "c" || choice == "clear") {
 				artist.SpotifyID = ""
+				artist.SpotifyIDs = nil
 				artist.Enabled = false
 				cleared++
 				break
@@ -1031,7 +1041,13 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				return 0
 			}
 
-			selected, err := strconv.Atoi(choice)
+			additional := false
+			selectedChoice := choice
+			if strings.HasPrefix(choice, "a") && len(choice) > 1 {
+				additional = true
+				selectedChoice = strings.TrimPrefix(choice, "a")
+			}
+			selected, err := strconv.Atoi(selectedChoice)
 			if err != nil || selected < 1 || selected > limit {
 				_, _ = fmt.Fprintf(stdout, "invalid selection %q\n", choice)
 				if readErr == io.EOF {
@@ -1047,7 +1063,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				skipped++
 				break
 			}
-			if candidate.SpotifyID == artist.SpotifyID {
+			if artist.HasSpotifyID(candidate.SpotifyID) {
 				kept++
 				break
 			}
@@ -1056,7 +1072,11 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				skipped++
 				break
 			}
-			artist.SpotifyID = candidate.SpotifyID
+			if additional {
+				artist.SpotifyIDs = append(artist.SpotifyIDs, candidate.SpotifyID)
+			} else {
+				artist.SpotifyID = candidate.SpotifyID
+			}
 			if options.enableApplied {
 				artist.Enabled = true
 			}
@@ -1125,7 +1145,7 @@ func saveInteractiveResolve(ctx context.Context, store artists.CatalogStore, pat
 
 func spotifyIDOwner(c catalog.EditorialCatalog, spotifyID, currentSlug string) string {
 	for _, artist := range c.Artists {
-		if artist.Slug != currentSlug && artist.SpotifyID == spotifyID {
+		if artist.Slug != currentSlug && artist.HasSpotifyID(spotifyID) {
 			return artist.Slug
 		}
 	}

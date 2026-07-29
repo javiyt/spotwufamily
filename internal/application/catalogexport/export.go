@@ -63,6 +63,7 @@ type Artist struct {
 	Name          string   `json:"name"`
 	PublicName    string   `json:"public_name,omitempty"`
 	SpotifyID     string   `json:"spotify_id,omitempty"`
+	SpotifyIDs    []string `json:"spotify_ids,omitempty"`
 	Category      string   `json:"category"`
 	Aliases       []string `json:"aliases"`
 	Enabled       bool     `json:"enabled"`

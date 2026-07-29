@@ -20,6 +20,7 @@ func TestStoreSaveAndLoad(t *testing.T) {
 			Slug:           "wu-tang-clan",
 			Name:           "Wu-Tang Clan",
 			SpotifyID:      "34EP7KEpOjXcM2TCat1ISk",
+			SpotifyIDs:     []string{"0H8YCcvC3MPLKnbDRasGiG"},
 			Category:       catalog.CategoryCore,
 			Roles:          []catalog.Category{catalog.CategoryCore},
 			Aliases:        []string{"Wu Tang Clan"},

@@ -129,7 +129,7 @@ func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyRes
 func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog) (ResolveReport, error) {
 	report := ResolveReport{}
 	for _, artist := range c.Artists {
-		if artist.SpotifyID != "" {
+		if len(artist.AllSpotifyIDs()) > 0 {
 			continue
 		}
 
