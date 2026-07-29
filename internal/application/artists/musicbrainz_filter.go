@@ -2,7 +2,6 @@ package artists
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
@@ -28,7 +27,7 @@ func (s AlbumEvidenceCandidateSearcher) SearchArtistCandidates(ctx context.Conte
 
 	releaseGroups, err := s.musicBrainz.SearchArtistAlbumReleaseGroups(ctx, artist)
 	if err != nil {
-		return nil, fmt.Errorf("search MusicBrainz release groups: %w", err)
+		return candidates, nil
 	}
 	musicBrainzAlbums := auditedMusicBrainzAlbums(releaseGroups)
 	if len(musicBrainzAlbums) == 0 {
@@ -42,7 +41,7 @@ func (s AlbumEvidenceCandidateSearcher) SearchArtistCandidates(ctx context.Conte
 		}
 		spotifyAlbums, err := s.candidateAlbums(ctx, candidate.SpotifyID)
 		if err != nil {
-			return nil, fmt.Errorf("get candidate Spotify albums %s: %w", candidate.SpotifyID, err)
+			continue
 		}
 		matched, _, _ := compareAlbums(spotifyAlbums, musicBrainzAlbums)
 		if len(matched) == 0 {

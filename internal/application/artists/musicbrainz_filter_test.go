@@ -2,6 +2,7 @@ package artists_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/javiyt/spotwufamily/internal/application/artists"
@@ -15,6 +16,18 @@ type fixedCandidateSearcher struct {
 
 func (s fixedCandidateSearcher) SearchArtistCandidates(context.Context, catalog.Artist) ([]catalog.ArtistCandidate, error) {
 	return s.candidates, nil
+}
+
+type failingMusicBrainzSearcher struct{}
+
+func (failingMusicBrainzSearcher) SearchArtistAlbumReleaseGroups(context.Context, catalog.Artist) ([]artists.MusicBrainzReleaseGroup, error) {
+	return nil, errors.New("musicbrainz timeout")
+}
+
+type failingAlbumFetcher struct{}
+
+func (failingAlbumFetcher) GetArtistAlbums(context.Context, string, []string) ([]catalog.Release, error) {
+	return nil, errors.New("spotify albums timeout")
 }
 
 func TestAlbumEvidenceCandidateSearcherDiscardsCandidatesWithoutMusicBrainzAlbumMatches(t *testing.T) {
@@ -43,6 +56,32 @@ func TestAlbumEvidenceCandidateSearcherDiscardsCandidatesWithoutMusicBrainzAlbum
 	require.NoError(t, err)
 	require.Equal(t, []catalog.ArtistCandidate{{Name: "Wu-Tang Clan", SpotifyID: "good-artist"}}, candidates)
 	require.Equal(t, []string{"good-artist", "noise-artist"}, spotify.requestedIDs)
+}
+
+func TestAlbumEvidenceCandidateSearcherKeepsCandidatesWhenMusicBrainzFails(t *testing.T) {
+	searcher := artists.NewAlbumEvidenceCandidateSearcher(
+		fixedCandidateSearcher{candidates: []catalog.ArtistCandidate{{Name: "A.I.G.", SpotifyID: "artist-1"}}},
+		failingAlbumFetcher{},
+		failingMusicBrainzSearcher{},
+	)
+
+	candidates, err := searcher.SearchArtistCandidates(context.Background(), catalog.Artist{Name: "A.I.G."})
+
+	require.NoError(t, err)
+	require.Equal(t, []catalog.ArtistCandidate{{Name: "A.I.G.", SpotifyID: "artist-1"}}, candidates)
+}
+
+func TestAlbumEvidenceCandidateSearcherSkipsCandidatesWhenSpotifyAlbumFetchFails(t *testing.T) {
+	searcher := artists.NewAlbumEvidenceCandidateSearcher(
+		fixedCandidateSearcher{candidates: []catalog.ArtistCandidate{{Name: "A.I.G.", SpotifyID: "artist-1"}}},
+		failingAlbumFetcher{},
+		albumAuditMusicBrainzSearcher{releaseGroups: []artists.MusicBrainzReleaseGroup{{ID: "mb-1", Title: "Album One", FirstReleaseDate: "2000"}}},
+	)
+
+	candidates, err := searcher.SearchArtistCandidates(context.Background(), catalog.Artist{Name: "A.I.G."})
+
+	require.NoError(t, err)
+	require.Empty(t, candidates)
 }
 
 func TestAlbumEvidenceCandidateSearcherKeepsCandidatesWhenMusicBrainzHasNoAlbums(t *testing.T) {

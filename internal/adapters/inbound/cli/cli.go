@@ -1211,7 +1211,8 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 		candidates, err := searcher.SearchArtistCandidates(ctx, *artist)
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "artists resolve: search %s: %v\n", artist.Slug, err)
-			return 1
+			skipped++
+			continue
 		}
 		matches := catalog.RankCandidates(*artist, candidates)
 		_, _ = fmt.Fprintf(stdout, "\n%s (%s)\n", artist.Name, artist.Slug)
@@ -1247,6 +1248,10 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				artist.SpotifyIDs = nil
 				artist.Enabled = false
 				cleared++
+				if err := saveInteractiveResolve(ctx, store, options.catalogPath, c); err != nil {
+					_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+					return 1
+				}
 			default:
 				skipped++
 			}
@@ -1272,6 +1277,10 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				artist.SpotifyIDs = nil
 				artist.Enabled = false
 				cleared++
+				if err := saveInteractiveResolve(ctx, store, options.catalogPath, c); err != nil {
+					_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+					return 1
+				}
 			default:
 				skipped++
 			}
@@ -1335,10 +1344,18 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 					}
 					continue
 				}
+				appliedAny := false
 				for _, selected := range additionalSelections {
 					result := applyInteractiveCandidate(stdout, c, artist, matches[selected-1].Candidate, true, options.enableApplied)
 					if result.applied {
 						applied++
+						appliedAny = true
+					}
+				}
+				if appliedAny {
+					if err := saveInteractiveResolve(ctx, store, options.catalogPath, c); err != nil {
+						_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+						return 1
 					}
 				}
 				continue
@@ -1363,6 +1380,10 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 			result := applyInteractiveCandidate(stdout, c, artist, matches[selected-1].Candidate, additional, options.enableApplied)
 			if result.applied {
 				applied++
+				if err := saveInteractiveResolve(ctx, store, options.catalogPath, c); err != nil {
+					_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
+					return 1
+				}
 			}
 			if additional {
 				continue
