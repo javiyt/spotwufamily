@@ -870,8 +870,6 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 	switch args[0] {
 	case "validate":
 		return executeArtistsValidate(ctx, args[1:], stdout, stderr, store)
-	case "import-groups":
-		return executeArtistsImportGroups(ctx, args[1:], stdout, stderr, store)
 	case "enable-with-ids":
 		return executeArtistsEnableWithIDs(ctx, args[1:], stdout, stderr, store)
 	case "discover-wu":
@@ -2060,45 +2058,6 @@ func executeArtistsValidate(ctx context.Context, args []string, stdout, stderr i
 	return 0
 }
 
-func executeArtistsImportGroups(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
-	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists import-groups [groups-path] [catalog-path]")
-		return 0
-	}
-
-	groupsPath := "data/groups.txt"
-	if len(args) > 0 {
-		groupsPath = args[0]
-	}
-	outputPath := defaultCatalogPath
-	if len(args) > 1 {
-		outputPath = args[1]
-	}
-
-	file, err := os.Open(groupsPath)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "open groups file: %v\n", err)
-		return 1
-	}
-	defer func() { _ = file.Close() }()
-
-	result, err := artists.NewImportGroups(store).Run(ctx, file, outputPath)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "import groups: %v\n", err)
-		return 1
-	}
-
-	_, _ = fmt.Fprintf(stdout, "imported %d artists into %s\n", result.Artists, outputPath)
-	if len(result.ExactDuplicates) > 0 {
-		_, _ = fmt.Fprintf(stdout, "exact duplicates skipped: %s\n", strings.Join(result.ExactDuplicates, ", "))
-	}
-	if len(result.NormalizedDuplicates) > 0 {
-		_, _ = fmt.Fprintf(stdout, "normalized duplicates found: %s\n", strings.Join(result.NormalizedDuplicates, ", "))
-	}
-
-	return 0
-}
-
 func hasHelp(args []string) bool {
 	return len(args) > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help")
 }
@@ -2108,7 +2067,6 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w)
 	_, _ = fmt.Fprintln(w, "commands:")
 	_, _ = fmt.Fprintln(w, "  version")
-	_, _ = fmt.Fprintln(w, "  artists import-groups")
 	_, _ = fmt.Fprintln(w, "  artists validate")
 	_, _ = fmt.Fprintln(w, "  artists enable-with-ids")
 	_, _ = fmt.Fprintln(w, "  artists discover-wu")
@@ -2127,7 +2085,6 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "usage: spotwufamily artists <command> [args]")
 	_, _ = fmt.Fprintln(w)
 	_, _ = fmt.Fprintln(w, "commands:")
-	_, _ = fmt.Fprintln(w, "  import-groups [groups-path] [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  enable-with-ids")
 	_, _ = fmt.Fprintln(w, "  discover-wu")

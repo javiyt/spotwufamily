@@ -52,7 +52,6 @@ Equivalent CLI commands:
 ```bash
 go run ./cmd/spotwufamily version
 go run ./cmd/spotwufamily artists validate
-go run ./cmd/spotwufamily artists import-groups
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --report resolve.md
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve
@@ -83,7 +82,7 @@ See [docs/architecture.md](docs/architecture.md).
 
 ## Catalog
 
-`data/groups.txt` is the original prototype list. `data/artists.yaml` is the v2 editorial catalog and keeps entries disabled until Spotify IDs are reviewed.
+`data/artists.yaml` is the editorial catalog and keeps entries disabled until Spotify IDs are reviewed.
 
 Use `spotify_id` for the primary Spotify profile and `spotify_ids` for additional Spotify profiles that represent the same editorial artist or group.
 

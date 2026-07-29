@@ -1,11 +1,10 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
 CATALOG ?= data/artists.yaml
-GROUPS ?= data/groups.txt
 DB ?= data/catalog.db
 SNAPSHOT ?= data/catalog.snapshot.sql
 EXPORT_DIR ?= site/data/generated
@@ -62,9 +61,6 @@ validate: artists-validate
 
 artists-validate:
 	go run $(CLI) artists validate $(CATALOG)
-
-artists-import-groups:
-	go run $(CLI) artists import-groups $(GROUPS) $(CATALOG)
 
 artists-enable-with-ids:
 	go run $(CLI) artists enable-with-ids --catalog $(CATALOG)

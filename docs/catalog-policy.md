@@ -13,6 +13,5 @@ Rules:
 - Use `external_url` only for HTTPS editorial references.
 - Use `added_at` in `YYYY-MM-DD` format.
 - Preserve aliases and notes for editorial context.
-- Keep `data/groups.txt` until the YAML migration has been verified.
 
 Validation detects duplicate slugs, names, Spotify IDs, aliases, roles and editorial order values, plus unknown categories and malformed Spotify IDs.

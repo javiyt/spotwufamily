@@ -4,7 +4,7 @@ This is the acceptance checklist for the v2 rebuild.
 
 | # | Criterion | Status | Verification |
 |---|---|---|---|
-| 1 | `data/groups.txt` can migrate to `data/artists.yaml`. | Done | `artists import-groups`, `artists validate` |
+| 1 | `data/artists.yaml` is the editorial catalog source. | Done | `artists validate` |
 | 2 | Artists can carry stable Spotify IDs. | Done | `data/artists.yaml` validation |
 | 3 | Spotify sync follows pagination. | Done | Spotify client tests and sync fetcher |
 | 4 | Albums, singles, compilations and appearances are requested. | Done | `sync` include groups |

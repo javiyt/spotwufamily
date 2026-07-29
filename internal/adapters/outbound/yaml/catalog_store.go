@@ -80,10 +80,10 @@ func (s Store) Save(ctx context.Context, path string, c catalog.EditorialCatalog
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString("# Generated from data/groups.txt.\n")
-	buf.WriteString("# Spotify IDs are intentionally empty until each entry is resolved and reviewed.\n")
+	buf.WriteString("# Editorial artist catalog.\n")
+	buf.WriteString("# Spotify IDs are intentionally reviewed before sync.\n")
 	buf.WriteString("# Entries remain disabled so validation can reject accidental syncs without a Spotify ID.\n")
-	buf.WriteString("# `roles` preserves cases where an entry appeared in more than one section of the TXT.\n\n")
+	buf.WriteString("# `roles` preserves cases where an entry belongs to more than one editorial category.\n\n")
 
 	encoder := yaml.NewEncoder(&buf)
 	encoder.SetIndent(2)
