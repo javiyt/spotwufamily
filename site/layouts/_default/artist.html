@@ -1,0 +1,53 @@
+{{ define "main" }}
+  {{ $record := index hugo.Data.generated.artists .File.ContentBaseName }}
+  {{ $artist := index $record.items 0 }}
+  {{ $albums := (index hugo.Data.generated.albums "index").items }}
+  {{ $artistAlbums := slice }}
+  {{ $trackTotal := 0 }}
+  {{ range $albums }}
+    {{ $album := . }}
+    {{ $include := false }}
+    {{ range .artists }}
+      {{ if or (eq .spotify_id $artist.spotify_id) (in $artist.spotify_ids .spotify_id) }}
+        {{ $include = true }}
+      {{ end }}
+    {{ end }}
+    {{ if $include }}
+      {{ $artistAlbums = $artistAlbums | append $album }}
+      {{ $trackTotal = add $trackTotal $album.total_tracks }}
+    {{ end }}
+  {{ end }}
+  <section class="shell detail-hero">
+    <div class="detail-media">
+      {{ if $artist.image_url }}
+        {{ if $artist.spotify_url }}<a href="{{ $artist.spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ $artist.name }} on Spotify">{{ end }}
+        <img src="{{ $artist.image_url }}" alt="">
+        {{ if $artist.spotify_url }}</a>{{ end }}
+      {{ else }}
+        <span>{{ substr $artist.name 0 1 }}</span>
+      {{ end }}
+    </div>
+    <div class="detail-copy">
+      <p class="eyebrow">{{ replace $artist.category "_" " " }}</p>
+      <h1>{{ $artist.name }}</h1>
+      {{ if $artist.public_name }}<p>{{ $artist.public_name }}</p>{{ end }}
+      <dl class="detail-stats">
+        <div><dt>Releases</dt><dd>{{ len $artistAlbums }}</dd></div>
+        <div><dt>Tracks</dt><dd>{{ $trackTotal }}</dd></div>
+      </dl>
+      <div class="action-row">
+        {{ if $artist.spotify_url }}<a class="spotify-link" href="{{ $artist.spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
+        <a class="spotify-link" href="{{ "artists/" | relURL }}">All artists</a>
+      </div>
+    </div>
+  </section>
+  {{ if $artist.spotify_id }}
+    <section class="shell section">
+      <iframe class="spotify-embed" title="Spotify artist player for {{ $artist.name }}" src="https://open.spotify.com/embed/artist/{{ $artist.spotify_id }}?utm_source=generator" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+    </section>
+  {{ end }}
+  <section class="shell section">
+    <h2>Releases</h2>
+    {{ partial "album-list.html" $artistAlbums }}
+  </section>
+{{ end }}

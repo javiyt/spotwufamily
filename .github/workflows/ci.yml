@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: go-test-validate-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6.1.0
+        with:
+          go-version: "1.25.x"
+          cache: true
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.164.0"
+          extended: true
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Validate artist catalog
+        run: go run ./cmd/spotwufamily artists validate
+
+      - name: Verify SQLite catalog
+        run: go run ./cmd/spotwufamily db verify
+
+      - name: Regenerate static exports
+        run: go run ./cmd/spotwufamily export
+
+      - name: Build Hugo site
+        run: go run ./cmd/spotwufamily site build
+
+      - name: Audit end-to-end
+        run: go run ./cmd/spotwufamily audit --skip-git-diff
+
+      - name: Test
+        run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build CLI
+        run: go build -o /tmp/spotwufamily ./cmd/spotwufamily

@@ -1,17 +1,16 @@
 pull_request_rules:
-  - name: Automatic merge when checks
+  - name: Keep generated catalog PRs up to date
     conditions:
-      - author=javiyt
       - base=main
+      - head~=^automation/catalog-sync-
+      - label=automation
+      - label=catalog-update
+      - label=spotify
     actions:
       update:
-      merge:
-        method: squash
-  - name: automatic merge for Dependabot pull requests
+  - name: Keep Dependabot pull requests up to date
     conditions:
       - author~=^dependabot(|-preview)\[bot\]$
       - base=main
     actions:
       update:
-      merge:
-        method: squash

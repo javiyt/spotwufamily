@@ -1,0 +1,44 @@
+{{ define "main" }}
+  {{ $artists := (index hugo.Data.generated.artists "index").items }}
+  <section class="shell page-head">
+    <p class="eyebrow">Editorial catalog</p>
+    <h1>Artists</h1>
+    <div class="toolbar">
+      <label for="artist-filter">Filter by category</label>
+      <select id="artist-filter" data-filter-target="artist-list">
+        <option value="">All categories</option>
+        <option value="core">Core</option>
+        <option value="affiliate_group">Affiliate groups</option>
+        <option value="affiliate_artist">Affiliate artists</option>
+        <option value="producer">Producers</option>
+        <option value="collaborator">Collaborators</option>
+      </select>
+    </div>
+  </section>
+  <section class="shell section">
+    <div id="artist-list" class="card-grid">
+      {{ range $artists }}
+        <article id="{{ .slug }}" class="item-card" data-category="{{ .category }}">
+          <div class="thumb">
+            {{ if .image_url }}
+              {{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ .name }} on Spotify">{{ end }}
+              <img src="{{ .image_url }}" alt="" loading="lazy">
+              {{ if .spotify_url }}</a>{{ end }}
+            {{ else }}
+              <span>{{ substr .name 0 1 }}</span>
+            {{ end }}
+          </div>
+          <h2><a href="{{ printf "artists/%s/" .slug | relURL }}">{{ .name }}</a></h2>
+          <p>{{ replace .category "_" " " }}</p>
+          <dl>
+            <div><dt>Releases</dt><dd>{{ .release_count }}</dd></div>
+            <div><dt>Tracks</dt><dd>{{ .track_count }}</dd></div>
+          </dl>
+          {{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
+        </article>
+      {{ else }}
+        <p class="empty">No artists exported yet. Enable reviewed artists and run sync.</p>
+      {{ end }}
+    </div>
+  </section>
+{{ end }}

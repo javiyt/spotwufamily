@@ -1,0 +1,38 @@
+{{ define "main" }}
+  {{ $summary := index hugo.Data.generated "catalog-summary" }}
+  {{ $artists := (index hugo.Data.generated.artists "index").items }}
+  {{ $spotifyArtists := where $artists "spotify_id" "!=" "" }}
+  <section class="hero">
+    <div class="shell hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Static catalog archive</p>
+        <h1>Spot Wu Family</h1>
+        <p>A searchable static archive for Wu-Tang Clan, Wu Family affiliates, producers and collaborators, built from reviewed editorial data and Spotify catalog metadata.</p>
+      </div>
+      <div class="search-panel" role="search">
+        <label for="site-search">Search catalog</label>
+        <input id="site-search" type="search" autocomplete="off" placeholder="Artist, release, track, alias">
+        <div id="search-status" class="sr-only" aria-live="polite"></div>
+        <div id="search-results" class="search-results" data-empty="No matches yet."></div>
+      </div>
+    </div>
+  </section>
+  <section class="shell section">
+    <div class="stat-grid">
+      <a class="stat" href="{{ "artists/" | relURL }}"><span>{{ $summary.stats.artists }}</span><p>Artists</p></a>
+      <a class="stat" href="{{ "artists/?category=affiliate_group" | relURL }}"><span>{{ $summary.stats.groups }}</span><p>Groups</p></a>
+      <a class="stat" href="{{ "releases/" | relURL }}"><span>{{ $summary.stats.albums }}</span><p>Releases</p></a>
+      <a class="stat" href="{{ "tracks/" | relURL }}"><span>{{ $summary.stats.tracks }}</span><p>Tracks</p></a>
+    </div>
+  </section>
+  <section class="shell section two-column">
+    <div>
+      <h2>Recent Releases</h2>
+      {{ partial "album-list.html" $summary.recent_albums }}
+    </div>
+    <div>
+      <h2>Featured Artists</h2>
+      {{ partial "artist-list.html" (dict "artists" $spotifyArtists "randomize" true "limit" 12) }}
+    </div>
+  </section>
+{{ end }}

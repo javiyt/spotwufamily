@@ -1,0 +1,32 @@
+{{ define "main" }}
+  {{ $albums := (index hugo.Data.generated.albums "index").items }}
+  <section class="shell page-head">
+    <p class="eyebrow">Chronology</p>
+    <h1>Timeline</h1>
+  </section>
+  <section class="shell section timeline">
+    {{ range $albums }}
+      {{ $albumURL := printf "albums/%s/" .spotify_id | relURL }}
+      <article class="timeline-card">
+        <a class="timeline-cover" href="{{ $albumURL }}" aria-label="Open {{ .name }}">
+          {{ if .image_url }}
+            <img src="{{ .image_url }}" alt="" loading="lazy">
+          {{ else }}
+            <span>{{ substr .name 0 1 }}</span>
+          {{ end }}
+        </a>
+        <div class="timeline-copy">
+          <time>{{ if .release_date }}{{ .release_date }}{{ else }}Unknown date{{ end }}</time>
+          <h2><a href="{{ $albumURL }}">{{ .name }}</a></h2>
+          <p>{{ .album_type }}{{ with .artists }} / {{ delimit (apply . "index" "." "name") ", " }}{{ end }}</p>
+          <div class="action-row">
+            <a class="spotify-link" href="{{ $albumURL }}">Release page</a>
+            {{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
+          </div>
+        </div>
+      </article>
+    {{ else }}
+      <p class="empty">No release timeline yet.</p>
+    {{ end }}
+  </section>
+{{ end }}

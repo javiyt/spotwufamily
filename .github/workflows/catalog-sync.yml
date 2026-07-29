@@ -1,0 +1,137 @@
+name: Catalog Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      full_sync:
+        description: "Run full sync"
+        required: false
+        default: "false"
+      artist:
+        description: "Optional artist slug"
+        required: false
+        default: ""
+      market:
+        description: "Spotify market"
+        required: false
+        default: "ES"
+  schedule:
+    - cron: "17 5 * * 2"
+
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  checks: read
+
+jobs:
+  sync:
+    name: catalog-sync
+    runs-on: ubuntu-latest
+    env:
+      CATALOG_SYNC_APP_ID: ${{ secrets.CATALOG_SYNC_APP_ID }}
+      CATALOG_SYNC_APP_PRIVATE_KEY: ${{ secrets.CATALOG_SYNC_APP_PRIVATE_KEY }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6.1.0
+        with:
+          go-version: "1.25.x"
+          cache: true
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.164.0"
+          extended: true
+
+      - name: Create GitHub App token
+        id: app-token
+        if: ${{ env.CATALOG_SYNC_APP_ID != '' && env.CATALOG_SYNC_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ env.CATALOG_SYNC_APP_ID }}
+          private-key: ${{ env.CATALOG_SYNC_APP_PRIVATE_KEY }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "spotwufamily-catalog-sync[bot]"
+          git config user.email "spotwufamily-catalog-sync[bot]@users.noreply.github.com"
+
+      - name: Validate and migrate
+        run: |
+          go run ./cmd/spotwufamily artists validate
+          go run ./cmd/spotwufamily db migrate
+
+      - name: Sync catalog
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_MARKET: ${{ inputs.market || 'ES' }}
+        run: |
+          args=(sync --market "${SPOTIFY_MARKET}")
+          if [[ "${{ inputs.full_sync || 'false' }}" == "true" ]]; then
+            args+=(--full)
+          fi
+          if [[ -n "${{ inputs.artist || '' }}" ]]; then
+            args+=(--artist "${{ inputs.artist }}")
+          fi
+          go run ./cmd/spotwufamily "${args[@]}"
+
+      - name: Regenerate derived files
+        run: |
+          go run ./cmd/spotwufamily db snapshot
+          go run ./cmd/spotwufamily export
+          go run ./cmd/spotwufamily db verify
+          go run ./cmd/spotwufamily site build
+          go test ./...
+          go vet ./...
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet -- data/catalog.db data/catalog.snapshot.sql; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stop when unchanged
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "No catalog changes detected."
+
+      - name: Commit catalog changes
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          branch="automation/catalog-sync-$(date -u +%Y%m%d)"
+          git switch -C "${branch}"
+          git add data/catalog.db data/catalog.snapshot.sql
+          git commit -m "chore(catalog): update Spotify catalog"
+          git push --force-with-lease origin "${branch}"
+          echo "branch=${branch}" >> "$GITHUB_ENV"
+
+      - name: Create or update pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.CATALOG_SYNC_TOKEN || github.token }}
+        run: |
+          body_file="$(bash scripts/automation/catalog-pr-body.sh)"
+          title="chore(catalog): update Spotify catalog - $(date -u +%Y-%m-%d)"
+          existing="$(gh pr list --head "${branch}" --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "${existing}" ]]; then
+            gh pr edit "${existing}" --title "${title}" --body-file "${body_file}" --add-label automation --add-label catalog-update --add-label spotify
+            pr_number="${existing}"
+          else
+            pr_url="$(gh pr create --base main --head "${branch}" --title "${title}" --body-file "${body_file}" --label automation --label catalog-update --label spotify)"
+            pr_number="${pr_url##*/}"
+          fi
+          gh pr merge "${pr_number}" --auto --squash --subject "chore(catalog): update Spotify catalog" || true

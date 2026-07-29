@@ -4,6 +4,16 @@
 *.dll
 *.so
 *.dylib
+.bin/
+
+/build/
+/public/
+/site/public/
+site/content/generated/
+site/data/generated/
+site/static/search-index.json
+.hugo_build.lock
+site/.hugo_build.lock
 
 # Test binary, built with `go test -c`
 *.test
@@ -18,5 +28,12 @@ vendor/
 
 coverage.txt
 
+data/catalog.db-wal
+data/catalog.db-shm
+data/catalog.db-journal
+
 mock_*.go
 coverage.txt
+
+resolve.md
+data/artist-candidates.example.json
