@@ -8,6 +8,8 @@ artists:
   - slug: wu-tang-clan
     name: Wu-Tang Clan
     spotify_id: 34EP7KEpOjXcM2TCat1ISk
+    spotify_ids:
+      - 0H8YCcvC3MPLKnbDRasGiG
     category: core
     roles:
       - core
@@ -48,7 +50,7 @@ artists:
     notes: ""
   - slug: achozen
     name: Achozen
-    spotify_id: 5UPlyCkzUI01KalZWpmaMr
+    spotify_id: ""
     category: affiliate_group
     roles:
       - affiliate_group
@@ -59,6 +61,8 @@ artists:
   - slug: american-cream-team
     name: American Cream Team
     spotify_id: 53kDI3KVrY4ZVj1yPLxy8U
+    spotify_ids:
+      - 446HW5xA2MwQKg5IAWl8jt
     category: affiliate_group
     roles:
       - affiliate_group
@@ -109,6 +113,8 @@ artists:
   - slug: c-c-f-division
     name: C.C.F. Division
     spotify_id: 0RhBRiD7TkjokNCJPw8yK1
+    spotify_ids:
+      - 1hBmOgsicbt92Fs6mDnFTW
     category: affiliate_group
     roles:
       - affiliate_group
@@ -119,6 +125,8 @@ artists:
   - slug: da-manchuz
     name: Da Manchuz
     spotify_id: 6QMm5lohv2eBZRmt7KDQbw
+    spotify_ids:
+      - 19peYk9dHVzsOZggDzVsoc
     category: affiliate_group
     roles:
       - affiliate_group
@@ -149,6 +157,8 @@ artists:
   - slug: gravediggaz
     name: Gravediggaz
     spotify_id: 5NIhgQ08PBzMux08ndi8Ae
+    spotify_ids:
+      - 5kM2hWXBW4G2AwPNcFjIZX
     category: affiliate_group
     roles:
       - affiliate_group

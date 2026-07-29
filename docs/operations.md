@@ -53,6 +53,14 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-review-interactive
 
 For artists with an existing ID, the prompt shows current Spotify profiles and lets you keep them, replace the primary ID with a candidate, add a candidate as an additional ID with `aN` such as `a2`, clear all IDs, skip, or save and quit.
 
+Audit reviewed Spotify IDs against MusicBrainz album release groups:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-audit-albums ARTIST=wu-tang-clan
+```
+
+This writes `albums-audit.md` by default and does not modify YAML or SQLite. Use it to find configured Spotify profiles that miss canonical albums or return suspicious extra albums.
+
 Manual sync for one reviewed artist:
 
 ```bash

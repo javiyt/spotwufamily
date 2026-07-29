@@ -14,6 +14,7 @@ import (
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/jsoncandidates"
+	"github.com/javiyt/spotwufamily/internal/adapters/outbound/musicbrainz"
 	spotifyadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/spotify"
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
@@ -767,6 +768,8 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsImportGroups(ctx, args[1:], stdout, stderr, store)
 	case "resolve":
 		return executeArtistsResolve(ctx, args[1:], stdin, stdout, stderr, store)
+	case "audit-albums":
+		return executeArtistsAuditAlbums(ctx, args[1:], stdout, stderr, store)
 	case "help", "--help", "-h":
 		printArtistsHelp(stdout)
 		return 0
@@ -775,6 +778,114 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		printArtistsHelp(stderr)
 		return 2
 	}
+}
+
+type artistAlbumAuditOptions struct {
+	catalogPath string
+	reportPath  string
+	artistSlug  string
+	market      string
+}
+
+func executeArtistsAuditAlbums(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists audit-albums [--artist slug] [--catalog data/artists.yaml] [--market ES] [--report albums-audit.md]")
+		return 0
+	}
+
+	options, err := parseArtistAlbumAuditOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: %v\n", err)
+		return 2
+	}
+
+	spotifyClient, err := artistAlbumAuditSpotifyFetcher(options)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: %v\n", err)
+		return 1
+	}
+	musicBrainzClient := musicbrainz.NewClient(musicbrainz.Config{
+		UserAgent: os.Getenv("MUSICBRAINZ_USER_AGENT"),
+	})
+
+	report, err := artists.NewAuditAlbums(store, spotifyClient, musicBrainzClient).Run(ctx, artists.AuditAlbumsOptions{
+		CatalogPath: options.catalogPath,
+		ArtistSlug:  options.artistSlug,
+	})
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: %v\n", err)
+		for _, item := range report.Errors {
+			_, _ = fmt.Fprintf(stderr, "- %s: %v\n", item.Slug, item.Err)
+		}
+		return 1
+	}
+
+	markdown := artists.FormatAuditAlbumsMarkdown(report)
+	if options.reportPath == "" || options.reportPath == "-" {
+		_, _ = stdout.Write(markdown)
+	} else if err := os.WriteFile(options.reportPath, markdown, 0o644); err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists audit-albums: write report: %v\n", err)
+		return 1
+	} else {
+		_, _ = fmt.Fprintf(stdout, "wrote album audit report: %s\n", options.reportPath)
+	}
+
+	return 0
+}
+
+func parseArtistAlbumAuditOptions(args []string) (artistAlbumAuditOptions, error) {
+	options := artistAlbumAuditOptions{catalogPath: defaultCatalogPath, reportPath: "albums-audit.md"}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return artistAlbumAuditOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+		case "--report":
+			i++
+			if i >= len(args) {
+				return artistAlbumAuditOptions{}, fmt.Errorf("--report requires a value")
+			}
+			options.reportPath = args[i]
+		case "--artist":
+			i++
+			if i >= len(args) {
+				return artistAlbumAuditOptions{}, fmt.Errorf("--artist requires a value")
+			}
+			options.artistSlug = args[i]
+		case "--market":
+			i++
+			if i >= len(args) {
+				return artistAlbumAuditOptions{}, fmt.Errorf("--market requires a value")
+			}
+			options.market = args[i]
+		default:
+			return artistAlbumAuditOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+
+	return options, nil
+}
+
+func artistAlbumAuditSpotifyFetcher(options artistAlbumAuditOptions) (artists.SpotifyAlbumFetcher, error) {
+	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
+	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		return nil, fmt.Errorf("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required")
+	}
+
+	market := options.market
+	if market == "" {
+		market = os.Getenv("SPOTIFY_MARKET")
+	}
+
+	return spotifyadapter.NewClient(spotifyadapter.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Market:       market,
+	})
 }
 
 func executeArtistsResolve(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, store artists.CatalogStore) int {
@@ -1007,7 +1118,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 
 		for {
 			if len(artist.AllSpotifyIDs()) > 0 {
-				_, _ = fmt.Fprint(stdout, "select candidate number to replace primary, aN=add candidate as extra ID, k=keep current, c=clear all IDs, s=skip, q=save and quit: ")
+				_, _ = fmt.Fprint(stdout, "select candidate number to replace primary, aN=add candidate as extra ID, repeat aN to add more, k=keep current, c=clear all IDs, s=skip, q=save and quit: ")
 			} else {
 				_, _ = fmt.Fprint(stdout, "select candidate number, s=skip, q=save and quit: ")
 			}
@@ -1060,20 +1171,31 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 			candidate := matches[selected-1].Candidate
 			if candidate.SpotifyID == "" {
 				_, _ = fmt.Fprintln(stdout, "candidate has no Spotify ID; skipped")
+				if additional {
+					continue
+				}
 				skipped++
 				break
 			}
 			if artist.HasSpotifyID(candidate.SpotifyID) {
+				_, _ = fmt.Fprintf(stdout, "Spotify ID already configured for %s\n", artist.Name)
+				if additional {
+					continue
+				}
 				kept++
 				break
 			}
 			if existing := spotifyIDOwner(c, candidate.SpotifyID, artist.Slug); existing != "" {
 				_, _ = fmt.Fprintf(stdout, "Spotify ID already belongs to %s; skipped\n", existing)
+				if additional {
+					continue
+				}
 				skipped++
 				break
 			}
 			if additional {
 				artist.SpotifyIDs = append(artist.SpotifyIDs, candidate.SpotifyID)
+				_, _ = fmt.Fprintf(stdout, "added extra Spotify ID: %s | %s\n", candidate.SpotifyID, spotifyArtistURL(candidate))
 			} else {
 				artist.SpotifyID = candidate.SpotifyID
 			}
@@ -1081,6 +1203,9 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				artist.Enabled = true
 			}
 			applied++
+			if additional {
+				continue
+			}
 			break
 		}
 	}
@@ -1263,6 +1388,7 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  artists import-groups")
 	_, _ = fmt.Fprintln(w, "  artists validate")
 	_, _ = fmt.Fprintln(w, "  artists resolve")
+	_, _ = fmt.Fprintln(w, "  artists audit-albums")
 	_, _ = fmt.Fprintln(w, "  sync")
 	_, _ = fmt.Fprintln(w, "  db migrate|verify|snapshot|rebuild")
 	_, _ = fmt.Fprintln(w, "  export")
@@ -1277,6 +1403,7 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  import-groups [groups-path] [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  resolve")
+	_, _ = fmt.Fprintln(w, "  audit-albums")
 }
 
 func printSyncHelp(w io.Writer) {

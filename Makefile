@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -12,6 +12,7 @@ EXPORT_DIR ?= site/data/generated
 STATIC_DIR ?= site/static
 CANDIDATES ?= data/artist-candidates.example.json
 REPORT ?= resolve.md
+ALBUM_REPORT ?= albums-audit.md
 ARTIST ?= wu-tang-clan
 MARKET ?= ES
 SITE_SOURCE ?= site
@@ -25,9 +26,10 @@ help:
 	@printf '  make artists-resolve-interactive  Pick Spotify IDs interactively\n'
 	@printf '  make artists-review-interactive   Review all artists, including existing Spotify IDs\n'
 	@printf '  make artists-resolve-offline Generate resolve report from local candidate fixture\n'
+	@printf '  make artists-audit-albums ARTIST=slug Compare Spotify albums with MusicBrainz\n'
 	@printf '  make sync-artist ARTIST=slug Sync one enabled artist from Spotify\n'
 	@printf '  make ci                      Local CI gate\n'
-	@printf '\nVariables: CATALOG=%s DB=%s SNAPSHOT=%s ARTIST=%s MARKET=%s REPORT=%s\n' "$(CATALOG)" "$(DB)" "$(SNAPSHOT)" "$(ARTIST)" "$(MARKET)" "$(REPORT)"
+	@printf '\nVariables: CATALOG=%s DB=%s SNAPSHOT=%s ARTIST=%s MARKET=%s REPORT=%s ALBUM_REPORT=%s\n' "$(CATALOG)" "$(DB)" "$(SNAPSHOT)" "$(ARTIST)" "$(MARKET)" "$(REPORT)" "$(ALBUM_REPORT)"
 
 setup:
 	go mod download
@@ -69,6 +71,9 @@ artists-review-interactive:
 
 artists-resolve-offline:
 	go run $(CLI) artists resolve --non-interactive --catalog $(CATALOG) --candidates $(CANDIDATES) --report $(REPORT)
+
+artists-audit-albums:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists audit-albums --artist $(ARTIST) --catalog $(CATALOG) --market $(MARKET) --report $(ALBUM_REPORT)
 
 sync:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)

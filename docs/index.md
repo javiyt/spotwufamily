@@ -8,6 +8,7 @@ Start here:
 - [Catalog policy](catalog-policy.md)
 - [Database](database.md)
 - [Spotify](spotify.md)
+- [MusicBrainz](musicbrainz.md)
 - [Automation](automation.md)
 - [Operations](operations.md)
 - [Security](security.md)

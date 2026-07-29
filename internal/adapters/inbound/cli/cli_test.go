@@ -223,7 +223,7 @@ artists:
 	require.NotContains(t, string(updated), "spotify_id: \"1111111111111111111111\"")
 }
 
-func TestExecuteArtistsResolveInteractiveReviewAllCanAddAdditionalID(t *testing.T) {
+func TestExecuteArtistsResolveInteractiveReviewAllCanAddMultipleAdditionalIDs(t *testing.T) {
 	dir := t.TempDir()
 	catalogPath := filepath.Join(dir, "artists.yaml")
 	candidatesPath := filepath.Join(dir, "candidates.json")
@@ -243,7 +243,8 @@ artists:
 `), 0o644))
 	require.NoError(t, os.WriteFile(candidatesPath, []byte(`{
   "wu-tang-clan": [
-    {"name": "Wu-Tang Clan", "spotify_id": "0H8YCcvC3MPLKnbDRasGiG", "popularity": 40, "followers": 500}
+    {"name": "Wu-Tang Clan", "spotify_id": "0H8YCcvC3MPLKnbDRasGiG", "popularity": 40, "followers": 500},
+    {"name": "Wu-Tang Clan Legacy", "spotify_id": "1WuLegacySpotifyArtist", "popularity": 20, "followers": 200}
   ]
 }`), 0o644))
 
@@ -259,17 +260,21 @@ artists:
 		catalogPath,
 		"--candidates",
 		candidatesPath,
-	}, strings.NewReader("a1\n"), &stdout, &stderr)
+	}, strings.NewReader("a1\na2\nk\n"), &stdout, &stderr)
 
 	require.Equal(t, 0, code)
 	require.Empty(t, stderr.String())
 	require.Contains(t, stdout.String(), "aN=add candidate as extra ID")
+	require.Contains(t, stdout.String(), "repeat aN to add more")
+	require.Contains(t, stdout.String(), "added extra Spotify ID: 0H8YCcvC3MPLKnbDRasGiG")
+	require.Contains(t, stdout.String(), "added extra Spotify ID: 1WuLegacySpotifyArtist")
 
 	updated, err := os.ReadFile(catalogPath)
 	require.NoError(t, err)
 	require.Contains(t, string(updated), "spotify_id: 34EP7KEpOjXcM2TCat1ISk")
 	require.Contains(t, string(updated), "spotify_ids:")
 	require.Contains(t, string(updated), "- 0H8YCcvC3MPLKnbDRasGiG")
+	require.Contains(t, string(updated), "- 1WuLegacySpotifyArtist")
 }
 
 func TestExecuteUnknownCommand(t *testing.T) {

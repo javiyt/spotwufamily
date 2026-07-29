@@ -26,6 +26,7 @@ make artists-resolve-offline
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-apply
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-interactive
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-review-interactive
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-audit-albums ARTIST=wu-tang-clan
 make sync-dry-run
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-artist ARTIST=wu-tang-clan
 make db-rebuild
@@ -39,6 +40,7 @@ Useful variables:
 ```bash
 make sync-artist ARTIST=gravediggaz MARKET=ES
 make artists-resolve-apply REPORT=resolve.md MARKET=ES
+make artists-audit-albums ARTIST=wu-tang-clan ALBUM_REPORT=albums-audit.md
 make init-from-yaml CATALOG=data/artists.yaml DB=data/catalog.db
 ```
 
@@ -51,6 +53,7 @@ go run ./cmd/spotwufamily artists import-groups
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --report resolve.md
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve --non-interactive --apply --report resolve.md
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists resolve
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists audit-albums --artist wu-tang-clan --report albums-audit.md
 go run ./cmd/spotwufamily artists resolve --non-interactive --candidates data/artist-candidates.example.json --report resolve.md
 go run ./cmd/spotwufamily db migrate
 go run ./cmd/spotwufamily db verify
@@ -114,6 +117,15 @@ To audit the whole YAML, including artists that already have a Spotify ID:
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
   make artists-review-interactive
 ```
+
+To compare the albums returned by configured Spotify IDs with MusicBrainz album release groups:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
+  make artists-audit-albums ARTIST=wu-tang-clan
+```
+
+The report is advisory. It lists matched albums, MusicBrainz albums missing from Spotify results, and Spotify albums that look suspicious or unmatched.
 
 ## Sync
 
