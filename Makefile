@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-import-groups artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -27,6 +27,7 @@ help:
 	@printf '  make artists-enable-with-ids Enable YAML artists that have Spotify IDs\n'
 	@printf '  make artists-discover-wu    Discover possible Wu Family artists from Wikipedia\n'
 	@printf '  make artists-discover-wu-apply Add discovered artists to YAML disabled\n'
+	@printf '  make artists-refresh-genres Refresh YAML Spotify genres for artists with IDs\n'
 	@printf '  make artists-seed-db         Seed configured artists from YAML into SQLite\n'
 	@printf '  make artists-resolve-interactive  Pick Spotify IDs interactively\n'
 	@printf '  make artists-review-interactive   Review all artists, including existing Spotify IDs\n'
@@ -73,6 +74,12 @@ artists-discover-wu:
 
 artists-discover-wu-apply:
 	go run $(CLI) artists discover-wu --catalog $(CATALOG) --report $(DISCOVERY_REPORT) --apply
+
+artists-refresh-genres:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --market $(MARKET)
+
+artists-refresh-genres-dry-run:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --market $(MARKET) --dry-run
 
 artists-seed-db:
 	go run $(CLI) artists seed-db --catalog $(CATALOG) --db $(DB)

@@ -939,7 +939,7 @@ artists:
     notes: ""
   - slug: mathematics
     name: Mathematics
-    spotify_id: ""
+    spotify_id: 6T7ap0aCwj4aJVj3bJ0EWh
     category: producer
     roles:
       - producer
@@ -949,7 +949,7 @@ artists:
     notes: ""
   - slug: popsoundz
     name: Popsoundz
-    spotify_id: ""
+    spotify_id: 7iE9hHrF1NaG70SKjYM9oP
     category: producer
     roles:
       - producer
@@ -979,7 +979,7 @@ artists:
     notes: ""
   - slug: true-master
     name: True Master
-    spotify_id: ""
+    spotify_id: 41gTa5cSf7Zg5eErVb0aOS
     category: producer
     roles:
       - producer
@@ -1009,7 +1009,7 @@ artists:
     notes: ""
   - slug: mobb-deep
     name: Mobb Deep
-    spotify_id: ""
+    spotify_id: 6O2zJ0tId7g07yzHtX0yap
     category: collaborator
     roles:
       - collaborator
@@ -1019,7 +1019,7 @@ artists:
     notes: ""
   - slug: the-l-o-x
     name: The L.O.X.
-    spotify_id: ""
+    spotify_id: 0A7g2YbCA9FlyZvAG6VmKP
     category: collaborator
     roles:
       - collaborator
@@ -1041,7 +1041,7 @@ artists:
     notes: ""
   - slug: busta-rhymes
     name: Busta Rhymes
-    spotify_id: ""
+    spotify_id: 1YfEcTuGvBQ8xSD1f53UnK
     category: collaborator
     roles:
       - collaborator
@@ -1051,7 +1051,7 @@ artists:
     notes: ""
   - slug: kool-g-rap
     name: Kool G Rap
-    spotify_id: ""
+    spotify_id: 099tLNCZZvtjC7myKD0mFp
     category: collaborator
     roles:
       - collaborator
@@ -1081,7 +1081,7 @@ artists:
     notes: ""
   - slug: pete-rock
     name: Pete Rock
-    spotify_id: ""
+    spotify_id: 3BeQqzKdlARoOd6y30kCO2
     category: collaborator
     roles:
       - collaborator
@@ -1091,7 +1091,7 @@ artists:
     notes: ""
   - slug: kanye-west
     name: Kanye West
-    spotify_id: ""
+    spotify_id: 5K4W6rqBFWDnAN6FQUkS6x
     category: collaborator
     roles:
       - collaborator
@@ -1101,7 +1101,7 @@ artists:
     notes: ""
   - slug: dj-muggs
     name: DJ Muggs
-    spotify_id: ""
+    spotify_id: 7pDkjftAxiFHomWsPNkapS
     category: collaborator
     roles:
       - collaborator
@@ -1111,7 +1111,7 @@ artists:
     notes: ""
   - slug: b-nasty
     name: B-Nasty
-    spotify_id: ""
+    spotify_id: 467SPuTPxrtBs0BcHLFenU
     category: collaborator
     roles:
       - collaborator
@@ -1121,7 +1121,7 @@ artists:
     notes: ""
   - slug: dj-symphony
     name: DJ Symphony
-    spotify_id: ""
+    spotify_id: 75nXQyLeB5YjzE7LV8l5gx
     category: collaborator
     roles:
       - collaborator

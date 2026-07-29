@@ -21,6 +21,7 @@ func TestStoreSaveAndLoad(t *testing.T) {
 			Name:           "Wu-Tang Clan",
 			SpotifyID:      "34EP7KEpOjXcM2TCat1ISk",
 			SpotifyIDs:     []string{"0H8YCcvC3MPLKnbDRasGiG"},
+			Genres:         []string{"east coast hip hop", "hardcore hip hop"},
 			Category:       catalog.CategoryCore,
 			Roles:          []catalog.Category{catalog.CategoryCore},
 			Aliases:        []string{"Wu Tang Clan"},
@@ -33,6 +34,8 @@ func TestStoreSaveAndLoad(t *testing.T) {
 	require.NoError(t, store.Save(context.Background(), path, c))
 	first, err := os.ReadFile(path)
 	require.NoError(t, err)
+	require.Contains(t, string(first), "genres:")
+	require.Contains(t, string(first), "east coast hip hop")
 
 	require.NoError(t, store.Save(context.Background(), path, c))
 	second, err := os.ReadFile(path)

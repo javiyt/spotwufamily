@@ -107,6 +107,14 @@ make artists-discover-wu-apply
 
 Discovery is intentionally conservative: it never removes artists, never enables artists and never assigns Spotify IDs. Follow it with Spotify resolution and interactive review.
 
+Spotify genres can be refreshed into the YAML for artists that already have Spotify IDs:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-refresh-genres
+```
+
+The resolver uses those stored genres as compatibility evidence when ranking Spotify candidates. Candidates with similar genres get a small boost; candidates with known incompatible genres are downgraded to reduce noise.
+
 The non-interactive resolver uses Spotify when credentials are present. It also accepts a local JSON candidate file so ranking and report generation can be tested without Spotify credentials or network access:
 
 ```bash

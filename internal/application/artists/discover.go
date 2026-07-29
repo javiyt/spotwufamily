@@ -133,7 +133,12 @@ func buildDiscoverWuFamilyReport(c catalog.EditorialCatalog, discovered []Discov
 			continue
 		}
 		report.New = append(report.New, candidate)
-		existing[candidate.Slug] = struct{}{}
+		existing[candidate.Slug] = candidate.Slug
+		for _, alias := range candidate.Aliases {
+			if aliasKey := catalog.Slugify(alias); aliasKey != "" {
+				existing[aliasKey] = candidate.Slug
+			}
+		}
 	}
 
 	sortDiscoveryCandidates(report.Existing)
@@ -169,33 +174,33 @@ func splitDiscoveryNames(name string) []string {
 	return parts
 }
 
-func firstExistingDiscoveryKey(existing map[string]struct{}, names []string) (string, bool) {
+func firstExistingDiscoveryKey(existing map[string]string, names []string) (string, bool) {
 	for _, name := range names {
 		key := catalog.Slugify(name)
 		if key == "" {
 			continue
 		}
-		if _, ok := existing[key]; ok {
-			return key, true
+		if slug, ok := existing[key]; ok {
+			return slug, true
 		}
 	}
 	return "", false
 }
 
-func catalogIdentityIndex(artists []catalog.Artist) map[string]struct{} {
-	index := map[string]struct{}{}
+func catalogIdentityIndex(artists []catalog.Artist) map[string]string {
+	index := map[string]string{}
 	for _, artist := range artists {
 		for _, value := range append([]string{artist.Slug, artist.Name, artist.PublicName}, artist.Aliases...) {
 			key := catalog.Slugify(value)
 			if key != "" {
-				index[key] = struct{}{}
+				index[key] = artist.Slug
 			}
 		}
 	}
 	return index
 }
 
-func uniqueDiscoverySlug(slug string, existing map[string]struct{}) string {
+func uniqueDiscoverySlug(slug string, existing map[string]string) string {
 	if slug == "" {
 		slug = "artist"
 	}

@@ -29,6 +29,7 @@ type Artist struct {
 	PublicName     string
 	SpotifyID      string
 	SpotifyIDs     []string
+	Genres         []string
 	Category       Category
 	Roles          []Category
 	Aliases        []string
@@ -211,6 +212,26 @@ func validateArtist(prefix string, artist Artist) []ValidationIssue {
 			continue
 		}
 		seenSpotifyIDs[spotifyID] = index
+	}
+
+	genres := map[string]int{}
+	for genreIndex, genre := range artist.Genres {
+		key := normalizeIdentity(genre)
+		if key == "" {
+			issues = append(issues, ValidationIssue{
+				Field:   fmt.Sprintf("%s.genres[%d]", prefix, genreIndex),
+				Message: "must not be empty",
+			})
+			continue
+		}
+		if previous, ok := genres[key]; ok {
+			issues = append(issues, ValidationIssue{
+				Field:   fmt.Sprintf("%s.genres[%d]", prefix, genreIndex),
+				Message: fmt.Sprintf("duplicate genre; first seen at genres[%d]", previous),
+			})
+			continue
+		}
+		genres[key] = genreIndex
 	}
 
 	if artist.Enabled && len(artist.AllSpotifyIDs()) == 0 {

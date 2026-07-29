@@ -47,12 +47,12 @@ func scoreCandidate(artist Artist, candidate ArtistCandidate) (int, string) {
 	artistName := normalizeIdentity(artist.Name)
 	candidateName := normalizeIdentity(candidate.Name)
 	if artistName == candidateName {
-		return 100, "exact normalized name match"
+		return applyGenreEvidence(100, "exact normalized name match", artist, candidate)
 	}
 
 	for _, alias := range artist.Aliases {
 		if normalizeIdentity(alias) == candidateName {
-			return 95, "exact normalized alias match"
+			return applyGenreEvidence(95, "exact normalized alias match", artist, candidate)
 		}
 	}
 
@@ -82,7 +82,102 @@ func scoreCandidate(artist Artist, candidate ArtistCandidate) (int, string) {
 		score = 90
 	}
 
-	return score, "token overlap"
+	return applyGenreEvidence(score, "token overlap", artist, candidate)
+}
+
+func applyGenreEvidence(score int, reason string, artist Artist, candidate ArtistCandidate) (int, string) {
+	if len(candidate.Genres) == 0 {
+		return score, reason
+	}
+	if len(artist.Genres) > 0 {
+		if genresCompatible(artist.Genres, candidate.Genres) {
+			if score < 95 {
+				score += 10
+				if score > 94 {
+					score = 94
+				}
+			}
+			return score, reason + " + similar genre evidence"
+		}
+		score -= 20
+		if score < 0 {
+			score = 0
+		}
+		return score, reason + " - incompatible genre evidence"
+	}
+	if hasHipHopGenre(candidate.Genres) {
+		if score < 95 {
+			score += 8
+			if score > 94 {
+				score = 94
+			}
+		}
+		return score, reason + " + hip-hop genre evidence"
+	}
+
+	score -= 10
+	if score < 0 {
+		score = 0
+	}
+	return score, reason + " - non hip-hop genre evidence"
+}
+
+func genresCompatible(expected, actual []string) bool {
+	for _, expectedGenre := range expected {
+		expectedNormalized := normalizeGenre(expectedGenre)
+		if expectedNormalized == "" {
+			continue
+		}
+		for _, actualGenre := range actual {
+			actualNormalized := normalizeGenre(actualGenre)
+			if actualNormalized == "" {
+				continue
+			}
+			if expectedNormalized == actualNormalized {
+				return true
+			}
+			if strings.Contains(expectedNormalized, actualNormalized) || strings.Contains(actualNormalized, expectedNormalized) {
+				return true
+			}
+			if shareGenreFamily(expectedNormalized, actualNormalized) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func normalizeGenre(genre string) string {
+	return normalizeIdentity(strings.ReplaceAll(genre, "-", " "))
+}
+
+func shareGenreFamily(left, right string) bool {
+	families := []string{"hip hop", "rap", "boom bap", "trap", "r&b", "soul", "funk", "new age", "punk", "rock"}
+	for _, family := range families {
+		if strings.Contains(left, family) && strings.Contains(right, family) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasHipHopGenre(genres []string) bool {
+	for _, genre := range genres {
+		normalized := normalizeGenre(genre)
+		switch {
+		case strings.Contains(normalized, "hip hop"):
+			return true
+		case strings.Contains(normalized, "rap"):
+			return true
+		case strings.Contains(normalized, "boom bap"):
+			return true
+		case strings.Contains(normalized, "wu tang"):
+			return true
+		case strings.Contains(normalized, "trap"):
+			return true
+		}
+	}
+	return false
 }
 
 func tokenSet(value string) map[string]struct{} {

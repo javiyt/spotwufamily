@@ -771,6 +771,8 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsEnableWithIDs(ctx, args[1:], stdout, stderr, store)
 	case "discover-wu":
 		return executeArtistsDiscoverWu(ctx, args[1:], stdout, stderr, store)
+	case "refresh-genres":
+		return executeArtistsRefreshGenres(ctx, args[1:], stdout, stderr, store)
 	case "resolve":
 		return executeArtistsResolve(ctx, args[1:], stdin, stdout, stderr, store)
 	case "audit-albums":
@@ -947,6 +949,93 @@ func parseArtistsDiscoverWuOptions(args []string) (artistsDiscoverWuOptions, err
 		}
 	}
 	return options, nil
+}
+
+type artistsRefreshGenresOptions struct {
+	catalogPath string
+	market      string
+	dryRun      bool
+}
+
+func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists refresh-genres [--catalog data/artists.yaml] [--market ES] [--dry-run]")
+		return 0
+	}
+
+	options, err := parseArtistsRefreshGenresOptions(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: %v\n", err)
+		return 2
+	}
+
+	fetcher, err := spotifyArtistFetcher(options.market)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: %v\n", err)
+		return 1
+	}
+
+	report, err := artists.NewRefreshGenres(store, fetcher).Run(ctx, artists.RefreshGenresOptions{
+		CatalogPath: options.catalogPath,
+		DryRun:      options.dryRun,
+	})
+	mode := "updated"
+	if options.dryRun {
+		mode = "dry-run"
+	}
+	_, _ = fmt.Fprintf(stdout, "artists refresh-genres %s: artists_with_ids=%d updated=%d unchanged=%d without_genres=%d catalog=%s\n", mode, report.ArtistsWithIDs, report.Updated, report.Unchanged, len(report.WithoutGenres), options.catalogPath)
+	if len(report.WithoutGenres) > 0 {
+		_, _ = fmt.Fprintf(stdout, "artists without Spotify genres: %s\n", strings.Join(report.WithoutGenres, ", "))
+	}
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: %v\n", err)
+		for _, item := range report.Errors {
+			_, _ = fmt.Fprintf(stderr, "- %s (%s): %v\n", item.Slug, item.ID, item.Err)
+		}
+		return 1
+	}
+	return 0
+}
+
+func parseArtistsRefreshGenresOptions(args []string) (artistsRefreshGenresOptions, error) {
+	options := artistsRefreshGenresOptions{catalogPath: defaultCatalogPath}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return artistsRefreshGenresOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+		case "--market":
+			i++
+			if i >= len(args) {
+				return artistsRefreshGenresOptions{}, fmt.Errorf("--market requires a value")
+			}
+			options.market = args[i]
+		case "--dry-run":
+			options.dryRun = true
+		default:
+			return artistsRefreshGenresOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	return options, nil
+}
+
+func spotifyArtistFetcher(market string) (artists.SpotifyArtistFetcher, error) {
+	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
+	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		return nil, fmt.Errorf("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required")
+	}
+	if market == "" {
+		market = os.Getenv("SPOTIFY_MARKET")
+	}
+	return spotifyadapter.NewClient(spotifyadapter.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Market:       market,
+	})
 }
 
 type artistsSeedDBOptions struct {
@@ -1540,7 +1629,11 @@ func printInteractiveMatches(stdout io.Writer, matches []catalog.CandidateMatch,
 	for index := 0; index < limit; index++ {
 		match := matches[index]
 		candidate := match.Candidate
-		_, _ = fmt.Fprintf(stdout, "  %d. %s | %s | %s | score=%d confidence=%s popularity=%d followers=%d\n",
+		genres := strings.Join(candidate.Genres, ", ")
+		if genres == "" {
+			genres = "-"
+		}
+		_, _ = fmt.Fprintf(stdout, "  %d. %s | %s | %s | score=%d confidence=%s popularity=%d followers=%d genres=%s\n",
 			index+1,
 			candidate.Name,
 			candidate.SpotifyID,
@@ -1549,6 +1642,7 @@ func printInteractiveMatches(stdout io.Writer, matches []catalog.CandidateMatch,
 			match.Confidence,
 			candidate.Popularity,
 			candidate.Followers,
+			genres,
 		)
 	}
 }
@@ -1763,6 +1857,7 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  artists validate")
 	_, _ = fmt.Fprintln(w, "  artists enable-with-ids")
 	_, _ = fmt.Fprintln(w, "  artists discover-wu")
+	_, _ = fmt.Fprintln(w, "  artists refresh-genres")
 	_, _ = fmt.Fprintln(w, "  artists resolve")
 	_, _ = fmt.Fprintln(w, "  artists seed-db")
 	_, _ = fmt.Fprintln(w, "  artists audit-albums")
@@ -1781,6 +1876,7 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  enable-with-ids")
 	_, _ = fmt.Fprintln(w, "  discover-wu")
+	_, _ = fmt.Fprintln(w, "  refresh-genres")
 	_, _ = fmt.Fprintln(w, "  resolve")
 	_, _ = fmt.Fprintln(w, "  seed-db")
 	_, _ = fmt.Fprintln(w, "  audit-albums")
