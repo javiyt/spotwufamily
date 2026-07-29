@@ -25,6 +25,9 @@ menus:
     - name: Tracks
       pageRef: /tracks/
       weight: 40
+    - name: Random Mix
+      pageRef: /random-mix/
+      weight: 45
     - name: Timeline
       pageRef: /timeline/
       weight: 50

@@ -25,6 +25,23 @@
       <a class="stat" href="{{ "tracks/" | relURL }}"><span>{{ $summary.stats.tracks }}</span><p>Tracks</p></a>
     </div>
   </section>
+  <section class="shell section">
+    <div class="section-heading">
+      <h2>Random Mix</h2>
+      <a href="{{ "random-mix/" | relURL }}">Open full mix</a>
+    </div>
+    <div class="mix-panel mix-panel-compact" data-random-mix data-random-limit="8">
+      <div class="mix-toolbar">
+        <button class="button" type="button" data-random-refresh>Shuffle tracks</button>
+        <a class="button button-secondary" data-random-spotify href="https://open.spotify.com/" target="_blank" rel="noopener">Open in Spotify</a>
+      </div>
+      <div class="mix-player" data-random-player>
+        <p class="empty">Loading random tracks.</p>
+      </div>
+      <ol class="mix-list" data-random-list></ol>
+      <p class="empty" data-random-empty hidden>No tracks available yet.</p>
+    </div>
+  </section>
   <section class="shell section two-column">
     <div>
       <h2>Recent Releases</h2>

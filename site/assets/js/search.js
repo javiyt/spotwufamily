@@ -111,11 +111,91 @@
     }
   }
 
+  for (const panel of document.querySelectorAll("[data-random-mix]")) {
+    setupRandomMix(panel);
+  }
+
+  function setupRandomMix(panel) {
+    const list = panel.querySelector("[data-random-list]");
+    const player = panel.querySelector("[data-random-player]");
+    const empty = panel.querySelector("[data-random-empty]");
+    const refresh = panel.querySelector("[data-random-refresh]");
+    const spotifyLink = panel.querySelector("[data-random-spotify]");
+    const limit = Number.parseInt(panel.dataset.randomLimit || "", 10) || 12;
+    let tracks = [];
+
+    function renderMix() {
+      const mix = shuffle(tracks.slice()).slice(0, limit);
+      list.innerHTML = "";
+      if (!mix.length) {
+        if (empty) {
+          empty.hidden = false;
+        }
+        player.innerHTML = "";
+        return;
+      }
+      if (empty) {
+        empty.hidden = true;
+      }
+
+      const fragment = document.createDocumentFragment();
+      let firstTrack;
+      for (const [index, track] of mix.entries()) {
+        const item = document.createElement("li");
+        item.className = "mix-track";
+        item.innerHTML = '<button type="button"><span></span><small></small></button>';
+        const button = item.querySelector("button");
+        button.dataset.spotifyId = track.id;
+        button.querySelector("span").textContent = track.title;
+        button.querySelector("small").textContent = track.subtitle || "Spotify track";
+        button.addEventListener("click", function () {
+          playTrack(track);
+        });
+        fragment.appendChild(item);
+        if (index === 0) {
+          firstTrack = track;
+        }
+      }
+      list.appendChild(fragment);
+      if (firstTrack) {
+        playTrack(firstTrack);
+      }
+    }
+
+    function playTrack(track) {
+      player.innerHTML = "";
+      const iframe = document.createElement("iframe");
+      iframe.className = "spotify-embed spotify-track-embed";
+      iframe.title = `Spotify track player for ${track.title}`;
+      iframe.src = `https://open.spotify.com/embed/track/${encodeURIComponent(track.id)}?utm_source=generator`;
+      iframe.loading = "lazy";
+      iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+      player.appendChild(iframe);
+      if (spotifyLink) {
+        spotifyLink.href = `https://open.spotify.com/track/${encodeURIComponent(track.id)}`;
+      }
+
+      for (const button of list.querySelectorAll("button")) {
+        button.classList.toggle("is-active", button.dataset.spotifyId === track.id);
+      }
+    }
+
+    loadIndex().then((data) => {
+      tracks = (data.items || []).filter((item) => item.type === "track" && item.id);
+      renderMix();
+    });
+
+    if (refresh) {
+      refresh.addEventListener("click", renderMix);
+    }
+  }
+
   function shuffle(items) {
     for (let index = items.length - 1; index > 0; index -= 1) {
       const swapIndex = Math.floor(Math.random() * (index + 1));
       [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
     }
+    return items;
   }
 
   function siteURL(path) {
