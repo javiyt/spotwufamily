@@ -24,7 +24,7 @@ jobs:
       - name: Create review GitHub App token
         id: review-token
         if: ${{ env.CATALOG_REVIEW_APP_ID != '' && env.CATALOG_REVIEW_APP_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ env.CATALOG_REVIEW_APP_ID }}
           private-key: ${{ env.CATALOG_REVIEW_APP_PRIVATE_KEY }}
