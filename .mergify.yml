@@ -1,16 +1,13 @@
+# Mergify configuration - auto-merge for javiyt's PRs after CI passes
 pull_request_rules:
-  - name: Keep generated catalog PRs up to date
+  - name: Automatic merge for javiyt's PRs after CI passes
     conditions:
-      - base=main
-      - head~=^automation/catalog-sync-
-      - label=automation
-      - label=catalog-update
-      - label=spotify
+      - "author=javiyt"
+      - "status-success=*"
+      - "base=main"
+      - "-conflict"
+      - "-draft"
     actions:
-      update:
-  - name: Keep Dependabot pull requests up to date
-    conditions:
-      - author~=^dependabot(|-preview)\[bot\]$
-      - base=main
-    actions:
-      update:
+      rebase: {}
+      merge:
+        method: squash
