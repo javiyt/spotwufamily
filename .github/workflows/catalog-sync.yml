@@ -37,7 +37,7 @@ jobs:
       CATALOG_SYNC_APP_PRIVATE_KEY: ${{ secrets.CATALOG_SYNC_APP_PRIVATE_KEY }}
     steps:
       - name: Checkout main
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
