@@ -28,7 +28,10 @@ func TestExportCatalogWritesDeterministicFiles(t *testing.T) {
 	require.Contains(t, string(writer.files["generated/catalog-summary.json"]), `"format_version": 1`)
 	require.Contains(t, string(writer.files["generated/artists/index.json"]), `"wu-tang-clan"`)
 	require.Contains(t, string(writer.files["generated/albums/album-1.json"]), `"Track One"`)
+	require.Contains(t, string(writer.files["generated/albums/index.json"]), `"related_artists": [`)
 	require.Contains(t, string(writer.files["generated/tracks/track-1.json"]), `"Album One"`)
+	require.Contains(t, string(writer.files["generated/tracks/index.json"]), `"release_years": [`)
+	require.Contains(t, string(writer.files["generated/tracks/index.json"]), `"groups": [`)
 	require.Contains(t, string(writer.files["content/generated/artists/wu-tang-clan.md"]), `layout: "artist"`)
 	require.Contains(t, string(writer.files["content/generated/albums/album-1.md"]), `layout: "album"`)
 	require.Contains(t, string(writer.files["static/search-index.json"]), `"type": "artist"`)
@@ -105,6 +108,7 @@ func sampleCatalog() catalogexport.Catalog {
 			ReleaseDate: "1993-11-09",
 			TotalTracks: 1,
 			Artists:     []catalogexport.Credit{{SpotifyID: "artist-1", Name: "Wu-Tang Clan"}},
+			Related:     []catalogexport.GroupCredit{{Slug: "wu-tang-clan", SpotifyID: "artist-1", Name: "Wu-Tang Clan", Category: "core"}},
 			Tracks: []catalogexport.AlbumTrack{{
 				SpotifyID:   "track-1",
 				Name:        "Track One",

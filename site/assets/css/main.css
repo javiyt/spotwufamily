@@ -304,6 +304,21 @@ select:focus {
   color: var(--muted);
 }
 
+.album-artists {
+  margin: 6px 0;
+  font-weight: 800;
+}
+
+.album-artists a {
+  color: var(--paper);
+  text-decoration: none;
+}
+
+.album-artists a:focus,
+.album-artists a:hover {
+  color: var(--gold);
+}
+
 .thumb,
 .cover {
   aspect-ratio: 1;
@@ -354,8 +369,35 @@ dd {
   font-weight: 900;
 }
 
-.toolbar {
+.toolbar,
+.filter-panel {
   max-width: 320px;
+}
+
+.filter-panel {
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) repeat(3, minmax(160px, 1fr)) auto;
+  gap: 14px;
+  align-items: end;
+  margin-top: 20px;
+}
+
+.filter-panel-compact {
+  grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) auto;
+}
+
+.filter-actions {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.filter-count {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .detail-hero {
@@ -653,6 +695,10 @@ th {
 
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .filter-panel {
+    grid-template-columns: 1fr;
   }
 }
 

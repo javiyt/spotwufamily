@@ -46,7 +46,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - 1.4.0 Productions
     enabled: true
     editorial_order: 3
     notes: ""
@@ -131,7 +132,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - Brooklyn Zoo
     enabled: false
     editorial_order: 10
     notes: ""
@@ -182,7 +184,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - G.P. Wu
     enabled: true
     editorial_order: 14
     notes: ""
@@ -235,7 +238,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - Housegang
     enabled: false
     editorial_order: 18
     notes: ""
@@ -255,7 +259,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - Klik Ga Bow
     enabled: false
     editorial_order: 20
     notes: ""
@@ -290,7 +295,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - Money Makin Operation
     enabled: true
     editorial_order: 23
     notes: ""
@@ -301,7 +307,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - North Star
     enabled: true
     editorial_order: 24
     notes: ""
@@ -404,7 +411,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - TMF
     enabled: true
     editorial_order: 32
     notes: ""
@@ -415,7 +423,9 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - Two Da Road
+      - 2 On Da Road
     enabled: false
     editorial_order: 33
     notes: ""
@@ -425,7 +435,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - Universal Zu Studios
     enabled: true
     editorial_order: 34
     notes: ""
@@ -1439,3 +1450,912 @@ artists:
     notes: ""
     external_url: https://open.spotify.com/artist/5eGENdlc6kQZeuzUJZ4W8B
     image_url: https://i.scdn.co/image/ab6761610000e5eb6d7a970acc57f827bfaf44f6
+  - slug: chey
+    name: CHEY
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 111
+    notes: Discovered from Wikipedia (Rappers); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#CHEY
+  - slug: d1c3
+    name: D1C3
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 112
+    notes: Discovered from Wikipedia (Rappers); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#D1C3
+  - slug: pxwer
+    name: PXWER
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 113
+    notes: Discovered from Wikipedia (Rappers); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#PXWER
+  - slug: dirty-clanzmen
+    name: Dirty Clanzmen
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 114
+    notes: Discovered from Wikipedia (Groups); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Dirty_Clanzmen
+  - slug: othorized-f-a-m
+    name: Othorized F.A.M.
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 115
+    notes: Discovered from Wikipedia (Groups); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Othorized_F.A.M.
+  - slug: deejay-khalil
+    name: Deejay Khalil
+    spotify_id: ""
+    category: collaborator
+    roles:
+      - collaborator
+    aliases: []
+    enabled: false
+    editorial_order: 116
+    notes: Discovered from Wikipedia (DJs); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Deejay_Khalil
+  - slug: nary-da-producer
+    name: Nary Da Producer
+    spotify_id: ""
+    category: producer
+    roles:
+      - producer
+    aliases: []
+    enabled: false
+    editorial_order: 117
+    notes: Discovered from Wikipedia (Producers); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Nary_Da_Producer
+  - slug: method-man
+    name: Method Man
+    spotify_id: 4VmEWwd8y9MCLwexFMdpwt
+    category: core
+    roles:
+      - core
+    aliases:
+      - Meth
+      - Tical
+      - Johnny Blaze
+    enabled: true
+    editorial_order: 118
+    notes: Core Wu-Tang Clan member added from existing local Spotify credits.
+    external_url: https://open.spotify.com/artist/4VmEWwd8y9MCLwexFMdpwt
+  - slug: method-man-redman
+    name: Method Man & Redman
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+      - collaborator
+    aliases:
+      - Method Man and Redman
+      - Meth & Red
+    enabled: false
+    editorial_order: 119
+    notes: Added as editorial placeholder; resolve Spotify ID before enabling.
+  - slug: 2nd-generation-wu
+    name: 2nd Generation Wu
+    spotify_id: 176ThSTKVe29Uxsae3mkUw
+    spotify_ids:
+      - 4YFhRkKcHSle87kcLc8RIy
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 120
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: 71raw
+    name: 71Raw
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 121
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: a-c-g-137
+    name: A.C.G. 137
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 122
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: actual-facts
+    name: Actual Facts
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 123
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: the-almighty
+    name: The Almighty
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 124
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: american-poets-2099
+    name: American Poets 2099
+    spotify_id: 5qEjOQbO7okscrhr11skN5
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 125
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: ancients-coins
+    name: Ancients Coins
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 126
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: a-r
+    name: "A & R"
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 127
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: armor-of-god
+    name: Armor of God
+    spotify_id: 5024w0wkcfyY5GSSHwfbol
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 128
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: babylon-warchild
+    name: Babylon Warchild
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 129
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: black-knights-of-the-north-star
+    name: Black Knights of the North Star
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 130
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: black-lotus
+    name: Black Lotus
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 131
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: black-rose-kartel
+    name: Black Rose Kartel
+    spotify_id: 7eT746L8wPurjMaBSwCbZz
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 132
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: black-techs
+    name: Black Techs
+    spotify_id: 3IjXvDtFJeKWMvbE2VFeM3
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 133
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: black-w-a-s-p
+    name: Black W.A.S.P.
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 134
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: the-blaquesmiths
+    name: The Blaquesmiths
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 135
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: celestial-souljahz
+    name: Celestial Souljahz
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 136
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: c-i-a
+    name: C.I.A.
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 137
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: coney-island-gankstas
+    name: Coney Island Gankstas
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 138
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: crooks-of-da-round-table
+    name: Crooks of Da Round Table
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 139
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: czarface
+    name: CZARFACE
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 140
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: da-groove-stalkers
+    name: Da Groove Stalkers
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 141
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: da-last-future
+    name: Da Last Future
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 142
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: da-monstar-mob
+    name: Da Monstar Mob
+    spotify_id: 4dNBxqrQ0jymdRQen1CONu
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 143
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: da-undadogz
+    name: Da Undadogz
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 144
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: disciples-of-armageddon
+    name: Disciples of Armageddon
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 145
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: dmd-posse
+    name: DMD Posse
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 146
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: d-r-u-g-g
+    name: D.R.U.G.G.
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 147
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: the-four-horsemen
+    name: The Four Horsemen
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 148
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: g-ciples
+    name: G-Ciples
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 149
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: ghetto-government-officialz
+    name: Ghetto Government Officialz
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 150
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: goldminerz
+    name: GoldMinerz
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 151
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: green-back-gorillas
+    name: Green Back Gorillas
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 152
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: gunslingaz
+    name: Gunslingaz
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 153
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: hawk-kryme
+    name: "Hawk & Kryme"
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 154
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: heart-foundation
+    name: Heart Foundation
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 155
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: henchmen
+    name: Henchmen
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 156
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: hidden-aspects
+    name: Hidden Aspects
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 157
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: homicidal-committee
+    name: Homicidal Committee
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 158
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: the-indovizualz
+    name: The Indovizualz
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 159
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: iron-empire
+    name: Iron Empire
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 160
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: k-m-g
+    name: K.M.G.
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 161
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: lin-brotherz
+    name: Lin Brotherz
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 162
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: loyal-n-lazlo
+    name: Loyal-N-Lazlo
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 163
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: mafioso-chapter
+    name: Mafioso Chapter
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 164
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: moon-crickets
+    name: Moon Crickets
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 165
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: most-high-brotherz
+    name: Most High Brotherz
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 166
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: mysterious
+    name: Mysterious
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 167
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit match is ambiguous; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: the-odd-couple
+    name: The Odd Couple
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 168
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: premium-plus
+    name: Premium Plus
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 169
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: rocks-the-world-productions
+    name: Rocks the World Productions
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 170
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: ruthless-bastards
+    name: Ruthless Bastards
+    spotify_id: 08HoctQX4mOLnlvNfoM80E
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 171
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: sahara
+    name: Sahara
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 172
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: the-sentinels
+    name: The Sentinels
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 173
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: shadow-clan-productions
+    name: Shadow Clan Productions
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 174
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: shadow-government
+    name: Shadow Government
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 175
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: shaolin-soldiers
+    name: Shaolin Soldiers
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 176
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: the-shield-enforcers
+    name: The Shield Enforcers
+    spotify_id: 1LbdcQlYwhordhevATZ4Gr
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 177
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: sonz-of-wu
+    name: Sonz of Wu
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 178
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: soul-kid-klik
+    name: Soul Kid Klik
+    spotify_id: 3Q6VsjaMQSNzKbHL29Fkul
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 179
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: staten-stars
+    name: Staten Stars
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 180
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: the-strength
+    name: The Strength
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 181
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: team-napalm
+    name: Team Napalm
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 182
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: t-h-u-g-angelz
+    name: T.H.U.G. Angelz
+    spotify_id: 3c3NOwaGMMYnH8lRGvnEEi
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 183
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: thug-vatican
+    name: Thug Vatican
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 184
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: tru-n-livin
+    name: Tru-N-Livin
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 185
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: two-4-war
+    name: Two 4 War
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 186
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: united-kingdom
+    name: United Kingdom
+    spotify_id: 3grYksp0csNBBSKDp1azcq
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 187
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: west-coast-killa-beez
+    name: West Coast Killa Beez
+    spotify_id: 507DEVGD42PYBbxaMscxd2
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 188
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: wisemen
+    name: Wisemen
+    spotify_id: 4E19oAZ49FFJmhQ3KCwhrU
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 189
+    notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: wu-block
+    name: Wu Block
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 190
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: wu-elements
+    name: Wu Elements
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 191
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+  - slug: wu-latino
+    name: Wu-Latino
+    spotify_id: ""
+    category: affiliate_group
+    roles:
+      - affiliate_group
+    aliases: []
+    enabled: false
+    editorial_order: 192
+    notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
+    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/

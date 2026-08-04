@@ -3,32 +3,43 @@
   <section class="shell page-head">
     <p class="eyebrow">Editorial catalog</p>
     <h1>Artists</h1>
-    <div class="toolbar">
-      <label for="artist-filter">Filter by category</label>
-      <select id="artist-filter" data-filter-target="artist-list">
-        <option value="">All categories</option>
-        <option value="core">Core</option>
-        <option value="affiliate_group">Affiliate groups</option>
-        <option value="affiliate_artist">Affiliate artists</option>
-        <option value="producer">Producers</option>
-        <option value="collaborator">Collaborators</option>
-      </select>
-    </div>
+    <form class="filter-panel filter-panel-compact" data-artist-filters aria-label="Artist filters">
+      <div class="filter-field">
+        <label for="artist-search">Search artist</label>
+        <input id="artist-search" type="search" data-artist-filter="query" autocomplete="off">
+      </div>
+      <div class="filter-field">
+        <label for="artist-filter">Filter by category</label>
+        <select id="artist-filter" data-artist-filter="category">
+          <option value="">All categories</option>
+          <option value="core">Core</option>
+          <option value="affiliate_group">Affiliate groups</option>
+          <option value="affiliate_artist">Affiliate artists</option>
+          <option value="producer">Producers</option>
+          <option value="collaborator">Collaborators</option>
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button class="button button-secondary" type="reset">Reset</button>
+        <p class="filter-count" data-artist-filter-count aria-live="polite"></p>
+      </div>
+    </form>
   </section>
   <section class="shell section">
     <div id="artist-list" class="card-grid">
       {{ range $artists }}
-        <article id="{{ .slug }}" class="item-card" data-category="{{ .category }}">
+        {{ $artistURL := printf "artists/%s/" .slug | relURL }}
+        <article id="{{ .slug }}" class="item-card" data-artist-row data-category="{{ .category }}" data-artist-text="{{ .name }} {{ .public_name }} {{ range .aliases }} {{ . }}{{ end }}">
           <div class="thumb">
             {{ if .image_url }}
-              {{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ .name }} on Spotify">{{ end }}
-              <img src="{{ .image_url }}" alt="" loading="lazy">
-              {{ if .spotify_url }}</a>{{ end }}
+              <a href="{{ $artistURL }}" aria-label="Open {{ .name }}">
+                <img src="{{ .image_url }}" alt="" loading="lazy">
+              </a>
             {{ else }}
               <span>{{ substr .name 0 1 }}</span>
             {{ end }}
           </div>
-          <h2><a href="{{ printf "artists/%s/" .slug | relURL }}">{{ .name }}</a></h2>
+          <h2><a href="{{ $artistURL }}">{{ .name }}</a></h2>
           <p>{{ replace .category "_" " " }}</p>
           <dl>
             <div><dt>Releases</dt><dd>{{ .release_count }}</dd></div>

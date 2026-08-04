@@ -1,16 +1,46 @@
+{{ $catalogArtists := (index hugo.Data.generated.artists "index").items }}
+{{ $artistURLsBySpotifyID := dict }}
+{{ range $catalogArtists }}
+  {{ $artistURL := printf "artists/%s/" .slug | relURL }}
+  {{ if .spotify_id }}
+    {{ $artistURLsBySpotifyID = merge $artistURLsBySpotifyID (dict .spotify_id $artistURL) }}
+  {{ end }}
+  {{ range .spotify_ids }}
+    {{ $artistURLsBySpotifyID = merge $artistURLsBySpotifyID (dict . $artistURL) }}
+  {{ end }}
+{{ end }}
 <div class="album-grid">
   {{ range . }}
+    {{ $albumURL := printf "albums/%s/" .spotify_id | relURL }}
     <article id="{{ .spotify_id }}" class="album-card">
       <div class="cover">
         {{ if .image_url }}
-          {{ if .spotify_url }}<a href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ .name }} on Spotify">{{ end }}
-          <img src="{{ .image_url }}" alt="" loading="lazy">
-          {{ if .spotify_url }}</a>{{ end }}
+          <a href="{{ $albumURL }}" aria-label="Open {{ .name }}">
+            <img src="{{ .image_url }}" alt="" loading="lazy">
+          </a>
         {{ else }}
           <span>12"</span>
         {{ end }}
       </div>
-      <h3><a href="{{ printf "albums/%s/" .spotify_id | relURL }}">{{ .name }}</a></h3>
+      <h3><a href="{{ $albumURL }}">{{ .name }}</a></h3>
+      {{ $displayArtists := .related_artists }}
+      {{ if not $displayArtists }}
+        {{ $displayArtists = .artists }}
+      {{ end }}
+      {{ with $displayArtists }}
+        <p class="album-artists">
+          {{ range $i, $artist := . }}
+            {{ if $i }}, {{ end }}
+            {{ $artistURL := "" }}
+            {{ if $artist.slug }}
+              {{ $artistURL = printf "artists/%s/" $artist.slug | relURL }}
+            {{ else }}
+              {{ $artistURL = index $artistURLsBySpotifyID $artist.spotify_id }}
+            {{ end }}
+            {{ if $artistURL }}<a href="{{ $artistURL }}">{{ $artist.name }}</a>{{ else }}{{ $artist.name }}{{ end }}
+          {{ end }}
+        </p>
+      {{ end }}
       <p>{{ .album_type }}{{ if .release_date }} / {{ .release_date }}{{ end }}</p>
       {{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}
     </article>
