@@ -28,9 +28,27 @@ const (
 )
 
 var (
-	ErrPermanent = errors.New("permanent Spotify error")
-	ErrTemporary = errors.New("temporary Spotify error")
+	ErrPermanent     = errors.New("permanent Spotify error")
+	ErrTemporary     = errors.New("temporary Spotify error")
+	ErrRateLimited   = fmt.Errorf("%w: Spotify rate limit exceeded", ErrTemporary)
+	ErrQuotaExceeded = fmt.Errorf("%w: Spotify quota exceeded", ErrRateLimited)
 )
+
+type rateLimitAbortError struct {
+	err error
+}
+
+func (e rateLimitAbortError) Error() string {
+	return e.err.Error()
+}
+
+func (e rateLimitAbortError) Unwrap() error {
+	return e.err
+}
+
+func (e rateLimitAbortError) AbortSync() bool {
+	return true
+}
 
 type Config struct {
 	ClientID      string
@@ -394,15 +412,24 @@ func (c *Client) doWithRetry(ctx context.Context, options retryOptions, buildReq
 			c.emitProgress(event)
 			return data, nil
 		case resp.StatusCode == http.StatusTooManyRequests:
-			lastErr = spotifyHTTPError(resp.StatusCode, data, ErrTemporary)
+			quotaExceeded := spotifyQuotaExceeded(data)
+			kind := ErrRateLimited
+			if quotaExceeded {
+				kind = ErrQuotaExceeded
+			}
+			lastErr = spotifyHTTPError(resp.StatusCode, data, kind)
 			wait := retryAfter(resp.Header)
 			event.Stage = "request_retrying"
 			event.Wait = wait
 			event.Err = lastErr
 			c.emitProgress(event)
-			if c.maxRetryAfter > 0 && wait > c.maxRetryAfter {
+			if quotaExceeded || c.maxRetryAfter > 0 && wait > c.maxRetryAfter {
 				event.Stage = "request_failed"
-				event.Err = fmt.Errorf("%w: Spotify requested retry after %s, above max wait %s: %w", ErrTemporary, wait, c.maxRetryAfter, lastErr)
+				abortErr := fmt.Errorf("%w: Spotify quota exceeded: %w", kind, lastErr)
+				if c.maxRetryAfter > 0 && wait > c.maxRetryAfter {
+					abortErr = fmt.Errorf("%w: Spotify requested retry after %s, above max wait %s: %w", kind, wait, c.maxRetryAfter, lastErr)
+				}
+				event.Err = spotifyRateLimitAbortError(abortErr)
 				c.emitProgress(event)
 				return nil, event.Err
 			}
@@ -480,6 +507,14 @@ func spotifyHTTPError(statusCode int, body []byte, kind error) error {
 	}
 
 	return fmt.Errorf("%w: HTTP %d: %s", kind, statusCode, message)
+}
+
+func spotifyRateLimitAbortError(err error) error {
+	return rateLimitAbortError{err: err}
+}
+
+func spotifyQuotaExceeded(body []byte) bool {
+	return strings.Contains(strings.ToUpper(string(body)), "QUOTA_EXCEEDED")
 }
 
 func retryAfter(header http.Header) time.Duration {

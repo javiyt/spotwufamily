@@ -179,6 +179,35 @@ func TestSyncCatalogReturnsPartialFailure(t *testing.T) {
 	require.Len(t, report.Errors, 1)
 }
 
+func TestSyncCatalogAbortsAfterSpotifyQuotaExceeded(t *testing.T) {
+	store := fakeStore{catalog: catalog.EditorialCatalog{
+		Version: 1,
+		Artists: []catalog.Artist{
+			enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk"),
+			func() catalog.Artist {
+				artist := enabledArtist("gravediggaz", "0CH4f9m2L3TRaA5oErU2p0")
+				artist.Name = "Gravediggaz"
+				return artist
+			}(),
+		},
+	}}
+	fetcher := &fakeFetcher{
+		artist:    catalog.ArtistCandidate{Name: "Wu-Tang Clan", SpotifyID: "34EP7KEpOjXcM2TCat1ISk"},
+		albumsErr: fakeAbortError{err: errors.New("temporary Spotify error: Spotify quota exceeded: QUOTA_EXCEEDED")},
+	}
+	repository := &fakeRepository{}
+	usecase := catalogsync.NewSyncCatalog(store, fetcher, repository, fixedClock{})
+
+	report, err := usecase.Run(context.Background(), catalogsync.Options{CatalogPath: "ignored"})
+
+	require.ErrorContains(t, err, "sync aborted after Spotify rate limit")
+	require.Equal(t, 1, report.ArtistsFailed)
+	require.Zero(t, report.ArtistsProcessed)
+	require.Equal(t, []string{"34EP7KEpOjXcM2TCat1ISk"}, fetcher.artistIDs)
+	require.Equal(t, "partial", repository.finishedStatus)
+	require.Len(t, report.Errors, 1)
+}
+
 func requireProgressStages(t *testing.T, events []catalogsync.ProgressEvent, stages ...catalogsync.ProgressStage) {
 	t.Helper()
 
@@ -199,6 +228,7 @@ func (f fakeStore) Load(context.Context, string) (catalog.EditorialCatalog, erro
 type fakeFetcher struct {
 	artist    catalog.ArtistCandidate
 	releases  []catalog.Release
+	albumsErr error
 	albums    map[string]catalog.Release
 	tracks    map[string][]catalog.Track
 	groups    []string
@@ -217,6 +247,9 @@ func (f *fakeFetcher) GetArtist(_ context.Context, spotifyID string) (catalog.Ar
 
 func (f *fakeFetcher) GetArtistAlbums(_ context.Context, _ string, groups []string) ([]catalog.Release, error) {
 	f.groups = append([]string(nil), groups...)
+	if f.albumsErr != nil {
+		return nil, f.albumsErr
+	}
 	return f.releases, nil
 }
 
@@ -233,6 +266,7 @@ type fakeRepository struct {
 	savedReleases       []catalog.ReleaseTracks
 	resumableRun        catalogsync.ResumableSyncRun
 	checkpointedArtists []string
+	finishedStatus      string
 }
 
 func (f *fakeRepository) SaveConfiguredArtists(context.Context, []catalog.Artist) error {
@@ -247,7 +281,8 @@ func (f *fakeRepository) FindResumableSyncRun(context.Context, catalogsync.SyncR
 	return f.resumableRun, f.resumableRun.ID > 0, nil
 }
 
-func (f *fakeRepository) FinishSyncRun(context.Context, int64, string, catalogsync.SyncStats) error {
+func (f *fakeRepository) FinishSyncRun(_ context.Context, _ int64, status string, _ catalogsync.SyncStats) error {
+	f.finishedStatus = status
 	return nil
 }
 
@@ -279,4 +314,20 @@ func enabledArtist(slug, spotifyID string) catalog.Artist {
 		Roles:     []catalog.Category{catalog.CategoryCore},
 		Enabled:   true,
 	}
+}
+
+type fakeAbortError struct {
+	err error
+}
+
+func (e fakeAbortError) Error() string {
+	return e.err.Error()
+}
+
+func (e fakeAbortError) Unwrap() error {
+	return e.err
+}
+
+func (e fakeAbortError) AbortSync() bool {
+	return true
 }

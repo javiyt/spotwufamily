@@ -61,6 +61,8 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
 
 Use the candidate number to write that Spotify ID, `s` to skip, or `q` to save selected changes and quit.
 
+Live resolution uses `data/catalog.db` as a cache for synced albums, tracks and credits before making extra Spotify album/track calls. Pass `--db` when using a non-default catalog database.
+
 For deterministic local testing, it can still use a local JSON candidate file:
 
 ```bash

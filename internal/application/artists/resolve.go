@@ -14,6 +14,10 @@ type CandidateSearcher interface {
 	SearchArtistCandidates(context.Context, catalog.Artist) ([]catalog.ArtistCandidate, error)
 }
 
+type CatalogAwareCandidateSearcher interface {
+	SearchArtistCandidatesWithCatalog(context.Context, catalog.Artist, catalog.EditorialCatalog) ([]catalog.ArtistCandidate, error)
+}
+
 type ResolveArtists struct {
 	store    CatalogStore
 	searcher CandidateSearcher
@@ -148,7 +152,7 @@ func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog,
 		event := ResolveProgress{Stage: "artist_started", ArtistSlug: artist.Slug, ArtistName: artist.Name, ArtistIndex: index + 1, ArtistTotal: len(artistsToResolve)}
 		emitResolveProgress(progress, event)
 
-		candidates, err := r.searcher.SearchArtistCandidates(ctx, artist)
+		candidates, err := searchArtistCandidates(ctx, r.searcher, artist, c)
 		if err != nil {
 			report.Errors = append(report.Errors, ResolveError{Slug: artist.Slug, Err: err})
 			event.Stage = "artist_failed"
@@ -171,6 +175,13 @@ func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog,
 	})
 
 	return report, nil
+}
+
+func searchArtistCandidates(ctx context.Context, searcher CandidateSearcher, artist catalog.Artist, c catalog.EditorialCatalog) ([]catalog.ArtistCandidate, error) {
+	if contextual, ok := searcher.(CatalogAwareCandidateSearcher); ok {
+		return contextual.SearchArtistCandidatesWithCatalog(ctx, artist, c)
+	}
+	return searcher.SearchArtistCandidates(ctx, artist)
 }
 
 func unresolvedArtists(artists []catalog.Artist) []catalog.Artist {

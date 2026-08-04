@@ -62,7 +62,7 @@ To review the full YAML, including artists that already have a Spotify ID:
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-review-interactive
 ```
 
-For artists with an existing ID, the prompt shows current Spotify profiles and lets you keep them, replace the primary ID with a candidate, add one or more candidates as additional IDs with `aN` or `aN,aM` such as `a2,a1`, clear all IDs, skip, or save and quit.
+For artists with an existing ID, the prompt shows current Spotify profiles and MusicBrainz warnings when configured Spotify albums do not match known MusicBrainz release groups. Candidate scoring also highlights `track_evidence` when a candidate appears on tracks from albums by configured groups with reviewed Spotify IDs. Live resolution reads cached albums and tracks from SQLite before calling Spotify, so a freshly synced catalog reduces API quota pressure. The prompt lets you keep the current IDs, replace the primary ID with a candidate, add one or more candidates as additional IDs with `aN` or `aN,aM` such as `a2,a1`, clear all IDs, skip, or save and quit.
 
 Audit reviewed Spotify IDs against MusicBrainz album release groups:
 

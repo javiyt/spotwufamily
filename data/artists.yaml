@@ -1,7 +1,7 @@
-# Generated from data/groups.txt.
-# Spotify IDs are intentionally empty until each entry is resolved and reviewed.
+# Editorial artist catalog.
+# Spotify IDs are intentionally reviewed before sync.
 # Entries remain disabled so validation can reject accidental syncs without a Spotify ID.
-# `roles` preserves cases where an entry appeared in more than one section of the TXT.
+# `roles` preserves cases where an entry belongs to more than one editorial category.
 
 version: 1
 artists:
@@ -383,7 +383,7 @@ artists:
     editorial_order: 30
     notes: ""
     external_url: https://open.spotify.com/artist/3KoWNgHihU3OzEuoouuycC
-    image_url: https://i.scdn.co/image/ab67616d0000b27347375f55881b37edac2c295d
+    image_url: https://i.scdn.co/image/ab67616d0000b273cfbe63f7a2840fbe1915d63b
   - slug: theodore-unit
     name: Theodore Unit
     spotify_id: 3etQyCmhwVq3MCsOWAqgSq
@@ -603,16 +603,14 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b273a31041c86803171f6d98914c
   - slug: don-staten
     name: Don Staten
-    spotify_id: 49o2DS2tAQf2DMjkOtdv5J
+    spotify_id: ""
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: true
+    enabled: false
     editorial_order: 48
     notes: ""
-    external_url: https://open.spotify.com/artist/49o2DS2tAQf2DMjkOtdv5J
-    image_url: https://i.scdn.co/image/ab67616d0000b273a8843d7b06b0f916b21595aa
   - slug: dr-ama-aka-dark-skinned-assassin
     name: Dr. Ama Aka Dark Skinned Assassin
     spotify_id: ""
@@ -692,7 +690,7 @@ artists:
     editorial_order: 54
     notes: ""
     external_url: https://open.spotify.com/artist/59h4urZSPlBLaT0YharjOM
-    image_url: https://i.scdn.co/image/ab6761610000e5eb6a7ca61e271800d2fdb92e16
+    image_url: https://i.scdn.co/image/ab6761610000e5eb7d3c46e8d77ad0bb78d279db
   - slug: intell
     name: Intell
     spotify_id: 4jITyKWjSTPCdzK1iM5eaA
@@ -735,6 +733,10 @@ artists:
   - slug: killa-sin
     name: Killa Sin
     spotify_id: 67XIntxIqJFHkWpewJcrOb
+    spotify_ids:
+      - 53dhUXHXSM7X5SL33JX1Jy
+      - 1YOd9jtfZkGy1eCRiZbuiQ
+      - 7mYFvApe9zG6Zi2C6wKyDk
     genres:
       - boom bap
     category: affiliate_artist
@@ -792,6 +794,8 @@ artists:
   - slug: lounge-lo
     name: Lounge Lo
     spotify_id: 3nksXkEKKByUQDyUB23ftO
+    spotify_ids:
+      - 5FjoaoTbHpCoo70fijg3mv
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -800,6 +804,7 @@ artists:
     editorial_order: 62
     notes: ""
     external_url: https://open.spotify.com/artist/3nksXkEKKByUQDyUB23ftO
+    image_url: https://i.scdn.co/image/ab67616d0000b273b644998a7b1aca26fc36a834
   - slug: piro
     name: PiRo
     spotify_id: 06jtqet6GMetHMxOznw0zK
@@ -939,14 +944,16 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b273786ca892971448a1111b5dc0
   - slug: solomon-childs
     name: Solomon Childs
-    spotify_id: ""
+    spotify_id: 6rp60Uul0bpZWR6B3a6wCc
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 73
     notes: ""
+    external_url: https://open.spotify.com/artist/6rp60Uul0bpZWR6B3a6wCc
+    image_url: https://i.scdn.co/image/14b6a5ae3abe37260c5a1dff42350739075ab63c
   - slug: streetlife
     name: Streetlife
     spotify_id: 0FCYBhXjpfQIQWNKiVEDg5
@@ -1012,17 +1019,27 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b273b3e40941f62881b981ffd9cc
   - slug: young-justice
     name: Young Justice
-    spotify_id: ""
+    spotify_id: 1r9Dad3vzvp6DQoCf9VvAv
+    genres:
+      - underground hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 79
     notes: ""
+    external_url: https://open.spotify.com/artist/1r9Dad3vzvp6DQoCf9VvAv
   - slug: young-dirty-bastard
     name: Young Dirty Bastard
     spotify_id: 67XpRJysiiPNXzPe3RRicV
+    spotify_ids:
+      - 6IHiN7dGHWnx4NXm3QYVel
+      - 5WIvFW29IeBQ72ITXzTzTp
+      - 1QJM5w5GTQY5jJbd7jfV8k
+      - 3ioaPNCCq6g3JfOefsfkrH
+      - 55JXzrcE7PXBY9StZahlZs
+      - 75XV9SBXYjAAGCzKljJMW0
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -1046,6 +1063,9 @@ artists:
   - slug: blue-raspberry
     name: Blue Raspberry
     spotify_id: 60FWCT8KxqA3J5Ny7g6ZXT
+    spotify_ids:
+      - 4z1UL8FpVVj12kNlaX5GRR
+      - 0fIiPVm7ppB6qAmnndaDIX
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -1079,6 +1099,8 @@ artists:
   - slug: suga-bang-bang
     name: Suga Bang Bang
     spotify_id: 4Ri221vy0Nd7G9TNSmoh6e
+    spotify_ids:
+      - 6wxwTwZTsx0NiirVq59gpi
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -1329,10 +1351,13 @@ artists:
   - slug: pete-rock
     name: Pete Rock
     spotify_id: 3BeQqzKdlARoOd6y30kCO2
+    spotify_ids:
+      - 3fJ60AcIgLzQkVitEvA7uq
     genres:
       - boom bap
       - east coast hip hop
       - jazz rap
+      - old school hip hop
     category: collaborator
     roles:
       - collaborator

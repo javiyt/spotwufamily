@@ -1466,7 +1466,7 @@ func artistAlbumAuditSpotifyFetcher(options artistAlbumAuditOptions, progress fu
 
 func executeArtistsResolve(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve [--interactive|--non-interactive] [--review-all] [--apply] [--min-score 95] [--min-score-gap 10] [--enable-applied] [--quiet] [--candidates data/artist-candidates.example.json] [--report report.md] [--catalog data/artists.yaml] [--market ES]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists resolve [--interactive|--non-interactive] [--review-all] [--apply] [--min-score 95] [--min-score-gap 10] [--enable-applied] [--quiet] [--candidates data/artist-candidates.example.json] [--report report.md] [--catalog data/artists.yaml] [--db data/catalog.db] [--market ES]")
 		return 0
 	}
 
@@ -1475,11 +1475,12 @@ func executeArtistsResolve(ctx context.Context, args []string, stdin io.Reader, 
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
 		return 2
 	}
-	searcher, err := resolveSearcher(options, spotifyProgress(stderr, options.quiet))
+	searcher, cleanup, err := resolveSearcher(ctx, options, spotifyProgress(stderr, options.quiet))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists resolve: %v\n", err)
 		return 1
 	}
+	defer cleanup()
 	if options.interactive || !options.nonInteractive {
 		return executeArtistsResolveInteractive(ctx, stdin, stdout, stderr, store, searcher, options)
 	}
@@ -1531,6 +1532,7 @@ type resolveOptions struct {
 	catalogPath    string
 	candidatesPath string
 	reportPath     string
+	dbPath         string
 	market         string
 	interactive    bool
 	nonInteractive bool
@@ -1543,7 +1545,7 @@ type resolveOptions struct {
 }
 
 func parseResolveOptions(args []string) (resolveOptions, error) {
-	options := resolveOptions{catalogPath: defaultCatalogPath, reportPath: "-", minScore: 95, minScoreGap: 10}
+	options := resolveOptions{catalogPath: defaultCatalogPath, dbPath: defaultDatabasePath, reportPath: "-", minScore: 95, minScoreGap: 10}
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -1585,6 +1587,12 @@ func parseResolveOptions(args []string) (resolveOptions, error) {
 				return resolveOptions{}, fmt.Errorf("--catalog requires a value")
 			}
 			options.catalogPath = args[i]
+		case "--db":
+			i++
+			if i >= len(args) {
+				return resolveOptions{}, fmt.Errorf("--db requires a value")
+			}
+			options.dbPath = args[i]
 		case "--candidates":
 			i++
 			if i >= len(args) {
@@ -1649,7 +1657,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 			continue
 		}
 
-		candidates, err := searcher.SearchArtistCandidates(ctx, *artist)
+		candidates, err := searchInteractiveArtistCandidates(ctx, searcher, *artist, c)
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "artists resolve: search %s: %v\n", artist.Slug, err)
 			skipped++
@@ -1667,6 +1675,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				}
 				_, _ = fmt.Fprintf(stdout, "  - %s | %s | %s\n", spotifyID, spotifyArtistURL(catalog.ArtistCandidate{SpotifyID: spotifyID}), marker)
 			}
+			printConfiguredSpotifyIDWarnings(ctx, stdout, stderr, searcher, *artist)
 		}
 		if len(artist.Aliases) > 0 {
 			_, _ = fmt.Fprintf(stdout, "aliases: %s\n", strings.Join(artist.Aliases, ", "))
@@ -1883,6 +1892,67 @@ func printInteractiveResolveSummary(stdout io.Writer, applied, skipped, kept, cl
 	_, _ = fmt.Fprintf(stdout, "interactive resolve: applied=%d skipped=%d kept=%d cleared=%d\n", applied, skipped, kept, cleared)
 }
 
+func searchInteractiveArtistCandidates(ctx context.Context, searcher artists.CandidateSearcher, artist catalog.Artist, c catalog.EditorialCatalog) ([]catalog.ArtistCandidate, error) {
+	if contextual, ok := searcher.(artists.CatalogAwareCandidateSearcher); ok {
+		return contextual.SearchArtistCandidatesWithCatalog(ctx, artist, c)
+	}
+	return searcher.SearchArtistCandidates(ctx, artist)
+}
+
+type configuredSpotifyIDReviewer interface {
+	ReviewConfiguredSpotifyIDs(context.Context, catalog.Artist) ([]artists.ConfiguredSpotifyIDWarning, error)
+}
+
+func printConfiguredSpotifyIDWarnings(ctx context.Context, stdout, stderr io.Writer, searcher artists.CandidateSearcher, artist catalog.Artist) {
+	reviewer, ok := searcher.(configuredSpotifyIDReviewer)
+	if !ok {
+		return
+	}
+	warnings, err := reviewer.ReviewConfiguredSpotifyIDs(ctx, artist)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists resolve: review current Spotify IDs %s: %v\n", artist.Slug, err)
+		return
+	}
+	if len(warnings) == 0 {
+		return
+	}
+
+	_, _ = fmt.Fprintln(stdout, "MusicBrainz warnings:")
+	for _, warning := range warnings {
+		_, _ = fmt.Fprintf(stdout, "  - %s: %s (spotify_albums=%d musicbrainz_albums=%d matched=%d)\n",
+			warning.SpotifyID,
+			warning.Reason,
+			warning.SpotifyAlbumCount,
+			warning.MusicBrainzAlbumCount,
+			warning.MatchedAlbumCount,
+		)
+		if len(warning.SpotifyAlbums) > 0 {
+			_, _ = fmt.Fprintf(stdout, "    Spotify sample: %s\n", formatAuditedAlbumSample(warning.SpotifyAlbums))
+		}
+		if len(warning.MusicBrainzAlbums) > 0 {
+			_, _ = fmt.Fprintf(stdout, "    MusicBrainz sample: %s\n", formatAuditedAlbumSample(warning.MusicBrainzAlbums))
+		}
+	}
+}
+
+func formatAuditedAlbumSample(albums []artists.AuditedAlbum) string {
+	parts := make([]string, 0, len(albums))
+	for _, album := range albums {
+		title := strings.TrimSpace(album.Title)
+		if title == "" {
+			title = album.ID
+		}
+		if album.Year != "" {
+			title += " (" + album.Year + ")"
+		}
+		parts = append(parts, title)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
 func printInteractiveMatches(stdout io.Writer, matches []catalog.CandidateMatch, limit int) {
 	if limit > len(matches) {
 		limit = len(matches)
@@ -1898,7 +1968,11 @@ func printInteractiveMatches(stdout io.Writer, matches []catalog.CandidateMatch,
 		if genres == "" {
 			genres = "-"
 		}
-		_, _ = fmt.Fprintf(stdout, "  %d. %s | %s | %s | score=%d confidence=%s popularity=%d followers=%d genres=%s\n",
+		evidence := strings.Join(candidate.RelatedArtistEvidence, "; ")
+		if evidence != "" {
+			evidence = " track_evidence=" + evidence
+		}
+		_, _ = fmt.Fprintf(stdout, "  %d. %s | %s | %s | score=%d confidence=%s popularity=%d followers=%d genres=%s%s\n",
 			index+1,
 			candidate.Name,
 			candidate.SpotifyID,
@@ -1908,6 +1982,7 @@ func printInteractiveMatches(stdout io.Writer, matches []catalog.CandidateMatch,
 			candidate.Popularity,
 			candidate.Followers,
 			genres,
+			evidence,
 		)
 	}
 }
@@ -2012,15 +2087,16 @@ func spotifyArtistURL(candidate catalog.ArtistCandidate) string {
 	return "https://open.spotify.com/artist/" + candidate.SpotifyID
 }
 
-func resolveSearcher(options resolveOptions, progress func(spotifyadapter.ProgressEvent)) (artists.CandidateSearcher, error) {
+func resolveSearcher(ctx context.Context, options resolveOptions, progress func(spotifyadapter.ProgressEvent)) (artists.CandidateSearcher, func(), error) {
 	if options.candidatesPath != "" {
-		return jsoncandidates.NewSearcher(options.candidatesPath)
+		searcher, err := jsoncandidates.NewSearcher(options.candidatesPath)
+		return searcher, func() {}, err
 	}
 
 	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
 	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
 	if clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required when --candidates is not provided")
+		return nil, func() {}, fmt.Errorf("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required when --candidates is not provided")
 	}
 
 	market := options.market
@@ -2036,13 +2112,23 @@ func resolveSearcher(options resolveOptions, progress func(spotifyadapter.Progre
 		Progress:      progress,
 	})
 	if err != nil {
-		return nil, err
+		return nil, func() {}, err
+	}
+	cacheDatabase, err := sqliteadapter.Open(options.dbPath)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("open cache database: %w", err)
+	}
+	cleanup := func() { _ = cacheDatabase.Close() }
+	if err := cacheDatabase.Migrate(ctx); err != nil {
+		cleanup()
+		return nil, func() {}, fmt.Errorf("migrate cache database: %w", err)
 	}
 	musicBrainzClient := musicbrainz.NewClient(musicbrainz.Config{
 		UserAgent: os.Getenv("MUSICBRAINZ_USER_AGENT"),
 	})
+	cachedSpotify := artists.NewCachedSpotifyAlbumFetcher(cacheDatabase, spotifyClient)
 
-	return artists.NewAlbumEvidenceCandidateSearcher(spotifyClient, spotifyClient, musicBrainzClient), nil
+	return artists.NewAlbumEvidenceCandidateSearcher(spotifyClient, cachedSpotify, musicBrainzClient), cleanup, nil
 }
 
 func executeArtistsValidate(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {

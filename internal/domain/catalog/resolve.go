@@ -3,14 +3,15 @@ package catalog
 import "strings"
 
 type ArtistCandidate struct {
-	Name       string   `json:"name"`
-	SpotifyID  string   `json:"spotify_id"`
-	URL        string   `json:"url"`
-	ImageURL   string   `json:"image_url"`
-	Images     []Image  `json:"images,omitempty"`
-	Popularity int      `json:"popularity"`
-	Followers  int      `json:"followers"`
-	Genres     []string `json:"genres"`
+	Name                  string   `json:"name"`
+	SpotifyID             string   `json:"spotify_id"`
+	URL                   string   `json:"url"`
+	ImageURL              string   `json:"image_url"`
+	Images                []Image  `json:"images,omitempty"`
+	Popularity            int      `json:"popularity"`
+	Followers             int      `json:"followers"`
+	Genres                []string `json:"genres"`
+	RelatedArtistEvidence []string `json:"related_artist_evidence,omitempty"`
 }
 
 type CandidateMatch struct {
@@ -34,13 +35,26 @@ func RankCandidates(artist Artist, candidates []ArtistCandidate) []CandidateMatc
 
 	for i := 0; i < len(matches); i++ {
 		for j := i + 1; j < len(matches); j++ {
-			if matches[j].Score > matches[i].Score {
+			if candidateMatchLess(matches[i], matches[j]) {
 				matches[i], matches[j] = matches[j], matches[i]
 			}
 		}
 	}
 
 	return matches
+}
+
+func candidateMatchLess(left, right CandidateMatch) bool {
+	if left.Score != right.Score {
+		return left.Score < right.Score
+	}
+	if len(left.Candidate.RelatedArtistEvidence) != len(right.Candidate.RelatedArtistEvidence) {
+		return len(left.Candidate.RelatedArtistEvidence) < len(right.Candidate.RelatedArtistEvidence)
+	}
+	if left.Candidate.Popularity != right.Candidate.Popularity {
+		return left.Candidate.Popularity < right.Candidate.Popularity
+	}
+	return left.Candidate.Followers < right.Candidate.Followers
 }
 
 func scoreCandidate(artist Artist, candidate ArtistCandidate) (int, string) {
@@ -87,7 +101,7 @@ func scoreCandidate(artist Artist, candidate ArtistCandidate) (int, string) {
 
 func applyGenreEvidence(score int, reason string, artist Artist, candidate ArtistCandidate) (int, string) {
 	if len(candidate.Genres) == 0 {
-		return score, reason
+		return applyRelatedArtistEvidence(score, reason, candidate)
 	}
 	if len(artist.Genres) > 0 {
 		if genresCompatible(artist.Genres, candidate.Genres) {
@@ -97,13 +111,13 @@ func applyGenreEvidence(score int, reason string, artist Artist, candidate Artis
 					score = 94
 				}
 			}
-			return score, reason + " + similar genre evidence"
+			return applyRelatedArtistEvidence(score, reason+" + similar genre evidence", candidate)
 		}
 		score -= 20
 		if score < 0 {
 			score = 0
 		}
-		return score, reason + " - incompatible genre evidence"
+		return applyRelatedArtistEvidence(score, reason+" - incompatible genre evidence", candidate)
 	}
 	if hasHipHopGenre(candidate.Genres) {
 		if score < 95 {
@@ -112,14 +126,25 @@ func applyGenreEvidence(score int, reason string, artist Artist, candidate Artis
 				score = 94
 			}
 		}
-		return score, reason + " + hip-hop genre evidence"
+		return applyRelatedArtistEvidence(score, reason+" + hip-hop genre evidence", candidate)
 	}
 
 	score -= 10
 	if score < 0 {
 		score = 0
 	}
-	return score, reason + " - non hip-hop genre evidence"
+	return applyRelatedArtistEvidence(score, reason+" - non hip-hop genre evidence", candidate)
+}
+
+func applyRelatedArtistEvidence(score int, reason string, candidate ArtistCandidate) (int, string) {
+	if len(candidate.RelatedArtistEvidence) == 0 {
+		return score, reason
+	}
+	score += 15
+	if score > 100 {
+		score = 100
+	}
+	return score, reason + " + track credit evidence"
 }
 
 func genresCompatible(expected, actual []string) bool {

@@ -26,4 +26,4 @@ The report sections are:
 
 Use this report to decide whether an artist needs more Spotify profile IDs, a corrected primary ID or manual review of suspicious releases.
 
-Spotify artist resolution also uses MusicBrainz as album evidence when live Spotify search is enabled. If MusicBrainz has album release groups for the editorial artist, Spotify candidates whose album list has no normalized match are discarded as noise before ranking. Offline `--candidates` resolution remains deterministic and does not call MusicBrainz.
+Spotify artist resolution also uses MusicBrainz as album evidence when live Spotify search is enabled. If MusicBrainz has album release groups for the editorial artist, Spotify candidates whose album list has no normalized match are discarded as noise before ranking unless they have track-credit evidence from configured groups. Album and track lookups are read from SQLite first and fall back to Spotify only on cache misses. Offline `--candidates` resolution remains deterministic and does not call MusicBrainz.

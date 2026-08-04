@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 	"github.com/stretchr/testify/require"
@@ -295,6 +297,68 @@ func TestLoadExportCatalogBuildsSpotifyURLForConfiguredArtistsWithoutSyncedMetad
 	require.Len(t, exported.Artists, 1)
 	require.Equal(t, "https://open.spotify.com/artist/5wwleY8YnxnutxOExPVoJb", exported.Artists[0].SpotifyURL)
 	require.Equal(t, "https://i.scdn.co/image/killarmy", exported.Artists[0].ImageURL)
+}
+
+func TestCachedSpotifyAlbumFetcherReadsSyncedArtistAlbumsAndTracks(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	configuredArtist := catalog.Artist{
+		Slug:      "wu-tang-clan",
+		Name:      "Wu-Tang Clan",
+		SpotifyID: "artist-1",
+		Category:  catalog.CategoryCore,
+		Roles:     []catalog.Category{catalog.CategoryCore},
+		Enabled:   true,
+	}
+	require.NoError(t, database.SaveConfiguredArtists(ctx, []catalog.Artist{configuredArtist}))
+	runID, err := database.BeginSyncRun(ctx, catalogsync.SyncRun{StartedAt: fixedTime(), Market: "ES"})
+	require.NoError(t, err)
+	_, err = database.SaveArtistCatalog(
+		ctx,
+		runID,
+		configuredArtist,
+		catalog.ArtistCandidate{SpotifyID: "artist-1", Name: "Wu-Tang Clan"},
+		[]catalog.ReleaseTracks{{
+			Release: catalog.Release{
+				SpotifyID:   "album-1",
+				Name:        "Album One",
+				AlbumType:   "album",
+				ReleaseDate: "1993-11-09",
+				Artists:     []catalog.ArtistCandidate{{SpotifyID: "artist-1", Name: "Wu-Tang Clan"}},
+			},
+			Tracks: []catalog.Track{{
+				SpotifyID:   "track-1",
+				Name:        "Track One",
+				DiscNumber:  1,
+				TrackNumber: 1,
+				Artists: []catalog.ArtistCandidate{
+					{SpotifyID: "artist-1", Name: "Wu-Tang Clan"},
+					{SpotifyID: "featured-artist", Name: "Featured Artist"},
+				},
+			}},
+		}},
+		fixedTime(),
+	)
+	require.NoError(t, err)
+
+	albums, err := database.GetCachedArtistAlbums(ctx, "artist-1", []string{"album"})
+	require.NoError(t, err)
+	require.Len(t, albums, 1)
+	require.Equal(t, "album-1", albums[0].SpotifyID)
+
+	tracks, err := database.GetCachedAlbumTracks(ctx, "album-1")
+	require.NoError(t, err)
+	require.Len(t, tracks, 1)
+	require.Equal(t, "track-1", tracks[0].SpotifyID)
+	require.Equal(t, "featured-artist", tracks[0].Artists[1].SpotifyID)
+
+	_, err = database.GetCachedArtistAlbums(ctx, "missing-artist", []string{"album"})
+	require.ErrorIs(t, err, artists.ErrCacheMiss)
+	_, err = database.GetCachedAlbumTracks(ctx, "missing-album")
+	require.True(t, errors.Is(err, artists.ErrCacheMiss))
 }
 
 func openMigratedDatabase(t *testing.T, ctx context.Context, path string) *sqliteadapter.Database {

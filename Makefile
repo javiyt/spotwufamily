@@ -90,16 +90,16 @@ artists-seed-db:
 	go run $(CLI) artists seed-db --catalog $(CATALOG) --db $(DB)
 
 artists-resolve-report:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --non-interactive --catalog $(CATALOG) --market $(MARKET) --report $(REPORT)
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --non-interactive --catalog $(CATALOG) --db $(DB) --market $(MARKET) --report $(REPORT)
 
 artists-resolve-apply:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --non-interactive --apply --catalog $(CATALOG) --market $(MARKET) --report $(REPORT)
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --non-interactive --apply --catalog $(CATALOG) --db $(DB) --market $(MARKET) --report $(REPORT)
 
 artists-resolve-interactive:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --interactive --catalog $(CATALOG) --market $(MARKET)
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --interactive --catalog $(CATALOG) --db $(DB) --market $(MARKET)
 
 artists-review-interactive:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --interactive --review-all --catalog $(CATALOG) --market $(MARKET)
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists resolve --interactive --review-all --catalog $(CATALOG) --db $(DB) --market $(MARKET)
 
 artists-resolve-offline:
 	go run $(CLI) artists resolve --non-interactive --catalog $(CATALOG) --candidates $(CANDIDATES) --report $(REPORT)
@@ -108,7 +108,7 @@ artists-audit-albums:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists audit-albums --artist $(ARTIST) --catalog $(CATALOG) --market $(MARKET) --report $(ALBUM_REPORT)
 
 sync:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --resume --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
 
 sync-all: sync
 

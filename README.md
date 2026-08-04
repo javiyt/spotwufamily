@@ -142,6 +142,8 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
   make artists-review-interactive
 ```
 
+For artists with configured Spotify IDs, live interactive review also warns when those IDs have no album matches against MusicBrainz release groups.
+
 To compare the albums returned by configured Spotify IDs with MusicBrainz album release groups:
 
 ```bash
@@ -151,7 +153,7 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
 
 The report is advisory. It lists matched albums, MusicBrainz albums missing from Spotify results, and Spotify albums that look suspicious or unmatched.
 
-Live Spotify artist resolution also uses MusicBrainz album evidence to discard Spotify candidates that do not match any MusicBrainz album release group for the editorial artist. Offline candidate files are not filtered this way.
+Live Spotify artist resolution uses MusicBrainz album evidence to discard Spotify candidates that do not match any MusicBrainz album release group for the editorial artist. Candidates get an extra score boost when their Spotify ID is credited on tracks from albums by configured groups with reviewed Spotify IDs. The resolver reads cached albums and tracks from SQLite before falling back to Spotify, reducing API quota usage. Offline candidate files remain deterministic and do not call Spotify or MusicBrainz.
 
 ## Sync
 
@@ -183,7 +185,7 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-all
 make export
 ```
 
-Use `--resume` when a previous run saved a partial checkpoint, for example after Spotify returned a long 429 retry window. It skips artists completed in the latest compatible partial run:
+`make sync-all` runs the sync with `--resume`, so it reuses a previous partial checkpoint automatically. Use `--resume` explicitly when invoking the CLI by hand after Spotify returned a long 429 retry window. It skips artists completed in the latest compatible partial run:
 
 ```bash
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily sync --resume
