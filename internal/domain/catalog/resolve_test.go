@@ -67,3 +67,23 @@ func TestRankCandidatesUsesStoredArtistGenresForCompatibility(t *testing.T) {
 	require.Equal(t, 80, matches[1].Score)
 	require.Contains(t, matches[1].Reason, "incompatible genre evidence")
 }
+
+func TestRankCandidatesBoostsTrackCreditEvidence(t *testing.T) {
+	matches := catalog.RankCandidates(catalog.Artist{Name: "Solomon Childs"}, []catalog.ArtistCandidate{
+		{Name: "Solomon Childs Legacy"},
+		{Name: "Solomon Childs Crew", RelatedArtistEvidence: []string{"credited on Wu-Tang Clan track"}},
+	})
+
+	require.Equal(t, "Solomon Childs Crew", matches[0].Candidate.Name)
+	require.Greater(t, matches[0].Score, matches[1].Score)
+	require.Contains(t, matches[0].Reason, "track credit evidence")
+}
+
+func TestRankCandidatesUsesSpotifyPopularityAndFollowersAsTieBreakers(t *testing.T) {
+	matches := catalog.RankCandidates(catalog.Artist{Name: "Killarmy"}, []catalog.ArtistCandidate{
+		{Name: "Killarmy", SpotifyID: "low", Popularity: 10, Followers: 100},
+		{Name: "Killarmy", SpotifyID: "high", Popularity: 20, Followers: 50},
+	})
+
+	require.Equal(t, "high", matches[0].Candidate.SpotifyID)
+}
