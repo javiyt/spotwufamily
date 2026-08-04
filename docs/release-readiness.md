@@ -25,7 +25,7 @@ This is the acceptance checklist for the v2 rebuild.
 | 19 | PR includes readable summary. | Done | `scripts/automation/catalog-pr-body.sh` |
 | 20 | Automatic approval only for allowed paths. | Done | `catalog-review-guard.sh` |
 | 21 | Code changes are never auto-approved. | Done | blocked path guard |
-| 22 | Auto-merge respects `main` protection. | Done | GitHub auto-merge, Mergify merge disabled |
+| 22 | Auto-merge respects `main` protection. | Done | Mergify in-place merge queue |
 | 23 | Merge to `main` deploys Pages. | Done | `pages.yml` |
 | 24 | Secrets are not leaked. | Done | server-side Spotify only; no secrets in exports |
 | 25 | Documentation reproduces the system from zero. | Done | README, operations, automation, e2e docs |

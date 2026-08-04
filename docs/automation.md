@@ -39,6 +39,6 @@ Hugo JSON exports are ignored by Git and regenerated during CI and Pages deploym
 
 `catalog-sync.yml` runs `sync --resume`. If Spotify returns a 429 that cannot be waited out inside the job, the sync command records completed artists in SQLite, writes a partial snapshot, and the workflow still opens or updates the catalog PR with that checkpoint before failing the job. The next scheduled or manual run resumes from the latest compatible partial run and skips artists whose Spotify IDs have not changed.
 
-Mergify is configured only to keep matching PRs up to date. It does not merge PRs; merge decisions are left to GitHub branch protection and the explicit auto-merge request created by `catalog-sync.yml`.
+Mergify queues matching PRs and squash-merges them after CI passes. The queue is configured for in-place checks (`max_parallel_checks: 1`, `batch_size: 1`, identical queue and merge conditions) so it remains compatible with `main` requiring branches to be up to date before merging.
 
 See [Security](security.md), [End-to-end verification](e2e.md) and [Release readiness](release-readiness.md) for the approval and release checklist.
