@@ -169,6 +169,8 @@ func TestRateLimitAboveMaxRetryAfterReturnsError(t *testing.T) {
 	_, err := client.SearchArtists(context.Background(), "Wu-Tang Clan", 20)
 
 	require.Error(t, err)
+	require.ErrorIs(t, err, spotifyadapter.ErrQuotaExceeded)
+	require.ErrorIs(t, err, spotifyadapter.ErrRateLimited)
 	require.ErrorIs(t, err, spotifyadapter.ErrTemporary)
 	require.Contains(t, err.Error(), "above max wait")
 	require.Equal(t, int32(1), calls.Load())

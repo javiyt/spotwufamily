@@ -108,7 +108,7 @@ artists-audit-albums:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists audit-albums --artist $(ARTIST) --catalog $(CATALOG) --market $(MARKET) --report $(ALBUM_REPORT)
 
 sync:
-	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --resume --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
 
 sync-all: sync
 

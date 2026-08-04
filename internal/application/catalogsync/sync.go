@@ -3,6 +3,7 @@ package catalogsync
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -214,6 +215,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 	report.RunID = runID
 	progress(options.Progress, ProgressEvent{Stage: ProgressRunStarted, RunID: runID})
 
+	var abortErr error
 	for index, configuredArtist := range artists {
 		event := ProgressEvent{
 			Stage:       ProgressArtistStarted,
@@ -230,6 +232,10 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 			event.Stage = ProgressArtistFailed
 			event.Err = err
 			progress(options.Progress, event)
+			if shouldAbortSync(err) {
+				abortErr = err
+				break
+			}
 			continue
 		}
 		if err := s.repository.SaveArtistSyncCheckpoint(ctx, runID, configuredArtist, "completed", artistStats, s.clock.Now()); err != nil {
@@ -258,6 +264,9 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 	}
 	progress(options.Progress, ProgressEvent{Stage: ProgressRunFinished, RunID: runID, Stats: report.Stats})
 
+	if abortErr != nil {
+		return report, fmt.Errorf("sync aborted after Spotify rate limit; progress saved as partial run: %w", abortErr)
+	}
 	if report.ArtistsFailed > 0 {
 		return report, fmt.Errorf("%d artist syncs failed", report.ArtistsFailed)
 	}
@@ -335,6 +344,25 @@ func progress(progressFunc func(ProgressEvent), event ProgressEvent) {
 	if progressFunc != nil {
 		progressFunc(event)
 	}
+}
+
+type syncAborter interface {
+	AbortSync() bool
+}
+
+func shouldAbortSync(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var aborter syncAborter
+	if errors.As(err, &aborter) && aborter.AbortSync() {
+		return true
+	}
+
+	message := strings.ToUpper(err.Error())
+	return strings.Contains(message, "QUOTA_EXCEEDED") ||
+		strings.Contains(message, "SPOTIFY REQUESTED RETRY AFTER") && strings.Contains(message, "ABOVE MAX WAIT")
 }
 
 func enabledArtists(artists []catalog.Artist, slug string) []catalog.Artist {
