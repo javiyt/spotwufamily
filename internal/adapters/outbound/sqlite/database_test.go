@@ -32,7 +32,7 @@ VALUES ('wu-tang-clan', 'Wu Tang Clan', 1);`)
 	require.NoError(t, err)
 	report, err := database.Verify(ctx, migrations)
 	require.NoError(t, err)
-	require.Equal(t, 3, report.Migrations)
+	require.Equal(t, 4, report.Migrations)
 	require.Contains(t, report.Checks, "integrity_check")
 	require.Contains(t, report.Checks, "foreign_key_check")
 
@@ -89,6 +89,55 @@ func TestArtistMetadataRefreshCheckpoint(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, refreshedAt, last)
+}
+
+func TestSyncRunArtistCheckpointSupportsResume(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	configuredArtist := catalog.Artist{
+		Slug:      "wu-tang-clan",
+		Name:      "Wu-Tang Clan",
+		SpotifyID: "34EP7KEpOjXcM2TCat1ISk",
+		Category:  catalog.CategoryCore,
+		Roles:     []catalog.Category{catalog.CategoryCore},
+		Enabled:   true,
+	}
+	require.NoError(t, database.SaveConfiguredArtists(ctx, []catalog.Artist{configuredArtist}))
+	run := catalogsync.SyncRun{StartedAt: fixedTime(), Market: "ES", Full: true}
+	runID, err := database.BeginSyncRun(ctx, run)
+	require.NoError(t, err)
+	require.NoError(t, database.SaveArtistSyncCheckpoint(ctx, runID, configuredArtist, "completed", catalogsync.SyncStats{AlbumsUpserted: 2}, fixedTime()))
+	require.NoError(t, database.FinishSyncRun(ctx, runID, "partial", catalogsync.SyncStats{}))
+
+	resumable, ok, err := database.FindResumableSyncRun(ctx, run)
+
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, runID, resumable.ID)
+	require.Equal(t, catalogsync.SpotifyIDsFingerprint(configuredArtist), resumable.CompletedArtistSpotifyIDs["wu-tang-clan"])
+}
+
+func TestSyncRunArtistCheckpointIgnoresOlderPartialAfterSuccess(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	run := catalogsync.SyncRun{StartedAt: fixedTime(), Market: "ES"}
+	partialRunID, err := database.BeginSyncRun(ctx, run)
+	require.NoError(t, err)
+	require.NoError(t, database.FinishSyncRun(ctx, partialRunID, "partial", catalogsync.SyncStats{}))
+	successRunID, err := database.BeginSyncRun(ctx, run)
+	require.NoError(t, err)
+	require.NoError(t, database.FinishSyncRun(ctx, successRunID, "success", catalogsync.SyncStats{}))
+
+	_, ok, err := database.FindResumableSyncRun(ctx, run)
+
+	require.NoError(t, err)
+	require.False(t, ok)
 }
 
 func TestVerifyFailsWhenMigrationMissing(t *testing.T) {

@@ -183,6 +183,12 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-all
 make export
 ```
 
+Use `--resume` when a previous run saved a partial checkpoint, for example after Spotify returned a long 429 retry window. It skips artists completed in the latest compatible partial run:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily sync --resume
+```
+
 For a full refresh from Spotify into the local site:
 
 ```bash

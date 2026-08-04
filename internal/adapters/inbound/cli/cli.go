@@ -132,6 +132,7 @@ type syncOptions struct {
 	market       string
 	full         bool
 	dryRun       bool
+	resume       bool
 	quiet        bool
 }
 
@@ -183,11 +184,17 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 		Market:      options.market,
 		Full:        options.full,
 		DryRun:      options.dryRun,
+		Resume:      options.resume,
 		Progress:    progress,
 	})
 
 	printSyncReport(stdout, report)
 	if err != nil {
+		if !options.dryRun && report.RunID > 0 {
+			if snapshotErr := repository.WriteSnapshot(ctx, options.snapshotPath); snapshotErr != nil {
+				_, _ = fmt.Fprintf(stderr, "sync: write partial snapshot: %v\n", snapshotErr)
+			}
+		}
 		_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
 		for _, item := range report.Errors {
 			_, _ = fmt.Fprintf(stderr, "- %s: %v\n", item.Slug, item.Err)
@@ -243,6 +250,8 @@ func parseSyncOptions(args []string) (syncOptions, error) {
 			options.full = true
 		case "--dry-run":
 			options.dryRun = true
+		case "--resume":
+			options.resume = true
 		case "--quiet":
 			options.quiet = true
 		default:
@@ -284,6 +293,9 @@ func printSyncReport(stdout io.Writer, report catalogsync.Report) {
 	if report.RunID > 0 {
 		_, _ = fmt.Fprintf(stdout, "sync_run_id: %d\n", report.RunID)
 	}
+	if report.ResumedRunID > 0 {
+		_, _ = fmt.Fprintf(stdout, "resumed_from_sync_run_id: %d artists: %d\n", report.ResumedRunID, report.ArtistsResumed)
+	}
 	_, _ = fmt.Fprintf(stdout, "albums: %d tracks: %d artist_albums: %d artist_tracks: %d\n",
 		report.Stats.AlbumsUpserted,
 		report.Stats.TracksUpserted,
@@ -298,6 +310,8 @@ func printSyncProgress(stderr io.Writer, event catalogsync.ProgressEvent) {
 		_, _ = fmt.Fprintf(stderr, "sync: catalog loaded: configured=%d enabled_with_spotify_id=%d\n", event.ConfiguredCount, event.ArtistTotal)
 	case catalogsync.ProgressConfiguredSaved:
 		_, _ = fmt.Fprintf(stderr, "sync: configured artists saved: %d\n", event.ConfiguredCount)
+	case catalogsync.ProgressRunResumed:
+		_, _ = fmt.Fprintf(stderr, "sync: resumable run found: id=%d pending_artists=%d\n", event.RunID, event.ArtistTotal)
 	case catalogsync.ProgressRunStarted:
 		_, _ = fmt.Fprintf(stderr, "sync: run started: id=%d\n", event.RunID)
 	case catalogsync.ProgressArtistStarted:
@@ -2095,7 +2109,7 @@ func printArtistsHelp(w io.Writer) {
 }
 
 func printSyncHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily sync [--artist slug] [--full] [--dry-run] [--quiet] [--market ES] [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily sync [--artist slug] [--full] [--resume] [--dry-run] [--quiet] [--market ES] [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
 }
 
 func printExportHelp(w io.Writer) {

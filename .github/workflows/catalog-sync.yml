@@ -78,14 +78,18 @@ jobs:
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
           SPOTIFY_MARKET: ${{ inputs.market || 'ES' }}
         run: |
-          args=(sync --market "${SPOTIFY_MARKET}")
+          args=(sync --market "${SPOTIFY_MARKET}" --resume)
           if [[ "${{ inputs.full_sync || 'false' }}" == "true" ]]; then
             args+=(--full)
           fi
           if [[ -n "${{ inputs.artist || '' }}" ]]; then
             args+=(--artist "${{ inputs.artist }}")
           fi
+          set +e
           go run ./cmd/spotwufamily "${args[@]}"
+          sync_exit="$?"
+          echo "SYNC_EXIT_CODE=${sync_exit}" >> "$GITHUB_ENV"
+          exit 0
 
       - name: Regenerate derived files
         run: |
@@ -135,3 +139,7 @@ jobs:
             pr_number="${pr_url##*/}"
           fi
           gh pr merge "${pr_number}" --auto --squash --subject "chore(catalog): update Spotify catalog" || true
+
+      - name: Fail when sync did not complete
+        if: ${{ always() && env.SYNC_EXIT_CODE != '' && env.SYNC_EXIT_CODE != '0' }}
+        run: exit "${SYNC_EXIT_CODE}"
