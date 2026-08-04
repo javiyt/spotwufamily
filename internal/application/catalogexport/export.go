@@ -76,29 +76,32 @@ type Artist struct {
 }
 
 type Album struct {
-	SpotifyID   string       `json:"spotify_id"`
-	Name        string       `json:"name"`
-	AlbumType   string       `json:"album_type"`
-	ReleaseDate string       `json:"release_date,omitempty"`
-	Label       string       `json:"label,omitempty"`
-	TotalTracks int          `json:"total_tracks"`
-	SpotifyURL  string       `json:"spotify_url,omitempty"`
-	ImageURL    string       `json:"image_url,omitempty"`
-	Artists     []Credit     `json:"artists"`
-	Tracks      []AlbumTrack `json:"tracks,omitempty"`
-	Copyrights  []Copyright  `json:"copyrights,omitempty"`
+	SpotifyID   string        `json:"spotify_id"`
+	Name        string        `json:"name"`
+	AlbumType   string        `json:"album_type"`
+	ReleaseDate string        `json:"release_date,omitempty"`
+	Label       string        `json:"label,omitempty"`
+	TotalTracks int           `json:"total_tracks"`
+	SpotifyURL  string        `json:"spotify_url,omitempty"`
+	ImageURL    string        `json:"image_url,omitempty"`
+	Artists     []Credit      `json:"artists"`
+	Related     []GroupCredit `json:"related_artists,omitempty"`
+	Tracks      []AlbumTrack  `json:"tracks,omitempty"`
+	Copyrights  []Copyright   `json:"copyrights,omitempty"`
 }
 
 type Track struct {
-	SpotifyID  string   `json:"spotify_id"`
-	Name       string   `json:"name"`
-	DurationMS int      `json:"duration_ms"`
-	Explicit   bool     `json:"explicit"`
-	ISRC       string   `json:"isrc,omitempty"`
-	SpotifyURL string   `json:"spotify_url,omitempty"`
-	PreviewURL string   `json:"preview_url,omitempty"`
-	Artists    []Credit `json:"artists"`
-	Albums     []Credit `json:"albums,omitempty"`
+	SpotifyID    string        `json:"spotify_id"`
+	Name         string        `json:"name"`
+	DurationMS   int           `json:"duration_ms"`
+	Explicit     bool          `json:"explicit"`
+	ISRC         string        `json:"isrc,omitempty"`
+	SpotifyURL   string        `json:"spotify_url,omitempty"`
+	PreviewURL   string        `json:"preview_url,omitempty"`
+	Artists      []Credit      `json:"artists"`
+	Albums       []Credit      `json:"albums,omitempty"`
+	ReleaseYears []string      `json:"release_years,omitempty"`
+	Groups       []GroupCredit `json:"groups,omitempty"`
 }
 
 type AlbumTrack struct {
@@ -114,6 +117,13 @@ type AlbumTrack struct {
 type Credit struct {
 	SpotifyID string `json:"spotify_id,omitempty"`
 	Name      string `json:"name"`
+}
+
+type GroupCredit struct {
+	Slug      string `json:"slug"`
+	SpotifyID string `json:"spotify_id,omitempty"`
+	Name      string `json:"name"`
+	Category  string `json:"category"`
 }
 
 type Copyright struct {
@@ -217,7 +227,7 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 			return report, err
 		}
 	}
-	if err := write(filepath.Join(options.OutputDir, "tracks", "index.json"), mustJSON(Index[Track]{FormatVersion: FormatVersion, Items: trackIndex(catalog.Tracks)}), keepGenerated); err != nil {
+	if err := write(filepath.Join(options.OutputDir, "tracks", "index.json"), mustJSON(Index[Track]{FormatVersion: FormatVersion, Items: trackIndex(catalog)}), keepGenerated); err != nil {
 		return report, err
 	}
 	for _, track := range catalog.Tracks {
@@ -292,14 +302,124 @@ func albumIndex(albums []Album) []Album {
 	return items
 }
 
-func trackIndex(tracks []Track) []Track {
-	items := make([]Track, 0, len(tracks))
-	for _, track := range tracks {
+func trackIndex(catalog Catalog) []Track {
+	yearsByTrack := trackReleaseYears(catalog.Albums)
+	groupsByTrack := trackGroups(catalog.Artists, catalog.Tracks)
+	items := make([]Track, 0, len(catalog.Tracks))
+	for _, track := range catalog.Tracks {
 		track.Albums = nil
+		track.ReleaseYears = yearsByTrack[track.SpotifyID]
+		track.Groups = groupsByTrack[track.SpotifyID]
 		items = append(items, track)
 	}
 
 	return items
+}
+
+func trackReleaseYears(albums []Album) map[string][]string {
+	years := map[string]map[string]struct{}{}
+	for _, album := range albums {
+		if len(album.ReleaseDate) < 4 {
+			continue
+		}
+		year := album.ReleaseDate[:4]
+		for _, track := range album.Tracks {
+			if _, ok := years[track.SpotifyID]; !ok {
+				years[track.SpotifyID] = map[string]struct{}{}
+			}
+			years[track.SpotifyID][year] = struct{}{}
+		}
+	}
+
+	result := map[string][]string{}
+	for trackID, trackYears := range years {
+		values := make([]string, 0, len(trackYears))
+		for year := range trackYears {
+			values = append(values, year)
+		}
+		sort.Sort(sort.Reverse(sort.StringSlice(values)))
+		result[trackID] = values
+	}
+
+	return result
+}
+
+func trackGroups(artists []Artist, tracks []Track) map[string][]GroupCredit {
+	matchers := configuredArtistMatchers(artists)
+	result := map[string][]GroupCredit{}
+	for _, track := range tracks {
+		matches := []GroupCredit{}
+		seen := map[string]struct{}{}
+		for _, artist := range track.Artists {
+			keys := []string{artist.SpotifyID, artist.Name}
+			for _, matcher := range matchers {
+				if _, ok := seen[matcher.group.Slug]; ok {
+					continue
+				}
+				if matcher.matches(keys) {
+					seen[matcher.group.Slug] = struct{}{}
+					matches = append(matches, matcher.group)
+				}
+			}
+		}
+		if len(matches) > 0 {
+			result[track.SpotifyID] = matches
+		}
+	}
+
+	return result
+}
+
+type artistMatcher struct {
+	group GroupCredit
+	keys  map[string]struct{}
+}
+
+func configuredArtistMatchers(artists []Artist) []artistMatcher {
+	matchers := make([]artistMatcher, 0, len(artists))
+	for _, artist := range artists {
+		keys := map[string]struct{}{}
+		addMatcherKey(keys, artist.SpotifyID)
+		for _, spotifyID := range artist.SpotifyIDs {
+			addMatcherKey(keys, spotifyID)
+		}
+		addMatcherKey(keys, artist.Name)
+		addMatcherKey(keys, artist.PublicName)
+		for _, alias := range artist.Aliases {
+			addMatcherKey(keys, alias)
+		}
+		if len(keys) == 0 {
+			continue
+		}
+		matchers = append(matchers, artistMatcher{
+			group: GroupCredit{Slug: artist.Slug, SpotifyID: artist.SpotifyID, Name: artist.Name, Category: artist.Category},
+			keys:  keys,
+		})
+	}
+
+	return matchers
+}
+
+func (m artistMatcher) matches(values []string) bool {
+	for _, value := range values {
+		if _, ok := m.keys[matcherKey(value)]; ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+func addMatcherKey(keys map[string]struct{}, value string) {
+	value = matcherKey(value)
+	if value == "" {
+		return
+	}
+	keys[value] = struct{}{}
+}
+
+func matcherKey(value string) string {
+	return strings.ToLower(strings.Join(strings.Fields(value), " "))
 }
 
 func searchIndex(catalog Catalog) SearchIndex {

@@ -7,8 +7,8 @@
   {{ range $albums }}
     {{ $album := . }}
     {{ $include := false }}
-    {{ range .artists }}
-      {{ if or (eq .spotify_id $artist.spotify_id) (in $artist.spotify_ids .spotify_id) }}
+    {{ range .related_artists }}
+      {{ if eq .slug $artist.slug }}
         {{ $include = true }}
       {{ end }}
     {{ end }}
@@ -20,9 +20,7 @@
   <section class="shell detail-hero">
     <div class="detail-media">
       {{ if $artist.image_url }}
-        {{ if $artist.spotify_url }}<a href="{{ $artist.spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ $artist.name }} on Spotify">{{ end }}
         <img src="{{ $artist.image_url }}" alt="">
-        {{ if $artist.spotify_url }}</a>{{ end }}
       {{ else }}
         <span>{{ substr $artist.name 0 1 }}</span>
       {{ end }}

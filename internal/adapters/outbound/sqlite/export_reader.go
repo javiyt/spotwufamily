@@ -26,6 +26,10 @@ func (d *Database) LoadExportCatalog(ctx context.Context) (catalogexport.Catalog
 	if err != nil {
 		return catalogexport.Catalog{}, err
 	}
+	albumRelatedArtists, err := d.albumRelatedArtists(ctx)
+	if err != nil {
+		return catalogexport.Catalog{}, err
+	}
 	trackArtists, err := d.trackCredits(ctx)
 	if err != nil {
 		return catalogexport.Catalog{}, err
@@ -45,6 +49,7 @@ func (d *Database) LoadExportCatalog(ctx context.Context) (catalogexport.Catalog
 
 	for index := range albums {
 		albums[index].Artists = albumArtists[albums[index].SpotifyID]
+		albums[index].Related = albumRelatedArtists[albums[index].SpotifyID]
 		albums[index].Tracks = albumTracks[albums[index].SpotifyID]
 		albums[index].Copyrights = copyrights[albums[index].SpotifyID]
 	}
@@ -82,13 +87,44 @@ SELECT
   COALESCE(ca.editorial_order, 0),
   COALESCE(eu.url, ''),
   COALESCE(img.url, ''),
-  COUNT(DISTINCT aa.album_id),
-  COUNT(DISTINCT at.track_id)
+  (
+    SELECT COUNT(DISTINCT album_id)
+    FROM (
+      SELECT aa.album_id
+      FROM artist_albums aa
+      WHERE aa.configured_artist_slug = ca.slug AND aa.active = 1
+      UNION
+      SELECT aa2.album_id
+      FROM album_artists aa2
+      JOIN configured_artist_spotify_ids casi ON casi.spotify_id = aa2.artist_id
+      JOIN albums al ON al.spotify_id = aa2.album_id AND al.active = 1
+      WHERE casi.artist_slug = ca.slug
+      UNION
+      SELECT at2.album_id
+      FROM album_tracks at2
+      JOIN track_artists ta ON ta.track_id = at2.track_id
+      JOIN configured_artist_spotify_ids casi ON casi.spotify_id = ta.artist_id
+      JOIN albums al ON al.spotify_id = at2.album_id AND al.active = 1
+      WHERE casi.artist_slug = ca.slug
+    )
+  ),
+  (
+    SELECT COUNT(DISTINCT track_id)
+    FROM (
+      SELECT at.track_id
+      FROM artist_tracks at
+      WHERE at.configured_artist_slug = ca.slug AND at.active = 1
+      UNION
+      SELECT ta.track_id
+      FROM track_artists ta
+      JOIN configured_artist_spotify_ids casi ON casi.spotify_id = ta.artist_id
+      JOIN tracks t ON t.spotify_id = ta.track_id AND t.active = 1
+      WHERE casi.artist_slug = ca.slug
+    )
+  )
 FROM configured_artists ca
 LEFT JOIN external_urls eu ON eu.owner_type = 'artist' AND eu.owner_id = ca.spotify_id AND eu.provider = 'spotify'
 LEFT JOIN images img ON img.owner_type = 'artist' AND img.owner_id = ca.spotify_id AND img.position = 0
-LEFT JOIN artist_albums aa ON aa.configured_artist_slug = ca.slug AND aa.active = 1
-LEFT JOIN artist_tracks at ON at.configured_artist_slug = ca.slug AND at.active = 1
 GROUP BY ca.slug
 ORDER BY COALESCE(ca.editorial_order, 999999), ca.name`)
 	if err != nil {
@@ -292,6 +328,57 @@ SELECT at.track_id, al.spotify_id, al.name
 FROM album_tracks at
 JOIN albums al ON al.spotify_id = at.album_id
 ORDER BY at.track_id, al.release_date, at.disc_number, at.track_number`)
+}
+
+func (d *Database) albumRelatedArtists(ctx context.Context) (map[string][]catalogexport.GroupCredit, error) {
+	rows, err := d.db.QueryContext(ctx, `
+SELECT DISTINCT album_id, slug, spotify_id, name, category, editorial_order
+FROM (
+  SELECT aa.album_id, ca.slug, COALESCE(ca.spotify_id, '') AS spotify_id, ca.name, ca.category, COALESCE(ca.editorial_order, 999999) AS editorial_order
+  FROM artist_albums aa
+  JOIN configured_artists ca ON ca.slug = aa.configured_artist_slug
+  WHERE aa.active = 1 AND ca.active = 1
+
+  UNION
+
+  SELECT aa.album_id, ca.slug, COALESCE(ca.spotify_id, '') AS spotify_id, ca.name, ca.category, COALESCE(ca.editorial_order, 999999) AS editorial_order
+  FROM album_artists aa
+  JOIN configured_artist_spotify_ids casi ON casi.spotify_id = aa.artist_id
+  JOIN configured_artists ca ON ca.slug = casi.artist_slug
+  JOIN albums al ON al.spotify_id = aa.album_id
+  WHERE ca.active = 1 AND al.active = 1
+
+  UNION
+
+  SELECT at.album_id, ca.slug, COALESCE(ca.spotify_id, '') AS spotify_id, ca.name, ca.category, COALESCE(ca.editorial_order, 999999) AS editorial_order
+  FROM album_tracks at
+  JOIN track_artists ta ON ta.track_id = at.track_id
+  JOIN configured_artist_spotify_ids casi ON casi.spotify_id = ta.artist_id
+  JOIN configured_artists ca ON ca.slug = casi.artist_slug
+  JOIN albums al ON al.spotify_id = at.album_id
+  WHERE ca.active = 1 AND al.active = 1
+)
+ORDER BY album_id, editorial_order, name`)
+	if err != nil {
+		return nil, fmt.Errorf("export album related artists: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := map[string][]catalogexport.GroupCredit{}
+	for rows.Next() {
+		var albumID string
+		var artist catalogexport.GroupCredit
+		var editorialOrder int
+		if err := rows.Scan(&albumID, &artist.Slug, &artist.SpotifyID, &artist.Name, &artist.Category, &editorialOrder); err != nil {
+			return nil, fmt.Errorf("scan album related artist: %w", err)
+		}
+		result[albumID] = append(result[albumID], artist)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate album related artists: %w", err)
+	}
+
+	return result, nil
 }
 
 func (d *Database) albumTracks(ctx context.Context, trackCredits map[string][]catalogexport.Credit) (map[string][]catalogexport.AlbumTrack, error) {

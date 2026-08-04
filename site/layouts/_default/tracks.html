@@ -1,23 +1,72 @@
 {{ define "main" }}
   {{ $tracks := (index hugo.Data.generated.tracks "index").items }}
+  {{ $groupOptions := slice }}
+  {{ $yearOptions := slice }}
+  {{ range $tracks }}
+    {{ range .groups }}
+      {{ $groupOptions = $groupOptions | append (printf "%s\t%s" .name .slug) }}
+    {{ end }}
+    {{ range .release_years }}
+      {{ $yearOptions = $yearOptions | append . }}
+    {{ end }}
+  {{ end }}
   <section class="shell page-head">
     <p class="eyebrow">Songs</p>
     <h1>Tracks</h1>
+    <form class="filter-panel" data-track-filters aria-label="Track filters">
+      <div class="filter-field">
+        <label for="track-search">Search</label>
+        <input id="track-search" type="search" data-track-filter="query" autocomplete="off">
+      </div>
+      <div class="filter-field">
+        <label for="track-group-filter">Group / artist</label>
+        <select id="track-group-filter" data-track-filter="group">
+          <option value="">All groups / artists</option>
+          {{ range sort (uniq $groupOptions) }}
+            {{ $parts := split . "\t" }}
+            <option value="{{ index $parts 1 }}">{{ index $parts 0 }}</option>
+          {{ end }}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="track-year-filter">Year</label>
+        <select id="track-year-filter" data-track-filter="year">
+          <option value="">All years</option>
+          {{ range sort (uniq $yearOptions) }}
+            <option value="{{ . }}">{{ . }}</option>
+          {{ end }}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="track-explicit-filter">Explicit</label>
+        <select id="track-explicit-filter" data-track-filter="explicit">
+          <option value="">All tracks</option>
+          <option value="true">Explicit</option>
+          <option value="false">Clean</option>
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button class="button button-secondary" type="reset" data-track-filter-reset>Reset</button>
+        <p class="filter-count" data-track-filter-count aria-live="polite"></p>
+      </div>
+    </form>
   </section>
   <section class="shell section">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Track</th><th>Artists</th><th>Duration</th><th>Explicit</th></tr></thead>
+        <thead><tr><th>Track</th><th>Artists</th><th>Year</th><th>Duration</th><th>Explicit</th><th>Spotify</th></tr></thead>
         <tbody>
           {{ range $tracks }}
-            <tr id="{{ .spotify_id }}">
-              <td>{{ if .spotify_url }}<a href="{{ .spotify_url }}">{{ .name }}</a>{{ else }}{{ .name }}{{ end }}</td>
+            <tr id="{{ .spotify_id }}" data-track-row data-track-text="{{ .name }} {{ range .artists }} {{ .name }}{{ end }} {{ range .groups }} {{ .name }}{{ end }}" data-track-groups="{{ range .groups }} {{ .slug }}{{ end }}" data-track-years="{{ range .release_years }} {{ . }}{{ end }}" data-track-explicit="{{ .explicit }}">
+              <td><a href="#{{ .spotify_id }}">{{ .name }}</a></td>
               <td>{{ range $i, $artist := .artists }}{{ if $i }}, {{ end }}{{ $artist.name }}{{ end }}</td>
+              <td>{{ with .release_years }}{{ delimit . ", " }}{{ else }}Unknown{{ end }}</td>
               <td>{{ div .duration_ms 1000 }}s</td>
               <td>{{ if .explicit }}Yes{{ else }}No{{ end }}</td>
+              <td>{{ if .spotify_url }}<a class="spotify-link" href="{{ .spotify_url }}" target="_blank" rel="noopener noreferrer">Open in Spotify</a>{{ end }}</td>
             </tr>
           {{ else }}
-            <tr><td colspan="4">No tracks exported yet.</td></tr>
+            <tr><td colspan="6">No tracks exported yet.</td></tr>
           {{ end }}
         </tbody>
       </table>

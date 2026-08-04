@@ -3,9 +3,7 @@
   <section class="shell detail-hero">
     <div class="detail-media">
       {{ if $album.image_url }}
-        {{ if $album.spotify_url }}<a href="{{ $album.spotify_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open {{ $album.name }} on Spotify">{{ end }}
         <img src="{{ $album.image_url }}" alt="">
-        {{ if $album.spotify_url }}</a>{{ end }}
       {{ else }}
         <span>12"</span>
       {{ end }}
@@ -14,7 +12,12 @@
       <p class="eyebrow">{{ $album.album_type }}{{ if $album.release_date }} / {{ $album.release_date }}{{ end }}</p>
       <h1>{{ $album.name }}</h1>
       {{ if $album.label }}<p>{{ $album.label }}</p>{{ end }}
-      <p>{{ range $i, $artist := $album.artists }}{{ if $i }}, {{ end }}{{ $artist.name }}{{ end }}</p>
+      {{ with $album.related_artists }}
+        <p class="album-artists">Catalog:
+          {{ range $i, $artist := . }}{{ if $i }}, {{ end }}<a href="{{ printf "artists/%s/" $artist.slug | relURL }}">{{ $artist.name }}</a>{{ end }}
+        </p>
+      {{ end }}
+      <p>Spotify credit: {{ range $i, $artist := $album.artists }}{{ if $i }}, {{ end }}{{ $artist.name }}{{ end }}</p>
       <dl class="detail-stats">
         <div><dt>Tracks</dt><dd>{{ $album.total_tracks }}</dd></div>
         <div><dt>Type</dt><dd>{{ $album.album_type }}</dd></div>

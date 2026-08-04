@@ -269,6 +269,7 @@ func TestSaveArtistCatalogPersistsNormalizedCatalog(t *testing.T) {
 	require.Len(t, exported.Tracks, 1)
 	require.Equal(t, "Wu-Tang Clan", exported.Artists[0].Name)
 	require.Equal(t, "Album One", exported.Albums[0].Name)
+	require.Equal(t, "wu-tang-clan", exported.Albums[0].Related[0].Slug)
 	require.Equal(t, "Track One", exported.Albums[0].Tracks[0].Name)
 	require.Equal(t, "Wu-Tang Clan", exported.Tracks[0].Artists[0].Name)
 }

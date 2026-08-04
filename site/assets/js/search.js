@@ -101,6 +101,91 @@
     }
   }
 
+  for (const form of document.querySelectorAll("[data-artist-filters]")) {
+    setupArtistFilters(form);
+  }
+
+  function setupArtistFilters(form) {
+    const rows = Array.from(document.querySelectorAll("[data-artist-row]"));
+    const queryInput = form.querySelector('[data-artist-filter="query"]');
+    const categorySelect = form.querySelector('[data-artist-filter="category"]');
+    const count = form.querySelector("[data-artist-filter-count]");
+    const category = new URLSearchParams(window.location.search).get("category");
+    if (category && categorySelect) {
+      categorySelect.value = category;
+    }
+
+    function applyArtistFilters() {
+      const query = normalize(queryInput ? queryInput.value : "");
+      const categoryValue = categorySelect ? categorySelect.value : "";
+      let visible = 0;
+
+      for (const row of rows) {
+        const matchesQuery = !query || normalize(row.dataset.artistText).includes(query);
+        const matchesCategory = !categoryValue || row.dataset.category === categoryValue;
+        const matches = matchesQuery && matchesCategory;
+        row.hidden = !matches;
+        if (matches) {
+          visible += 1;
+        }
+      }
+
+      if (count) {
+        count.textContent = `${visible} of ${rows.length} artists`;
+      }
+    }
+
+    form.addEventListener("input", applyArtistFilters);
+    form.addEventListener("change", applyArtistFilters);
+    form.addEventListener("reset", function () {
+      window.setTimeout(applyArtistFilters, 0);
+    });
+    applyArtistFilters();
+  }
+
+  for (const form of document.querySelectorAll("[data-track-filters]")) {
+    setupTrackFilters(form);
+  }
+
+  function setupTrackFilters(form) {
+    const rows = Array.from(document.querySelectorAll("[data-track-row]"));
+    const filters = Array.from(form.querySelectorAll("[data-track-filter]"));
+    const count = form.querySelector("[data-track-filter-count]");
+
+    function applyTrackFilters() {
+      const values = Object.fromEntries(filters.map((filter) => [filter.dataset.trackFilter, filter.value]));
+      const query = normalize(values.query);
+      let visible = 0;
+
+      for (const row of rows) {
+        const matchesQuery = !query || normalize(row.dataset.trackText).includes(query);
+        const matchesGroup = !values.group || tokenList(row.dataset.trackGroups).includes(values.group);
+        const matchesYear = !values.year || tokenList(row.dataset.trackYears).includes(values.year);
+        const matchesExplicit = !values.explicit || row.dataset.trackExplicit === values.explicit;
+        const matches = matchesQuery && matchesGroup && matchesYear && matchesExplicit;
+        row.hidden = !matches;
+        if (matches) {
+          visible += 1;
+        }
+      }
+
+      if (count) {
+        count.textContent = `${visible} of ${rows.length} tracks`;
+      }
+    }
+
+    form.addEventListener("input", applyTrackFilters);
+    form.addEventListener("change", applyTrackFilters);
+    form.addEventListener("reset", function () {
+      window.setTimeout(applyTrackFilters, 0);
+    });
+    applyTrackFilters();
+  }
+
+  function tokenList(value) {
+    return String(value || "").trim().split(/\s+/).filter(Boolean);
+  }
+
   for (const list of document.querySelectorAll("[data-random-artist-list]")) {
     const items = Array.from(list.querySelectorAll("[data-random-artist-item]"));
     const limit = Number.parseInt(list.dataset.randomLimit || "", 10) || items.length;
