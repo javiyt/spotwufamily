@@ -122,6 +122,49 @@ func TestSyncCatalogReportsProgress(t *testing.T) {
 	require.Equal(t, 1, events[8].Stats.AlbumsUpserted)
 }
 
+func TestSyncCatalogResumesFromPartialRun(t *testing.T) {
+	store := fakeStore{catalog: catalog.EditorialCatalog{
+		Version: 1,
+		Artists: []catalog.Artist{
+			enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk"),
+			func() catalog.Artist {
+				artist := enabledArtist("gravediggaz", "0CH4f9m2L3TRaA5oErU2p0")
+				artist.Name = "Gravediggaz"
+				return artist
+			}(),
+		},
+	}}
+	fetcher := &fakeFetcher{
+		artist:   catalog.ArtistCandidate{Name: "Gravediggaz", SpotifyID: "0CH4f9m2L3TRaA5oErU2p0"},
+		releases: []catalog.Release{{SpotifyID: "album-1", Name: "Album One"}},
+		albums: map[string]catalog.Release{
+			"album-1": {SpotifyID: "album-1", Name: "Album One", AlbumType: "album"},
+		},
+		tracks: map[string][]catalog.Track{
+			"album-1": {{SpotifyID: "track-1", Name: "Track One"}},
+		},
+	}
+	repository := &fakeRepository{
+		resumableRun: catalogsync.ResumableSyncRun{
+			ID: 7,
+			CompletedArtistSpotifyIDs: map[string]string{
+				"wu-tang-clan": catalogsync.SpotifyIDsFingerprint(enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")),
+			},
+		},
+	}
+	usecase := catalogsync.NewSyncCatalog(store, fetcher, repository, fixedClock{})
+
+	report, err := usecase.Run(context.Background(), catalogsync.Options{CatalogPath: "ignored", Market: "ES", Resume: true})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(7), report.ResumedRunID)
+	require.Equal(t, 1, report.ArtistsResumed)
+	require.Equal(t, 1, report.ArtistsPlanned)
+	require.Equal(t, 1, report.ArtistsProcessed)
+	require.Equal(t, []string{"0CH4f9m2L3TRaA5oErU2p0"}, fetcher.artistIDs)
+	require.Equal(t, []string{"gravediggaz"}, repository.checkpointedArtists)
+}
+
 func TestSyncCatalogReturnsPartialFailure(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
 		Version: 1,
@@ -186,8 +229,10 @@ func (f *fakeFetcher) GetAlbumTracks(_ context.Context, spotifyID string) ([]cat
 }
 
 type fakeRepository struct {
-	stats         catalogsync.SyncStats
-	savedReleases []catalog.ReleaseTracks
+	stats               catalogsync.SyncStats
+	savedReleases       []catalog.ReleaseTracks
+	resumableRun        catalogsync.ResumableSyncRun
+	checkpointedArtists []string
 }
 
 func (f *fakeRepository) SaveConfiguredArtists(context.Context, []catalog.Artist) error {
@@ -198,7 +243,16 @@ func (f *fakeRepository) BeginSyncRun(context.Context, catalogsync.SyncRun) (int
 	return 42, nil
 }
 
+func (f *fakeRepository) FindResumableSyncRun(context.Context, catalogsync.SyncRun) (catalogsync.ResumableSyncRun, bool, error) {
+	return f.resumableRun, f.resumableRun.ID > 0, nil
+}
+
 func (f *fakeRepository) FinishSyncRun(context.Context, int64, string, catalogsync.SyncStats) error {
+	return nil
+}
+
+func (f *fakeRepository) SaveArtistSyncCheckpoint(_ context.Context, _ int64, artist catalog.Artist, _ string, _ catalogsync.SyncStats, _ time.Time) error {
+	f.checkpointedArtists = append(f.checkpointedArtists, artist.Slug)
 	return nil
 }
 

@@ -112,6 +112,58 @@ VALUES (?, 'running', ?, ?, '')`,
 	return id, nil
 }
 
+func (d *Database) FindResumableSyncRun(ctx context.Context, run catalogsync.SyncRun) (catalogsync.ResumableSyncRun, bool, error) {
+	var runID int64
+	var status string
+	err := d.db.QueryRowContext(ctx, `
+SELECT id, status
+FROM sync_runs
+WHERE market = ?
+  AND full_sync = ?
+  AND status IN ('success', 'partial')
+ORDER BY id DESC
+LIMIT 1`,
+		run.Market,
+		boolInt(run.Full),
+	).Scan(&runID, &status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return catalogsync.ResumableSyncRun{}, false, nil
+		}
+		return catalogsync.ResumableSyncRun{}, false, fmt.Errorf("find resumable sync run: %w", err)
+	}
+	if status != "partial" {
+		return catalogsync.ResumableSyncRun{}, false, nil
+	}
+
+	rows, err := d.db.QueryContext(ctx, `
+SELECT artist_slug, spotify_ids
+FROM sync_run_artists
+WHERE sync_run_id = ?
+  AND status = 'completed'`,
+		runID,
+	)
+	if err != nil {
+		return catalogsync.ResumableSyncRun{}, false, fmt.Errorf("read resumable sync run artists: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	completed := map[string]string{}
+	for rows.Next() {
+		var slug string
+		var spotifyIDs string
+		if err := rows.Scan(&slug, &spotifyIDs); err != nil {
+			return catalogsync.ResumableSyncRun{}, false, fmt.Errorf("scan resumable sync run artist: %w", err)
+		}
+		completed[slug] = spotifyIDs
+	}
+	if err := rows.Err(); err != nil {
+		return catalogsync.ResumableSyncRun{}, false, fmt.Errorf("iterate resumable sync run artists: %w", err)
+	}
+
+	return catalogsync.ResumableSyncRun{ID: runID, CompletedArtistSpotifyIDs: completed}, true, nil
+}
+
 func (d *Database) FinishSyncRun(ctx context.Context, runID int64, status string, stats catalogsync.SyncStats) error {
 	data, err := json.Marshal(stats)
 	if err != nil {
@@ -127,6 +179,33 @@ WHERE id = ?`,
 		runID,
 	); err != nil {
 		return fmt.Errorf("finish sync run: %w", err)
+	}
+
+	return nil
+}
+
+func (d *Database) SaveArtistSyncCheckpoint(ctx context.Context, runID int64, artist catalog.Artist, status string, stats catalogsync.SyncStats, finishedAt time.Time) error {
+	data, err := json.Marshal(stats)
+	if err != nil {
+		return fmt.Errorf("marshal artist sync summary: %w", err)
+	}
+
+	if _, err := d.db.ExecContext(ctx, `
+INSERT INTO sync_run_artists(sync_run_id, artist_slug, spotify_ids, status, finished_at, summary)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(sync_run_id, artist_slug) DO UPDATE SET
+  spotify_ids = excluded.spotify_ids,
+  status = excluded.status,
+  finished_at = excluded.finished_at,
+  summary = excluded.summary`,
+		runID,
+		artist.Slug,
+		catalogsync.SpotifyIDsFingerprint(artist),
+		status,
+		finishedAt.UTC().Format(time.RFC3339),
+		string(data),
+	); err != nil {
+		return fmt.Errorf("save artist sync checkpoint %s: %w", artist.Slug, err)
 	}
 
 	return nil
