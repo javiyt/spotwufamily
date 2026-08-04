@@ -1,6 +1,27 @@
-# Mergify configuration - auto-merge for javiyt's PRs after CI passes
+# Mergify configuration - queue and squash-merge javiyt's PRs after CI passes
+merge_queue:
+  max_parallel_checks: 1
+
+queue_rules:
+  - name: default
+    batch_size: 1
+    merge_method: squash
+    update_method: rebase
+    queue_conditions:
+      - "author=javiyt"
+      - "status-success=*"
+      - "base=main"
+      - "-conflict"
+      - "-draft"
+    merge_conditions:
+      - "author=javiyt"
+      - "status-success=*"
+      - "base=main"
+      - "-conflict"
+      - "-draft"
+
 pull_request_rules:
-  - name: Automatic merge for javiyt's PRs after CI passes
+  - name: Queue javiyt's PRs after CI passes
     conditions:
       - "author=javiyt"
       - "status-success=*"
@@ -8,6 +29,5 @@ pull_request_rules:
       - "-conflict"
       - "-draft"
     actions:
-      rebase: {}
-      merge:
-        method: squash
+      queue:
+        name: default
