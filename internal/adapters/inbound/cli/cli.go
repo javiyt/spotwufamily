@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -190,16 +191,25 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 
 	printSyncReport(stdout, report)
 	if err != nil {
+		exitCode := syncErrorExitCode(err, nil)
 		if !options.dryRun && report.RunID > 0 {
 			if snapshotErr := repository.WriteSnapshot(ctx, options.snapshotPath); snapshotErr != nil {
 				_, _ = fmt.Fprintf(stderr, "sync: write partial snapshot: %v\n", snapshotErr)
+				exitCode = syncErrorExitCode(err, snapshotErr)
 			}
+		}
+		if exitCode == 0 {
+			_, _ = fmt.Fprintf(stderr, "sync: warning: Spotify quota exceeded or rate limit reached; progress saved as partial run and the next sync can resume from this checkpoint: %v\n", err)
+			for _, item := range report.Errors {
+				_, _ = fmt.Fprintf(stderr, "- %s: %v\n", item.Slug, item.Err)
+			}
+			return 0
 		}
 		_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
 		for _, item := range report.Errors {
 			_, _ = fmt.Fprintf(stderr, "- %s: %v\n", item.Slug, item.Err)
 		}
-		return 1
+		return exitCode
 	}
 
 	if !options.dryRun {
@@ -210,6 +220,15 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 	}
 
 	return 0
+}
+
+func syncErrorExitCode(err error, snapshotErr error) int {
+	var partialErr *catalogsync.PartialSyncError
+	if snapshotErr == nil && errors.As(err, &partialErr) {
+		return 0
+	}
+
+	return 1
 }
 
 func parseSyncOptions(args []string) (syncOptions, error) {

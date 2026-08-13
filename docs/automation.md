@@ -37,7 +37,7 @@ The sync identity and review identity must be separate GitHub Apps or bot creden
 
 Hugo JSON exports are ignored by Git and regenerated during CI and Pages deployment.
 
-`catalog-sync.yml` runs `sync --resume`. If Spotify returns a 429 that cannot be waited out inside the job, the sync command records completed artists in SQLite, writes a partial snapshot, and the workflow still opens or updates the catalog PR with that checkpoint before failing the job. The next scheduled or manual run resumes from the latest compatible partial run and skips artists whose Spotify IDs have not changed.
+`catalog-sync.yml` runs `sync --resume`. If Spotify returns a 429 that cannot be waited out inside the job, the sync command records completed artists in SQLite, writes a partial snapshot, emits a warning, and exits successfully so the workflow can open or update the catalog PR with that checkpoint. The next scheduled or manual run resumes from the latest compatible partial run and skips artists whose Spotify IDs have not changed.
 
 Mergify queues matching PRs and squash-merges them after CI passes. The queue is configured for in-place checks (`max_parallel_checks: 1`, `batch_size: 1`, identical queue and merge conditions) so it remains compatible with `main` requiring branches to be up to date before merging.
 
