@@ -201,6 +201,8 @@ func TestSyncCatalogAbortsAfterSpotifyQuotaExceeded(t *testing.T) {
 	report, err := usecase.Run(context.Background(), catalogsync.Options{CatalogPath: "ignored"})
 
 	require.ErrorContains(t, err, "sync aborted after Spotify rate limit")
+	var partialErr *catalogsync.PartialSyncError
+	require.ErrorAs(t, err, &partialErr)
 	require.Equal(t, 1, report.ArtistsFailed)
 	require.Zero(t, report.ArtistsProcessed)
 	require.Equal(t, []string{"34EP7KEpOjXcM2TCat1ISk"}, fetcher.artistIDs)

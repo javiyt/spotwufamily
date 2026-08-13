@@ -95,6 +95,26 @@ type ArtistError struct {
 	Err  error
 }
 
+type PartialSyncError struct {
+	Err error
+}
+
+func (e *PartialSyncError) Error() string {
+	if e == nil || e.Err == nil {
+		return "sync aborted after Spotify rate limit; progress saved as partial run"
+	}
+
+	return fmt.Sprintf("sync aborted after Spotify rate limit; progress saved as partial run: %v", e.Err)
+}
+
+func (e *PartialSyncError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+
+	return e.Err
+}
+
 type ProgressEvent struct {
 	Stage           ProgressStage
 	ArtistSlug      string
@@ -265,7 +285,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 	progress(options.Progress, ProgressEvent{Stage: ProgressRunFinished, RunID: runID, Stats: report.Stats})
 
 	if abortErr != nil {
-		return report, fmt.Errorf("sync aborted after Spotify rate limit; progress saved as partial run: %w", abortErr)
+		return report, &PartialSyncError{Err: abortErr}
 	}
 	if report.ArtistsFailed > 0 {
 		return report, fmt.Errorf("%d artist syncs failed", report.ArtistsFailed)
