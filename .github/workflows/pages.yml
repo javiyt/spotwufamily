@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  deployments: write
 
 concurrency:
   group: pages
@@ -26,8 +27,11 @@ concurrency:
 
 jobs:
   build:
-    name: build-pages
+    name: deploy-pages
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -55,7 +59,7 @@ jobs:
       - name: Verify Pages artifact
         run: test -d public && test -f public/index.html
 
-      - name: Publish Pages
+      - name: Deploy Pages
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PAGES_COMMIT_MESSAGE: "deploy: publish site"
