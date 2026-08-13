@@ -1,0 +1,72 @@
+name: Pages Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, closed]
+
+permissions:
+  contents: write
+  deployments: write
+  pull-requests: read
+
+concurrency:
+  group: pages-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: deploy-pages-preview
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    environment:
+      name: pages-preview
+      url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.pull_request.number }}/
+    env:
+      PREVIEW_PATH: pr-preview/pr-${{ github.event.pull_request.number }}
+      PREVIEW_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.pull_request.number }}/
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        if: ${{ github.event.action != 'closed' }}
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.25.x"
+          cache: true
+
+      - name: Setup Hugo
+        if: ${{ github.event.action != 'closed' }}
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.164.0"
+          extended: true
+
+      - name: Verify and export
+        if: ${{ github.event.action != 'closed' }}
+        run: |
+          go run ./cmd/spotwufamily db verify
+          go run ./cmd/spotwufamily export
+
+      - name: Build preview
+        if: ${{ github.event.action != 'closed' }}
+        run: go run ./cmd/spotwufamily site build --source site --destination ../public --base-url "${PREVIEW_URL}"
+
+      - name: Verify preview artifact
+        if: ${{ github.event.action != 'closed' }}
+        run: test -d public && test -f public/index.html
+
+      - name: Publish preview
+        if: ${{ github.event.action != 'closed' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PAGES_COMMIT_MESSAGE: "deploy: publish PR #${{ github.event.pull_request.number }} preview"
+        run: bash scripts/automation/publish-pages.sh public "${PREVIEW_PATH}"
+
+      - name: Remove preview
+        if: ${{ github.event.action == 'closed' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PAGES_COMMIT_MESSAGE: "deploy: remove PR #${{ github.event.pull_request.number }} preview"
+        run: bash scripts/automation/remove-pages-preview.sh "${PREVIEW_PATH}"

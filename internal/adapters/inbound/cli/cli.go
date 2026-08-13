@@ -86,6 +86,7 @@ func executeSite(ctx context.Context, args []string, stdout, stderr io.Writer) i
 
 	source := "site"
 	destination := "/tmp/spotwufamily-site"
+	baseURL := ""
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--source":
@@ -100,6 +101,12 @@ func executeSite(ctx context.Context, args []string, stdout, stderr io.Writer) i
 				return optionError(stderr, "site build", "--destination requires a value")
 			}
 			destination = args[i]
+		case "--base-url":
+			i++
+			if i >= len(args) {
+				return optionError(stderr, "site build", "--base-url requires a value")
+			}
+			baseURL = args[i]
 		default:
 			return optionError(stderr, "site build", fmt.Sprintf("unknown option %q", args[i]))
 		}
@@ -108,6 +115,9 @@ func executeSite(ctx context.Context, args []string, stdout, stderr io.Writer) i
 	commandArgs := []string{"--source", source, "--minify"}
 	if destination != "" {
 		commandArgs = append(commandArgs, "--destination", destination)
+	}
+	if baseURL != "" {
+		commandArgs = append(commandArgs, "--baseURL", baseURL)
 	}
 	cmd := exec.CommandContext(ctx, "hugo", commandArgs...)
 	cmd.Stdout = stdout
@@ -2222,7 +2232,7 @@ func printExportHelp(w io.Writer) {
 }
 
 func printSiteHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily site build [--source site] [--destination /tmp/spotwufamily-site]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily site build [--source site] [--destination /tmp/spotwufamily-site] [--base-url https://example.com/]")
 }
 
 func printAuditHelp(w io.Writer) {

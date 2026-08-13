@@ -6,6 +6,7 @@ Workflows:
 - `catalog-sync.yml`: runs scheduled or manual Spotify sync, regenerates SQLite and the snapshot, and opens or updates one catalog PR.
 - `catalog-pr-review.yml`: approves generated catalog PRs only after checking trusted metadata, labels and changed paths.
 - `pages.yml`: verifies exports, builds Hugo and deploys GitHub Pages after merge to `main`.
+- `pages-preview.yml`: deploys same-repository PR branches to a Pages preview under `/pr-preview/pr-<number>/` and removes the preview when the PR closes.
 
 Current local build command:
 
@@ -14,6 +15,8 @@ go run ./cmd/spotwufamily site build
 ```
 
 The site is configured for `https://javiyt.github.io/spotwufamily/` and must keep links working under that subpath.
+
+GitHub Pages must be configured as `Deploy from branch` with branch `gh-pages` and folder `/ (root)`. Repository Actions workflow permissions must allow read and write access so `GITHUB_TOKEN` can push to `gh-pages`. Production deploys publish to the branch root and preserve `pr-preview/`; PR preview deploys publish only under the PR-specific preview path.
 
 Required repository secrets:
 
