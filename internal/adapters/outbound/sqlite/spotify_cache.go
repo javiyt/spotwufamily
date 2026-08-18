@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -78,6 +79,47 @@ ORDER BY a.release_date DESC, a.name, a.spotify_id`,
 	}
 
 	return releases, nil
+}
+
+func (d *Database) GetCachedAlbum(ctx context.Context, spotifyID string) (catalog.Release, error) {
+	if spotifyID == "" {
+		return catalog.Release{}, artists.ErrCacheMiss
+	}
+
+	var release catalog.Release
+	err := d.db.QueryRowContext(ctx, `
+SELECT
+  a.spotify_id,
+  a.name,
+  a.album_type,
+  a.release_date,
+  a.release_date_precision,
+  a.label,
+  a.total_tracks,
+  COALESCE(eu.url, '')
+FROM albums a
+LEFT JOIN external_urls eu ON eu.owner_type = 'album' AND eu.owner_id = a.spotify_id AND eu.provider = 'spotify'
+WHERE a.active = 1
+  AND a.spotify_id = ?`,
+		spotifyID,
+	).Scan(
+		&release.SpotifyID,
+		&release.Name,
+		&release.AlbumType,
+		&release.ReleaseDate,
+		&release.ReleaseDatePrecision,
+		&release.Label,
+		&release.TotalTracks,
+		&release.URL,
+	)
+	if err == sql.ErrNoRows {
+		return catalog.Release{}, artists.ErrCacheMiss
+	}
+	if err != nil {
+		return catalog.Release{}, fmt.Errorf("read cached Spotify album %s: %w", spotifyID, err)
+	}
+
+	return release, nil
 }
 
 func (d *Database) GetCachedAlbumTracks(ctx context.Context, spotifyID string) ([]catalog.Track, error) {

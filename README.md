@@ -199,7 +199,7 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make refresh-all-from-spotify
 
 ## Database
 
-`data/catalog.db` is the versioned SQLite catalog. `data/catalog.snapshot.sql` is the deterministic logical snapshot used for reviewable diffs and rebuild verification.
+`data/catalog.db` is the versioned SQLite catalog. `data/catalog.snapshot.sql.gz` is the deterministic logical snapshot used for reviewable diffs and rebuild verification.
 
 Run:
 

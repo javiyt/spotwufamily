@@ -11,6 +11,7 @@ var ErrCacheMiss = errors.New("artist Spotify cache miss")
 
 type SpotifyAlbumCache interface {
 	GetCachedArtistAlbums(context.Context, string, []string) ([]catalog.Release, error)
+	GetCachedAlbum(context.Context, string) (catalog.Release, error)
 	GetCachedAlbumTracks(context.Context, string) ([]catalog.Track, error)
 }
 
@@ -35,6 +36,27 @@ func (f CachedSpotifyAlbumFetcher) GetArtistAlbums(ctx context.Context, spotifyI
 	}
 
 	return f.remote.GetArtistAlbums(ctx, spotifyID, groups)
+}
+
+func (f CachedSpotifyAlbumFetcher) GetAlbum(ctx context.Context, spotifyID string) (catalog.Release, error) {
+	if f.cache != nil {
+		release, err := f.cache.GetCachedAlbum(ctx, spotifyID)
+		if err == nil {
+			return release, nil
+		}
+		if !errors.Is(err, ErrCacheMiss) {
+			return catalog.Release{}, err
+		}
+	}
+
+	remote, ok := f.remote.(interface {
+		GetAlbum(context.Context, string) (catalog.Release, error)
+	})
+	if !ok {
+		return catalog.Release{}, ErrCacheMiss
+	}
+
+	return remote.GetAlbum(ctx, spotifyID)
 }
 
 func (f CachedSpotifyAlbumFetcher) GetAlbumTracks(ctx context.Context, spotifyID string) ([]catalog.Track, error) {

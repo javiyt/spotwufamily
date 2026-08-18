@@ -14,7 +14,7 @@ func TestExecuteAudit(t *testing.T) {
 	dir := t.TempDir()
 	catalogPath := filepath.Join(dir, "artists.yaml")
 	dbPath := filepath.Join(dir, "catalog.db")
-	snapshotPath := filepath.Join(dir, "catalog.snapshot.sql")
+	snapshotPath := filepath.Join(dir, "catalog.snapshot.sql.gz")
 	outputDir := filepath.Join(dir, "site", "data", "generated")
 	staticDir := filepath.Join(dir, "site", "static")
 	contentDir := filepath.Join(dir, "site", "content", "generated")

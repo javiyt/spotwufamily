@@ -164,6 +164,37 @@ WHERE sync_run_id = ?
 	return catalogsync.ResumableSyncRun{ID: runID, CompletedArtistSpotifyIDs: completed}, true, nil
 }
 
+func (d *Database) LastArtistSyncCheckpoint(ctx context.Context, artist catalog.Artist, run catalogsync.SyncRun) (time.Time, string, bool, error) {
+	var finishedAt string
+	var spotifyIDs string
+	err := d.db.QueryRowContext(ctx, `
+SELECT sra.finished_at, sra.spotify_ids
+FROM sync_run_artists sra
+JOIN sync_runs sr ON sr.id = sra.sync_run_id
+WHERE sra.artist_slug = ?
+  AND sra.status = 'completed'
+  AND sr.market = ?
+  AND sr.status IN ('success', 'partial')
+ORDER BY sra.finished_at DESC, sra.sync_run_id DESC
+LIMIT 1`,
+		artist.Slug,
+		run.Market,
+	).Scan(&finishedAt, &spotifyIDs)
+	if err == sql.ErrNoRows {
+		return time.Time{}, "", false, nil
+	}
+	if err != nil {
+		return time.Time{}, "", false, fmt.Errorf("read last artist sync checkpoint %s: %w", artist.Slug, err)
+	}
+
+	parsed, err := time.Parse(time.RFC3339, finishedAt)
+	if err != nil {
+		return time.Time{}, "", false, fmt.Errorf("parse last artist sync checkpoint %s: %w", artist.Slug, err)
+	}
+
+	return parsed, spotifyIDs, true, nil
+}
+
 func (d *Database) FinishSyncRun(ctx context.Context, runID int64, status string, stats catalogsync.SyncStats) error {
 	data, err := json.Marshal(stats)
 	if err != nil {

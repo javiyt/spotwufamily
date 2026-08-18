@@ -29,7 +29,7 @@ import (
 
 const defaultCatalogPath = "data/artists.yaml"
 const defaultDatabasePath = "data/catalog.db"
-const defaultSnapshotPath = "data/catalog.snapshot.sql"
+const defaultSnapshotPath = "data/catalog.snapshot.sql.gz"
 const defaultExportOutputDir = "site/data/generated"
 const defaultExportStaticDir = "site/static"
 const defaultExportContentDir = "site/content/generated"
@@ -175,7 +175,7 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 
 	var fetcher catalogsync.Fetcher
 	if !options.dryRun {
-		fetcher, err = syncFetcher(options, spotifyProgress(stderr, options.quiet))
+		fetcher, err = syncFetcher(options, repository, spotifyProgress(stderr, options.quiet))
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
 			return 1
@@ -291,7 +291,7 @@ func parseSyncOptions(args []string) (syncOptions, error) {
 	return options, nil
 }
 
-func syncFetcher(options syncOptions, progress func(spotifyadapter.ProgressEvent)) (catalogsync.Fetcher, error) {
+func syncFetcher(options syncOptions, cache artists.SpotifyAlbumCache, progress func(spotifyadapter.ProgressEvent)) (catalogsync.Fetcher, error) {
 	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
 	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
 	if clientID == "" || clientSecret == "" {
@@ -303,13 +303,42 @@ func syncFetcher(options syncOptions, progress func(spotifyadapter.ProgressEvent
 		market = os.Getenv("SPOTIFY_MARKET")
 	}
 
-	return spotifyadapter.NewClient(spotifyadapter.Config{
+	spotifyClient, err := spotifyadapter.NewClient(spotifyadapter.Config{
 		ClientID:      clientID,
 		ClientSecret:  clientSecret,
 		Market:        market,
 		MaxRetryAfter: spotifyMaxRetryAfter(),
 		Progress:      progress,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return cachedSyncFetcher{
+		remote:       spotifyClient,
+		cachedAlbums: artists.NewCachedSpotifyAlbumFetcher(cache, spotifyClient),
+	}, nil
+}
+
+type cachedSyncFetcher struct {
+	remote       catalogsync.Fetcher
+	cachedAlbums artists.CachedSpotifyAlbumFetcher
+}
+
+func (f cachedSyncFetcher) GetArtist(ctx context.Context, spotifyID string) (catalog.ArtistCandidate, error) {
+	return f.remote.GetArtist(ctx, spotifyID)
+}
+
+func (f cachedSyncFetcher) GetArtistAlbums(ctx context.Context, spotifyID string, groups []string) ([]catalog.Release, error) {
+	return f.cachedAlbums.GetArtistAlbums(ctx, spotifyID, groups)
+}
+
+func (f cachedSyncFetcher) GetAlbum(ctx context.Context, spotifyID string) (catalog.Release, error) {
+	return f.cachedAlbums.GetAlbum(ctx, spotifyID)
+}
+
+func (f cachedSyncFetcher) GetAlbumTracks(ctx context.Context, spotifyID string) ([]catalog.Track, error) {
+	return f.cachedAlbums.GetAlbumTracks(ctx, spotifyID)
 }
 
 func printSyncReport(stdout io.Writer, report catalogsync.Report) {
@@ -319,6 +348,9 @@ func printSyncReport(stdout io.Writer, report catalogsync.Report) {
 	}
 	_, _ = fmt.Fprintf(stdout, "%s planned artists: %d\n", mode, report.ArtistsPlanned)
 	_, _ = fmt.Fprintf(stdout, "processed: %d failed: %d skipped: %d\n", report.ArtistsProcessed, report.ArtistsFailed, report.ArtistsSkipped)
+	if report.ArtistsFreshSkipped > 0 {
+		_, _ = fmt.Fprintf(stdout, "skipped_recently_synced: %d\n", report.ArtistsFreshSkipped)
+	}
 	if report.RunID > 0 {
 		_, _ = fmt.Fprintf(stdout, "sync_run_id: %d\n", report.RunID)
 	}
@@ -577,7 +609,7 @@ func verifySnapshotFreshness(ctx context.Context, database *sqliteadapter.Databa
 	if err != nil {
 		return fmt.Errorf("generate snapshot: %w", err)
 	}
-	current, err := os.ReadFile(snapshotPath)
+	current, err := sqliteadapter.ReadSnapshot(snapshotPath)
 	if err != nil {
 		return fmt.Errorf("read snapshot %s: %w", snapshotPath, err)
 	}
@@ -833,7 +865,7 @@ func executeDBVerify(ctx context.Context, stdout, stderr io.Writer, options dbOp
 			_, _ = fmt.Fprintf(stderr, "db verify: %v\n", err)
 			return 1
 		}
-		current, err := os.ReadFile(options.snapshotPath)
+		current, err := sqliteadapter.ReadSnapshot(options.snapshotPath)
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "db verify: read snapshot: %v\n", err)
 			return 1
@@ -2224,7 +2256,7 @@ func printArtistsHelp(w io.Writer) {
 }
 
 func printSyncHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily sync [--artist slug] [--full] [--resume] [--dry-run] [--quiet] [--market ES] [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily sync [--artist slug] [--full] [--resume] [--dry-run] [--quiet] [--market ES] [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql.gz]")
 }
 
 func printExportHelp(w io.Writer) {
@@ -2236,11 +2268,11 @@ func printSiteHelp(w io.Writer) {
 }
 
 func printAuditHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily audit [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql] [--output site/data/generated] [--static site/static] [--content site/content/generated] [--site-source site] [--site-destination /tmp/spotwufamily-site] [--skip-site] [--skip-git-diff]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily audit [--catalog data/artists.yaml] [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql.gz] [--output site/data/generated] [--static site/static] [--content site/content/generated] [--site-source site] [--site-destination /tmp/spotwufamily-site] [--skip-site] [--skip-git-diff]")
 }
 
 func printDBHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily db <command> [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily db <command> [--db data/catalog.db] [--snapshot data/catalog.snapshot.sql.gz]")
 	_, _ = fmt.Fprintln(w)
 	_, _ = fmt.Fprintln(w, "commands:")
 	_, _ = fmt.Fprintln(w, "  migrate")

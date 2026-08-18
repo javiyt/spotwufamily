@@ -36,7 +36,7 @@ Recommended repository secrets for automation identities:
 The sync identity and review identity must be separate GitHub Apps or bot credentials when branch protection requires review approval. The review guard only approves same-repository PRs targeting `main`, with `automation`, `catalog-update` and `spotify` labels, from `automation/catalog-sync-*` branches, and with changes restricted to versioned catalog artifacts:
 
 - `data/catalog.db`
-- `data/catalog.snapshot.sql`
+- `data/catalog.snapshot.sql.gz`
 
 Hugo JSON exports are ignored by Git and regenerated during CI and Pages deployment.
 

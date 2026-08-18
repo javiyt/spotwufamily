@@ -103,7 +103,7 @@ jobs:
       - name: Detect changes
         id: changes
         run: |
-          if git diff --quiet -- data/catalog.db data/catalog.snapshot.sql; then
+          if git diff --quiet -- data/catalog.db data/catalog.snapshot.sql.gz; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -118,7 +118,7 @@ jobs:
         run: |
           branch="automation/catalog-sync-$(date -u +%Y%m%d)"
           git switch -C "${branch}"
-          git add data/catalog.db data/catalog.snapshot.sql
+          git add data/catalog.db data/catalog.snapshot.sql.gz
           git commit -m "chore(catalog): update Spotify catalog"
           git push --force-with-lease origin "${branch}"
           echo "branch=${branch}" >> "$GITHUB_ENV"
