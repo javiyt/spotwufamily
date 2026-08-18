@@ -609,7 +609,7 @@ func verifySnapshotFreshness(ctx context.Context, database *sqliteadapter.Databa
 	if err != nil {
 		return fmt.Errorf("generate snapshot: %w", err)
 	}
-	current, err := os.ReadFile(snapshotPath)
+	current, err := sqliteadapter.ReadSnapshot(snapshotPath)
 	if err != nil {
 		return fmt.Errorf("read snapshot %s: %w", snapshotPath, err)
 	}
