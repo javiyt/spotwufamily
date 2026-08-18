@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - "data/catalog.db"
-      - "data/catalog.snapshot.sql"
+      - "data/catalog.snapshot.sql.gz"
       - "data/artists.yaml"
       - "site/**"
       - "cmd/**"

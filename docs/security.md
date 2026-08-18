@@ -17,7 +17,7 @@
 ## Versioned SQLite
 
 - SQLite sidecar files are ignored and should not be committed.
-- `data/catalog.snapshot.sql` is the reviewable logical diff for database changes.
+- `data/catalog.snapshot.sql.gz` is the reviewable logical diff for database changes.
 - `db verify` and `audit` must pass before merging generated database updates.
 
 ## Frontend

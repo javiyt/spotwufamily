@@ -6,7 +6,7 @@ pr_number="${PR_NUMBER:?PR_NUMBER is required}"
 expected_author="${EXPECTED_AUTHOR:-}"
 expected_branch_prefix="${EXPECTED_BRANCH_PREFIX:-automation/catalog-sync-}"
 
-allowed_regex='^(data/catalog\.db|data/catalog\.snapshot\.sql)$'
+allowed_regex='^(data/catalog\.db|data/catalog\.snapshot\.sql\.gz)$'
 blocked_regex='^(\.github/|cmd/|internal/|scripts/|migrations/|site/layouts/|site/assets/|site/hugo\.yaml|Makefile$|go\.mod$|go\.sum$|data/artists\.yaml$)'
 
 pr_json="$(gh api "repos/${owner_repo}/pulls/${pr_number}")"

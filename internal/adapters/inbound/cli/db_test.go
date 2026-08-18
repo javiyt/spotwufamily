@@ -13,7 +13,7 @@ import (
 func TestExecuteDBLifecycle(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "catalog.db")
-	snapshotPath := filepath.Join(dir, "catalog.snapshot.sql")
+	snapshotPath := filepath.Join(dir, "catalog.snapshot.sql.gz")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

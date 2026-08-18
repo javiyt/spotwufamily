@@ -25,6 +25,7 @@ type Fetcher interface {
 type Repository interface {
 	SaveConfiguredArtists(context.Context, []catalog.Artist) error
 	FindResumableSyncRun(context.Context, SyncRun) (ResumableSyncRun, bool, error)
+	LastArtistSyncCheckpoint(context.Context, catalog.Artist, SyncRun) (time.Time, string, bool, error)
 	BeginSyncRun(context.Context, SyncRun) (int64, error)
 	FinishSyncRun(context.Context, int64, string, SyncStats) error
 	SaveArtistCatalog(context.Context, int64, catalog.Artist, catalog.ArtistCandidate, []catalog.ReleaseTracks, time.Time) (SyncStats, error)
@@ -78,16 +79,17 @@ type ResumableSyncRun struct {
 }
 
 type Report struct {
-	DryRun           bool
-	ArtistsPlanned   int
-	ArtistsProcessed int
-	ArtistsSkipped   int
-	ArtistsResumed   int
-	ArtistsFailed    int
-	RunID            int64
-	ResumedRunID     int64
-	Stats            SyncStats
-	Errors           []ArtistError
+	DryRun              bool
+	ArtistsPlanned      int
+	ArtistsProcessed    int
+	ArtistsSkipped      int
+	ArtistsFreshSkipped int
+	ArtistsResumed      int
+	ArtistsFailed       int
+	RunID               int64
+	ResumedRunID        int64
+	Stats               SyncStats
+	Errors              []ArtistError
 }
 
 type ArtistError struct {
@@ -137,6 +139,8 @@ type ProgressEvent struct {
 type ProgressStage string
 
 const (
+	artistSyncFreshness = 14 * 24 * time.Hour
+
 	ProgressCatalogLoaded   ProgressStage = "catalog_loaded"
 	ProgressConfiguredSaved ProgressStage = "configured_saved"
 	ProgressRunResumed      ProgressStage = "run_resumed"
@@ -227,6 +231,20 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 			progress(options.Progress, ProgressEvent{Stage: ProgressRunResumed, RunID: resumableRun.ID, ArtistTotal: len(artists)})
 		}
 	}
+	if !options.Full {
+		var freshSkipped int
+		artists, freshSkipped, err = s.filterFreshArtists(ctx, artists, syncRun)
+		if err != nil {
+			return report, err
+		}
+		report.ArtistsFreshSkipped = freshSkipped
+		report.ArtistsSkipped += freshSkipped
+		report.ArtistsPlanned = len(artists)
+	}
+	if len(artists) == 0 {
+		report.ArtistsSkipped += len(editorialCatalog.Artists) - len(eligibleArtists)
+		return report, nil
+	}
 
 	runID, err := s.repository.BeginSyncRun(ctx, syncRun)
 	if err != nil {
@@ -273,7 +291,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 		event.Stats = artistStats
 		progress(options.Progress, event)
 	}
-	report.ArtistsSkipped = len(editorialCatalog.Artists) - len(eligibleArtists)
+	report.ArtistsSkipped += len(editorialCatalog.Artists) - len(eligibleArtists)
 
 	status := "success"
 	if report.ArtistsFailed > 0 {
@@ -292,6 +310,29 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 	}
 
 	return report, nil
+}
+
+func (s SyncCatalog) filterFreshArtists(ctx context.Context, artists []catalog.Artist, syncRun SyncRun) ([]catalog.Artist, int, error) {
+	if len(artists) == 0 {
+		return artists, 0, nil
+	}
+
+	now := s.clock.Now()
+	pending := make([]catalog.Artist, 0, len(artists))
+	skipped := 0
+	for _, artist := range artists {
+		finishedAt, spotifyIDs, ok, err := s.repository.LastArtistSyncCheckpoint(ctx, artist, syncRun)
+		if err != nil {
+			return nil, 0, fmt.Errorf("read last artist sync checkpoint %s: %w", artist.Slug, err)
+		}
+		if ok && spotifyIDs == spotifyIDsFingerprint(artist) && now.Sub(finishedAt) < artistSyncFreshness {
+			skipped++
+			continue
+		}
+		pending = append(pending, artist)
+	}
+
+	return pending, skipped, nil
 }
 
 func (s SyncCatalog) syncArtist(ctx context.Context, runID int64, configuredArtist catalog.Artist, baseEvent ProgressEvent, progressFunc func(ProgressEvent)) (SyncStats, error) {

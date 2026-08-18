@@ -74,6 +74,39 @@ VALUES ('gravediggaz', 'Gravediggaz', 'affiliate_group', 0, 2);`)
 	require.Equal(t, "Gravediggaz", name)
 }
 
+func TestCompressedSnapshotRestore(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "catalog.db")
+	snapshotPath := filepath.Join(dir, "catalog.snapshot.sql.gz")
+
+	database := openMigratedDatabase(t, ctx, dbPath)
+	_, err := database.DB().ExecContext(ctx, `
+INSERT INTO configured_artists(slug, name, category, enabled, editorial_order)
+VALUES ('gravediggaz', 'Gravediggaz', 'affiliate_group', 0, 2);`)
+	require.NoError(t, err)
+	require.NoError(t, database.WriteSnapshot(ctx, snapshotPath))
+	require.NoError(t, database.Close())
+
+	raw, err := os.ReadFile(snapshotPath)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "Gravediggaz")
+	snapshot, err := sqliteadapter.ReadSnapshot(snapshotPath)
+	require.NoError(t, err)
+	require.Contains(t, string(snapshot), "Gravediggaz")
+
+	rebuiltPath := filepath.Join(dir, "rebuilt.db")
+	rebuilt := openMigratedDatabase(t, ctx, rebuiltPath)
+	defer func() { require.NoError(t, rebuilt.Close()) }()
+
+	require.NoError(t, sqliteadapter.RestoreSnapshot(ctx, rebuilt.DB(), snapshotPath))
+
+	var name string
+	err = rebuilt.DB().QueryRowContext(ctx, `SELECT name FROM configured_artists WHERE slug = 'gravediggaz'`).Scan(&name)
+	require.NoError(t, err)
+	require.Equal(t, "Gravediggaz", name)
+}
+
 func TestArtistMetadataRefreshCheckpoint(t *testing.T) {
 	ctx := context.Background()
 	dbPath := filepath.Join(t.TempDir(), "catalog.db")
@@ -120,6 +153,35 @@ func TestSyncRunArtistCheckpointSupportsResume(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, runID, resumable.ID)
 	require.Equal(t, catalogsync.SpotifyIDsFingerprint(configuredArtist), resumable.CompletedArtistSpotifyIDs["wu-tang-clan"])
+}
+
+func TestLastArtistSyncCheckpoint(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	configuredArtist := catalog.Artist{
+		Slug:      "wu-tang-clan",
+		Name:      "Wu-Tang Clan",
+		SpotifyID: "34EP7KEpOjXcM2TCat1ISk",
+		Category:  catalog.CategoryCore,
+		Roles:     []catalog.Category{catalog.CategoryCore},
+		Enabled:   true,
+	}
+	require.NoError(t, database.SaveConfiguredArtists(ctx, []catalog.Artist{configuredArtist}))
+	run := catalogsync.SyncRun{StartedAt: fixedTime(), Market: "ES"}
+	runID, err := database.BeginSyncRun(ctx, run)
+	require.NoError(t, err)
+	require.NoError(t, database.SaveArtistSyncCheckpoint(ctx, runID, configuredArtist, "completed", catalogsync.SyncStats{}, fixedTime()))
+	require.NoError(t, database.FinishSyncRun(ctx, runID, "success", catalogsync.SyncStats{}))
+
+	finishedAt, spotifyIDs, ok, err := database.LastArtistSyncCheckpoint(ctx, configuredArtist, run)
+
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, fixedTime(), finishedAt)
+	require.Equal(t, catalogsync.SpotifyIDsFingerprint(configuredArtist), spotifyIDs)
 }
 
 func TestSyncRunArtistCheckpointIgnoresOlderPartialAfterSuccess(t *testing.T) {
@@ -175,6 +237,28 @@ func TestWriteSnapshotDoesNotRewriteUnchangedFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, first, second)
 	require.True(t, strings.HasPrefix(string(second), "-- Spot Wu Family catalog snapshot"))
+}
+
+func TestWriteCompressedSnapshotDoesNotRewriteUnchangedFile(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "catalog.db")
+	snapshotPath := filepath.Join(dir, "catalog.snapshot.sql.gz")
+
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	require.NoError(t, database.WriteSnapshot(ctx, snapshotPath))
+	first, err := os.ReadFile(snapshotPath)
+	require.NoError(t, err)
+	require.NoError(t, database.WriteSnapshot(ctx, snapshotPath))
+	second, err := os.ReadFile(snapshotPath)
+	require.NoError(t, err)
+	require.Equal(t, first, second)
+
+	snapshot, err := sqliteadapter.ReadSnapshot(snapshotPath)
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(string(snapshot), "-- Spot Wu Family catalog snapshot"))
 }
 
 func TestSaveArtistCatalogPersistsNormalizedCatalog(t *testing.T) {
@@ -350,6 +434,10 @@ func TestCachedSpotifyAlbumFetcherReadsSyncedArtistAlbumsAndTracks(t *testing.T)
 	require.Len(t, albums, 1)
 	require.Equal(t, "album-1", albums[0].SpotifyID)
 
+	album, err := database.GetCachedAlbum(ctx, "album-1")
+	require.NoError(t, err)
+	require.Equal(t, "Album One", album.Name)
+
 	tracks, err := database.GetCachedAlbumTracks(ctx, "album-1")
 	require.NoError(t, err)
 	require.Len(t, tracks, 1)
@@ -357,6 +445,8 @@ func TestCachedSpotifyAlbumFetcherReadsSyncedArtistAlbumsAndTracks(t *testing.T)
 	require.Equal(t, "featured-artist", tracks[0].Artists[1].SpotifyID)
 
 	_, err = database.GetCachedArtistAlbums(ctx, "missing-artist", []string{"album"})
+	require.ErrorIs(t, err, artists.ErrCacheMiss)
+	_, err = database.GetCachedAlbum(ctx, "missing-album")
 	require.ErrorIs(t, err, artists.ErrCacheMiss)
 	_, err = database.GetCachedAlbumTracks(ctx, "missing-album")
 	require.True(t, errors.Is(err, artists.ErrCacheMiss))

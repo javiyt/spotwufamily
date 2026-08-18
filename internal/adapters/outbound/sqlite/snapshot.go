@@ -2,9 +2,11 @@ package sqlite
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strconv"
@@ -43,18 +45,59 @@ func (d *Database) WriteSnapshot(ctx context.Context, path string) error {
 		return err
 	}
 
-	current, err := os.ReadFile(path)
+	current, err := ReadSnapshot(path)
 	if err == nil && bytes.Equal(current, snapshot) {
 		return nil
 	}
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("read existing snapshot: %w", err)
 	}
-	if err := os.WriteFile(path, snapshot, 0o644); err != nil {
+	if err := writeSnapshot(path, snapshot); err != nil {
 		return fmt.Errorf("write snapshot: %w", err)
 	}
 
 	return nil
+}
+
+func ReadSnapshot(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasSuffix(path, ".gz") {
+		return data, nil
+	}
+
+	reader, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("open gzip snapshot: %w", err)
+	}
+	defer func() { _ = reader.Close() }()
+
+	uncompressed, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("read gzip snapshot: %w", err)
+	}
+
+	return uncompressed, nil
+}
+
+func writeSnapshot(path string, snapshot []byte) error {
+	if !strings.HasSuffix(path, ".gz") {
+		return os.WriteFile(path, snapshot, 0o644)
+	}
+
+	var compressed bytes.Buffer
+	writer := gzip.NewWriter(&compressed)
+	if _, err := writer.Write(snapshot); err != nil {
+		_ = writer.Close()
+		return fmt.Errorf("compress snapshot: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("finish compressed snapshot: %w", err)
+	}
+
+	return os.WriteFile(path, compressed.Bytes(), 0o644)
 }
 
 func RestoreSnapshot(ctx context.Context, db *sql.DB, path string) error {
@@ -64,7 +107,7 @@ func RestoreSnapshot(ctx context.Context, db *sql.DB, path string) error {
 	default:
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := ReadSnapshot(path)
 	if err != nil {
 		return fmt.Errorf("read snapshot: %w", err)
 	}

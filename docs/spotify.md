@@ -28,6 +28,8 @@ Implemented endpoints:
 - `GET /v1/albums/{id}`
 - `GET /v1/albums/{id}/tracks`
 
+`GET /v1/artists/{id}` does not include the artist's albums, so `sync` has to call the artist albums endpoint separately. To reduce quota usage, regular syncs skip artists completed in the same market during the previous 14 days when their configured Spotify IDs have not changed. Use `--full` to force a refresh. The sync path also reads cached album and track data from SQLite before falling back to Spotify for album and track detail calls.
+
 References:
 
 - Client Credentials Flow: https://developer.spotify.com/documentation/web-api/tutorials/client-credentials-flow

@@ -165,6 +165,58 @@ func TestSyncCatalogResumesFromPartialRun(t *testing.T) {
 	require.Equal(t, []string{"gravediggaz"}, repository.checkpointedArtists)
 }
 
+func TestSyncCatalogSkipsRecentlySyncedArtists(t *testing.T) {
+	artist := enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")
+	store := fakeStore{catalog: catalog.EditorialCatalog{
+		Version: 1,
+		Artists: []catalog.Artist{artist},
+	}}
+	fetcher := &fakeFetcher{}
+	repository := &fakeRepository{
+		lastArtistSyncs: map[string]artistSyncCheckpoint{
+			"wu-tang-clan": {
+				finishedAt: fixedClock{}.Now().Add(-13 * 24 * time.Hour),
+				spotifyIDs: catalogsync.SpotifyIDsFingerprint(artist),
+			},
+		},
+	}
+	usecase := catalogsync.NewSyncCatalog(store, fetcher, repository, fixedClock{})
+
+	report, err := usecase.Run(context.Background(), catalogsync.Options{CatalogPath: "ignored", Market: "ES"})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, report.ArtistsFreshSkipped)
+	require.Equal(t, 1, report.ArtistsSkipped)
+	require.Zero(t, report.ArtistsProcessed)
+	require.Empty(t, fetcher.artistIDs)
+	require.Empty(t, repository.finishedStatus)
+}
+
+func TestSyncCatalogFullSyncRefreshesRecentlySyncedArtists(t *testing.T) {
+	artist := enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")
+	store := fakeStore{catalog: catalog.EditorialCatalog{
+		Version: 1,
+		Artists: []catalog.Artist{artist},
+	}}
+	fetcher := &fakeFetcher{artist: catalog.ArtistCandidate{Name: "Wu-Tang Clan", SpotifyID: "34EP7KEpOjXcM2TCat1ISk"}}
+	repository := &fakeRepository{
+		lastArtistSyncs: map[string]artistSyncCheckpoint{
+			"wu-tang-clan": {
+				finishedAt: fixedClock{}.Now().Add(-13 * 24 * time.Hour),
+				spotifyIDs: catalogsync.SpotifyIDsFingerprint(artist),
+			},
+		},
+	}
+	usecase := catalogsync.NewSyncCatalog(store, fetcher, repository, fixedClock{})
+
+	report, err := usecase.Run(context.Background(), catalogsync.Options{CatalogPath: "ignored", Market: "ES", Full: true})
+
+	require.NoError(t, err)
+	require.Zero(t, report.ArtistsFreshSkipped)
+	require.Equal(t, 1, report.ArtistsProcessed)
+	require.Equal(t, []string{"34EP7KEpOjXcM2TCat1ISk"}, fetcher.artistIDs)
+}
+
 func TestSyncCatalogReturnsPartialFailure(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
 		Version: 1,
@@ -267,8 +319,14 @@ type fakeRepository struct {
 	stats               catalogsync.SyncStats
 	savedReleases       []catalog.ReleaseTracks
 	resumableRun        catalogsync.ResumableSyncRun
+	lastArtistSyncs     map[string]artistSyncCheckpoint
 	checkpointedArtists []string
 	finishedStatus      string
+}
+
+type artistSyncCheckpoint struct {
+	finishedAt time.Time
+	spotifyIDs string
 }
 
 func (f *fakeRepository) SaveConfiguredArtists(context.Context, []catalog.Artist) error {
@@ -281,6 +339,11 @@ func (f *fakeRepository) BeginSyncRun(context.Context, catalogsync.SyncRun) (int
 
 func (f *fakeRepository) FindResumableSyncRun(context.Context, catalogsync.SyncRun) (catalogsync.ResumableSyncRun, bool, error) {
 	return f.resumableRun, f.resumableRun.ID > 0, nil
+}
+
+func (f *fakeRepository) LastArtistSyncCheckpoint(_ context.Context, artist catalog.Artist, _ catalogsync.SyncRun) (time.Time, string, bool, error) {
+	checkpoint, ok := f.lastArtistSyncs[artist.Slug]
+	return checkpoint.finishedAt, checkpoint.spotifyIDs, ok, nil
 }
 
 func (f *fakeRepository) FinishSyncRun(_ context.Context, _ int64, status string, _ catalogsync.SyncStats) error {
