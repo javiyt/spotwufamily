@@ -34,7 +34,7 @@ VALUES ('wu-tang-clan', 'Wu Tang Clan', 1);`)
 	require.NoError(t, err)
 	report, err := database.Verify(ctx, migrations)
 	require.NoError(t, err)
-	require.Equal(t, 4, report.Migrations)
+	require.Equal(t, 5, report.Migrations)
 	require.Contains(t, report.Checks, "integrity_check")
 	require.Contains(t, report.Checks, "foreign_key_check")
 
@@ -105,6 +105,37 @@ VALUES ('gravediggaz', 'Gravediggaz', 'affiliate_group', 0, 2);`)
 	err = rebuilt.DB().QueryRowContext(ctx, `SELECT name FROM configured_artists WHERE slug = 'gravediggaz'`).Scan(&name)
 	require.NoError(t, err)
 	require.Equal(t, "Gravediggaz", name)
+}
+
+func TestMigrateDeduplicatesImagesByOwnerAndPosition(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database, err := sqliteadapter.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	migrations, err := sqliteadapter.EmbeddedMigrations()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(migrations), 5)
+	require.NoError(t, sqliteadapter.ApplyMigrations(database.DB(), migrations[:4]))
+	_, err = database.DB().ExecContext(ctx, `
+INSERT INTO images(owner_type, owner_id, url, height, width, position)
+VALUES
+  ('album', 'album-1', 'https://image/old.jpg', 640, 640, 0),
+  ('album', 'album-1', 'https://image/new.jpg', 640, 640, 0),
+  ('album', 'album-1', 'https://image/thumb.jpg', 64, 64, 1);`)
+	require.NoError(t, err)
+
+	require.NoError(t, database.Migrate(ctx))
+
+	requireRowCount(t, database, "images", 2)
+	var url string
+	err = database.DB().QueryRowContext(ctx, `
+SELECT url
+FROM images
+WHERE owner_type = 'album' AND owner_id = 'album-1' AND position = 0`).Scan(&url)
+	require.NoError(t, err)
+	require.Equal(t, "https://image/new.jpg", url)
 }
 
 func TestArtistMetadataRefreshCheckpoint(t *testing.T) {
@@ -382,6 +413,46 @@ func TestLoadExportCatalogBuildsSpotifyURLForConfiguredArtistsWithoutSyncedMetad
 	require.Len(t, exported.Artists, 1)
 	require.Equal(t, "https://open.spotify.com/artist/5wwleY8YnxnutxOExPVoJb", exported.Artists[0].SpotifyURL)
 	require.Equal(t, "https://i.scdn.co/image/killarmy", exported.Artists[0].ImageURL)
+}
+
+func TestSaveArtistCatalogReplacesAlbumImageAtPosition(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "catalog.db")
+	database := openMigratedDatabase(t, ctx, dbPath)
+	defer func() { require.NoError(t, database.Close()) }()
+
+	configuredArtist := catalog.Artist{
+		Slug:      "wu-tang-clan",
+		Name:      "Wu-Tang Clan",
+		SpotifyID: "artist-1",
+		Category:  catalog.CategoryCore,
+		Roles:     []catalog.Category{catalog.CategoryCore},
+		Enabled:   true,
+	}
+	require.NoError(t, database.SaveConfiguredArtists(ctx, []catalog.Artist{configuredArtist}))
+	runID, err := database.BeginSyncRun(ctx, catalogsync.SyncRun{StartedAt: fixedTime(), Market: "ES"})
+	require.NoError(t, err)
+
+	releaseTracks := []catalog.ReleaseTracks{{
+		Release: catalog.Release{
+			SpotifyID: "album-1",
+			Name:      "Album One",
+			AlbumType: "album",
+			Images:    []catalog.Image{{URL: "https://image/old.jpg", Height: 640, Width: 640}},
+		},
+	}}
+	_, err = database.SaveArtistCatalog(ctx, runID, configuredArtist, catalog.ArtistCandidate{SpotifyID: "artist-1", Name: "Wu-Tang Clan"}, releaseTracks, fixedTime())
+	require.NoError(t, err)
+
+	releaseTracks[0].Release.Images[0].URL = "https://image/new.jpg"
+	_, err = database.SaveArtistCatalog(ctx, runID, configuredArtist, catalog.ArtistCandidate{SpotifyID: "artist-1", Name: "Wu-Tang Clan"}, releaseTracks, fixedTime())
+	require.NoError(t, err)
+
+	requireRowCount(t, database, "images", 1)
+	exported, err := database.LoadExportCatalog(ctx)
+	require.NoError(t, err)
+	require.Len(t, exported.Albums, 1)
+	require.Equal(t, "https://image/new.jpg", exported.Albums[0].ImageURL)
 }
 
 func TestCachedSpotifyAlbumFetcherReadsSyncedArtistAlbumsAndTracks(t *testing.T) {

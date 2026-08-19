@@ -86,7 +86,15 @@ SELECT
   ca.enabled,
   COALESCE(ca.editorial_order, 0),
   COALESCE(eu.url, ''),
-  COALESCE(img.url, ''),
+  COALESCE((
+    SELECT img.url
+    FROM images img
+    WHERE img.owner_type = 'artist'
+      AND img.owner_id = ca.spotify_id
+      AND img.position = 0
+    ORDER BY img.rowid DESC
+    LIMIT 1
+  ), ''),
   (
     SELECT COUNT(DISTINCT album_id)
     FROM (
@@ -124,7 +132,6 @@ SELECT
   )
 FROM configured_artists ca
 LEFT JOIN external_urls eu ON eu.owner_type = 'artist' AND eu.owner_id = ca.spotify_id AND eu.provider = 'spotify'
-LEFT JOIN images img ON img.owner_type = 'artist' AND img.owner_id = ca.spotify_id AND img.position = 0
 GROUP BY ca.slug
 ORDER BY COALESCE(ca.editorial_order, 999999), ca.name`)
 	if err != nil {
@@ -206,10 +213,17 @@ SELECT
   a.label,
   a.total_tracks,
   COALESCE(eu.url, ''),
-  COALESCE(img.url, '')
+  COALESCE((
+    SELECT img.url
+    FROM images img
+    WHERE img.owner_type = 'album'
+      AND img.owner_id = a.spotify_id
+      AND img.position = 0
+    ORDER BY img.rowid DESC
+    LIMIT 1
+  ), '')
 FROM albums a
 LEFT JOIN external_urls eu ON eu.owner_type = 'album' AND eu.owner_id = a.spotify_id AND eu.provider = 'spotify'
-LEFT JOIN images img ON img.owner_type = 'album' AND img.owner_id = a.spotify_id AND img.position = 0
 ORDER BY a.release_date DESC, a.name, a.spotify_id`)
 	if err != nil {
 		return nil, fmt.Errorf("export albums: %w", err)
