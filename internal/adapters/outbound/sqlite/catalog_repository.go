@@ -572,13 +572,14 @@ func (r syncRepository) upsertImage(ctx context.Context, ownerType, ownerID stri
 	changed, err := execChanged(ctx, r.tx, `
 INSERT INTO images(owner_type, owner_id, url, height, width, position)
 VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT(owner_type, owner_id, url) DO UPDATE SET
+ON CONFLICT(owner_type, owner_id, position) DO UPDATE SET
+  url = excluded.url,
   height = excluded.height,
-  width = excluded.width,
-  position = excluded.position
-WHERE images.height IS NOT excluded.height
+  width = excluded.width
+WHERE images.url IS NOT excluded.url
+   OR images.height IS NOT excluded.height
    OR images.width IS NOT excluded.width
-   OR images.position IS NOT excluded.position`,
+`,
 		ownerType,
 		ownerID,
 		image.URL,
