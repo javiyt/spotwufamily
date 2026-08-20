@@ -3,7 +3,7 @@ module github.com/javiyt/spotwufamily
 go 1.25
 
 require (
-	github.com/mattn/go-sqlite3 v1.14.49
+	github.com/mattn/go-sqlite3 v1.14.50
 	github.com/stretchr/testify v1.12.0
 	gopkg.in/yaml.v3 v3.0.1
 )
