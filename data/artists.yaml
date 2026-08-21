@@ -255,13 +255,13 @@ artists:
     notes: ""
   - slug: k-g-b
     name: K.G.B.
-    spotify_id: ""
+    spotify_id: 2gKwx0Lm0JoOrN2mY9Z0PG
     category: affiliate_group
     roles:
       - affiliate_group
     aliases:
       - Klik Ga Bow
-    enabled: false
+    enabled: true
     editorial_order: 20
     notes: ""
   - slug: killarmy
@@ -508,12 +508,12 @@ artists:
     external_url: https://open.spotify.com/artist/45jICGqV9F6TTd6YF6kv3L
   - slug: armel
     name: Armel
-    spotify_id: ""
+    spotify_id: 6Py83d4Xdc7SLzhr0eTNx5
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 40
     notes: ""
   - slug: beretta-9
@@ -614,12 +614,12 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b273a31041c86803171f6d98914c
   - slug: don-staten
     name: Don Staten
-    spotify_id: ""
+    spotify_id: 6ibKjQlrvEUbIggU7N1bUX
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 48
     notes: ""
   - slug: dr-ama-aka-dark-skinned-assassin
@@ -651,12 +651,12 @@ artists:
     external_url: https://open.spotify.com/artist/4DFFHbyOLhS79zbAX1T1M9
   - slug: dungeon-masta
     name: Dungeon Masta
-    spotify_id: ""
+    spotify_id: 1co5MV1wOKEZJLPVkml3Ri
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 51
     notes: ""
   - slug: free-murda
@@ -718,12 +718,12 @@ artists:
     image_url: https://i.scdn.co/image/ab6761610000e5ebe9cee557e792d5dc47070eb0
   - slug: islord
     name: Islord
-    spotify_id: ""
+    spotify_id: 7qmKiz1EjNCG6216Jc9S0C
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 56
     notes: ""
   - slug: killah-priest
@@ -830,12 +830,12 @@ artists:
     image_url: https://i.scdn.co/image/ab6761610000e5eb83bf648399edbfeefc1f2464
   - slug: popa-wu
     name: Popa Wu
-    spotify_id: ""
+    spotify_id: 4kAt7aq5WVf9vJ5gdlj5KT
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 64
     notes: ""
   - slug: prodigal-sunn
@@ -982,12 +982,12 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b273e5d4f3b2f0641a51d48c114a
   - slug: sun-god
     name: Sun God
-    spotify_id: ""
+    spotify_id: 5FtiFDKYXZVHrm011mhQmL
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 75
     notes: ""
   - slug: timbo-king
@@ -1134,12 +1134,12 @@ artists:
     external_url: https://open.spotify.com/artist/0BcokUkzsWLNntN2QCSsYw
   - slug: tekitha
     name: Tekitha
-    spotify_id: ""
+    spotify_id: 6MkzvK9huIhVIgvTZeVFBH
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 87
     notes: ""
   - slug: 4th-disciple
@@ -1341,12 +1341,12 @@ artists:
     image_url: https://i.scdn.co/image/fd61510dc68309087e06154abf9b097a454e3ce1
   - slug: mf-doom
     name: MF DOOM
-    spotify_id: ""
+    spotify_id: 2pAWfrd7WFF3XhVt9GooDL
     category: collaborator
     roles:
       - collaborator
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 103
     notes: ""
   - slug: easy-mo-bee
@@ -1463,34 +1463,34 @@ artists:
     external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#CHEY
   - slug: d1c3
     name: D1C3
-    spotify_id: ""
+    spotify_id: 1woS1RWE7TTiECbhlxa5tk
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 112
     notes: Discovered from Wikipedia (Rappers); review before enabling.
     external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#D1C3
   - slug: pxwer
     name: PXWER
-    spotify_id: ""
+    spotify_id: 2whjaggbS47XKb5D0HOHXj
     category: affiliate_artist
     roles:
       - affiliate_artist
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 113
     notes: Discovered from Wikipedia (Rappers); review before enabling.
     external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#PXWER
   - slug: dirty-clanzmen
     name: Dirty Clanzmen
-    spotify_id: ""
+    spotify_id: 0ZHzFnS3u6rKXgkaIvJGYQ
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 114
     notes: Discovered from Wikipedia (Groups); review before enabling.
     external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Dirty_Clanzmen
@@ -1518,12 +1518,12 @@ artists:
     external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Deejay_Khalil
   - slug: nary-da-producer
     name: Nary Da Producer
-    spotify_id: ""
+    spotify_id: 1TzL3A66GbWeFMURPKI6KG
     category: producer
     roles:
       - producer
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 117
     notes: Discovered from Wikipedia (Producers); review before enabling.
     external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Nary_Da_Producer
@@ -1549,7 +1549,7 @@ artists:
     image_url: https://i.scdn.co/image/85fc66422f44f641ba86e39107c290fb9e9ea7b2
   - slug: method-man-redman
     name: Method Man & Redman
-    spotify_id: ""
+    spotify_id: 4jtcZjpuoSYBWP8xoXGi2P
     category: affiliate_group
     roles:
       - affiliate_group
@@ -1557,7 +1557,7 @@ artists:
     aliases:
       - Method Man and Redman
       - Meth & Red
-    enabled: false
+    enabled: true
     editorial_order: 119
     notes: Added as editorial placeholder; resolve Spotify ID before enabling.
   - slug: 2nd-generation-wu
@@ -1576,34 +1576,34 @@ artists:
     image_url: https://i.scdn.co/image/ab6761610000e5ebe981a05c080bfeb758d877ea
   - slug: 71raw
     name: 71Raw
-    spotify_id: ""
+    spotify_id: 7GvpugueCESGX1EvLX0CQL
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 121
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: a-c-g-137
     name: A.C.G. 137
-    spotify_id: ""
+    spotify_id: 3ny7ffC5QYSRmluiv2vdWc
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 122
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: actual-facts
     name: Actual Facts
-    spotify_id: ""
+    spotify_id: 1JJIbA2gwCCnbFtlmQBrlM
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 123
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -1670,23 +1670,23 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b27382c2511b5902a56f7806193b
   - slug: babylon-warchild
     name: Babylon Warchild
-    spotify_id: ""
+    spotify_id: 28JBnr6xDEXnmGo197dW6C
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 129
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: black-knights-of-the-north-star
     name: Black Knights of the North Star
-    spotify_id: ""
+    spotify_id: 483kNB4WsnbqPyhgXFJLli
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 130
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -1747,23 +1747,23 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: celestial-souljahz
     name: Celestial Souljahz
-    spotify_id: ""
+    spotify_id: 2dmFUErIGL6qOF4PylZpvX
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 136
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: c-i-a
     name: C.I.A.
-    spotify_id: ""
+    spotify_id: 2jcUiOe3qb2oaYz3jsI7yt
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 137
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -1791,12 +1791,12 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: czarface
     name: CZARFACE
-    spotify_id: ""
+    spotify_id: 4John8fJ3LKqFho0pselVr
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 140
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -1838,12 +1838,12 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b2735954e6a20071b862296578ed
   - slug: da-undadogz
     name: Da Undadogz
-    spotify_id: ""
+    spotify_id: 67qUB0VR5Uaa7gbFVplebn
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 144
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -1915,12 +1915,12 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: goldminerz
     name: GoldMinerz
-    spotify_id: ""
+    spotify_id: 4R9jFVMezs2w4ZXZGXAB9A
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 151
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -2091,23 +2091,23 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: mysterious
     name: Mysterious
-    spotify_id: ""
+    spotify_id: 76bQw5ojE6kAY7m9RQI5zn
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 167
     notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit match is ambiguous; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: the-odd-couple
     name: The Odd Couple
-    spotify_id: ""
+    spotify_id: 3raNtfTJXxmzGbBKMlRzl8
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 168
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -2179,23 +2179,23 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: shadow-government
     name: Shadow Government
-    spotify_id: ""
+    spotify_id: 67e9chPUOk34vNcuGLXcmA
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 175
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: shaolin-soldiers
     name: Shaolin Soldiers
-    spotify_id: ""
+    spotify_id: 302vYRHHgfQ7V4AF0Tyjgk
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 176
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -2238,12 +2238,12 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b273399bc51d44daffda8d08abba
   - slug: staten-stars
     name: Staten Stars
-    spotify_id: ""
+    spotify_id: 03VL9moVkZIyNBYiAER3Bh
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 180
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -2293,23 +2293,23 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: tru-n-livin
     name: Tru-N-Livin
-    spotify_id: ""
+    spotify_id: 5ZlCwvxHRloduSXFXt9xX4
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 185
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: two-4-war
     name: Two 4 War
-    spotify_id: ""
+    spotify_id: 1mMdTxJAt95GVVoOJ8NFuF
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 186
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -2353,12 +2353,12 @@ artists:
     image_url: https://i.scdn.co/image/ab6761610000e5ebb191b0d3c5b7d00930dba174
   - slug: wu-block
     name: Wu Block
-    spotify_id: ""
+    spotify_id: 1Tauz2QusnM8J5ZtD6JDY0
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 190
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
@@ -2375,12 +2375,12 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: wu-latino
     name: Wu-Latino
-    spotify_id: ""
+    spotify_id: 71XlJVu7vnyMLK0tMqqo4g
     category: affiliate_group
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 192
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
