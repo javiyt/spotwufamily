@@ -1681,7 +1681,7 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: a-r
     name: A & R
-    spotify_id: ""
+    spotify_id: 1IrdspFNOH3IypZ6eCxOki
     category: affiliate_group
     roles:
       - affiliate_group
@@ -1845,7 +1845,7 @@ artists:
     image_url: https://i.scdn.co/image/ab6761610000e5ebfff068e3c0d6c2b59009e2d1
   - slug: da-groove-stalkers
     name: Da Groove Stalkers
-    spotify_id: ""
+    spotify_id: 1WQWbgLPyQnWvRWgUahOIp
     category: affiliate_group
     roles:
       - affiliate_group
@@ -2006,7 +2006,7 @@ artists:
     external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
   - slug: heart-foundation
     name: Heart Foundation
-    spotify_id: ""
+    spotify_id: 3WrLpviBLkmUTCqbfsPcZq
     category: affiliate_group
     roles:
       - affiliate_group
@@ -2445,3 +2445,36 @@ artists:
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
     external_url: https://open.spotify.com/artist/71XlJVu7vnyMLK0tMqqo4g
     image_url: https://i.scdn.co/image/ab6761610000e5ebd18bce77b4238ba2d86b5da3
+  - slug: jskillerbee
+    name: JsKillerBee
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 193
+    notes: Discovered from Wikipedia (Rappers); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#JsKillerBee
+  - slug: alden-murphy
+    name: Alden Murphy
+    spotify_id: ""
+    category: producer
+    roles:
+      - producer
+    aliases: []
+    enabled: false
+    editorial_order: 194
+    notes: Discovered from Wikipedia (Producers); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Alden_Murphy
+  - slug: dj-iceman
+    name: DJ Iceman
+    spotify_id: ""
+    category: producer
+    roles:
+      - producer
+    aliases: []
+    enabled: false
+    editorial_order: 195
+    notes: Discovered from Wikipedia (Producers); review before enabling.
+    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#DJ_Iceman

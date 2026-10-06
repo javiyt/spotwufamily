@@ -1,16 +1,16 @@
 {
   "version": 1,
   "repository": "javiyt/spotwufamily",
-  "tag": "catalog-20261006T183913Z-e9eb8eeb",
-  "content_sha256": "79cf46a0bf19bab033fca652faad0c8fd9fe16668a2312e93a42c21b8c66d83b",
+  "tag": "catalog-20261006T192441Z-4fd43027",
+  "content_sha256": "6e5d5bb567b89ff433b1909618d34c86acc5084f557e6529dbcf1c30676bfd8d",
   "assets": {
     "catalog.db.gz": {
-      "sha256": "360155f2fea9fcc1240dcb05638bb312ba11a7c7ff6e5d11b3d649e4abe0f33a",
-      "size": 23642748
+      "sha256": "8263a79b4cd74e883aa4ea49f833605b7777983ab2ea8cdfa808bdfed8e50080",
+      "size": 11193120
     },
     "catalog.snapshot.sql.gz": {
-      "sha256": "f04ab308933a5fa0537c16b81716e6b52509442ce6b693a74cc8dfbc5cf5b838",
-      "size": 9672240
+      "sha256": "6a639b63964afd239f6db05a3b441ea3da1c18266d3c11c2444bc96228e8bd7c",
+      "size": 4749577
     }
   }
 }
