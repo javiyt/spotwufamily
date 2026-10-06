@@ -5,8 +5,9 @@ Workflows:
 - `ci.yml`: validates the artist catalog, verifies SQLite, regenerates ignored exports, builds Hugo, tests, vets and builds the CLI.
 - `catalog-sync.yml`: runs scheduled or manual Spotify sync, downloads the pinned catalog, runs Spotify sync, uploads a full backup to Releases, and opens or updates one manifest-only catalog PR.
 - `catalog-pr-review.yml`: approves generated catalog PRs only after checking trusted metadata, labels and changed paths.
-- `pages.yml`: verifies exports, builds Hugo and deploys GitHub Pages after merge to `main`.
-- `pages-preview.yml`: deploys same-repository PR branches to a Pages preview under `/pr-preview/pr-<number>/` and removes the preview when the PR closes.
+- `pages.yml`: verifies exports, builds Hugo and updates the production files in `gh-pages` after merge to `main`.
+- `pages-preview.yml`: writes same-repository PR previews under `/pr-preview/pr-<number>/` in `gh-pages`; closing a PR removes its preview and marks its preview deployments inactive.
+- `pages-deploy.yml`: after a successful Pages or Pages Preview run, uploads the complete `gh-pages` tree and deploys it through the GitHub Pages API. It also supports manual dispatch.
 
 Current local build command:
 
@@ -16,7 +17,11 @@ go run ./cmd/spotwufamily site build
 
 The site is configured for `https://javiyt.github.io/spotwufamily/` and must keep links working under that subpath.
 
-GitHub Pages must be configured as `Deploy from branch` with branch `gh-pages` and folder `/ (root)`. Repository Actions workflow permissions must allow read and write access so `GITHUB_TOKEN` can push to `gh-pages`. Production deploys publish to the branch root and preserve `pr-preview/`; PR preview deploys publish only under the PR-specific preview path.
+GitHub Pages must be configured with source `GitHub Actions`. The production and preview workflows assemble static files in `gh-pages`; writing that branch with `GITHUB_TOKEN` does not itself publish a site. `Pages Deploy` runs on the default branch when either producer succeeds, uploads the complete tree using `actions/upload-pages-artifact`, and publishes it using `actions/deploy-pages` with `pages: write` and `id-token: write`. The `github-pages` environment can therefore remain restricted to `main`. The deployment workflow executes no code from PR branches.
+
+Production updates preserve `pr-preview/`; preview updates change only their PR directory. Actual deployments include both production and all retained previews. Closing or merging a PR removes its preview, so historical deployment URLs for closed PRs can return 404. A successful build is followed by a separate `Pages Deploy` run; verify that run to confirm the site is live. The domain `javi.yt` is inherited from the user Pages site; the `github.io` URLs redirect there.
+
+After introducing `pages-deploy.yml`, merge it into `main`, then run `Pages Deploy` manually once to publish the existing assembled site. Later producer completions trigger it automatically.
 
 Required repository secrets:
 
