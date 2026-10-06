@@ -101,7 +101,7 @@ artists:
     editorial_order: 7
     notes: ""
     external_url: https://open.spotify.com/artist/0AF5FJR5VgrhPw6qcLkEBA
-    image_url: https://i.scdn.co/image/ab67616d0000b273c8e73ce18d981f52f053cd6c
+    image_url: https://i.scdn.co/image/ab67616d0000b273e259b99a33398ee9a886e687
   - slug: hat-2-da-back-productions
     name: Hat 2 Da Back Productions
     spotify_id: ""
@@ -256,6 +256,8 @@ artists:
   - slug: k-g-b
     name: K.G.B.
     spotify_id: 2gKwx0Lm0JoOrN2mY9Z0PG
+    genres:
+      - chicago house
     category: affiliate_group
     roles:
       - affiliate_group
@@ -264,6 +266,8 @@ artists:
     enabled: true
     editorial_order: 20
     notes: ""
+    external_url: https://open.spotify.com/artist/2gKwx0Lm0JoOrN2mY9Z0PG
+    image_url: https://i.scdn.co/image/ab67616d0000b273702bc957c95c9188b8319121
   - slug: killarmy
     name: Killarmy
     spotify_id: 5wwleY8YnxnutxOExPVoJb
@@ -390,12 +394,14 @@ artists:
     editorial_order: 30
     notes: ""
     external_url: https://open.spotify.com/artist/3KoWNgHihU3OzEuoouuycC
-    image_url: https://i.scdn.co/image/ab67616d0000b273cfbe63f7a2840fbe1915d63b
+    image_url: https://i.scdn.co/image/ab67616d0000b27347375f55881b37edac2c295d
   - slug: theodore-unit
     name: Theodore Unit
     spotify_id: 3etQyCmhwVq3MCsOWAqgSq
     spotify_ids:
       - 5IWGIMFNr8cyIsHTOTKDR2
+    genres:
+      - east coast hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -470,7 +476,7 @@ artists:
     editorial_order: 36
     notes: ""
     external_url: https://open.spotify.com/artist/4h45LoknPVdea6ePNiia1K
-    image_url: https://i.scdn.co/image/ab67616d0000b273eda5d81fcc0962457a76dee9
+    image_url: https://i.scdn.co/image/ab67616d0000b273d243ccdddef26003b28dfda3
   - slug: zu-ninjaz
     name: Zu Ninjaz
     spotify_id: 6WWD54LZfwes6Nl6IQQDL0
@@ -516,6 +522,8 @@ artists:
     enabled: true
     editorial_order: 40
     notes: ""
+    external_url: https://open.spotify.com/artist/6Py83d4Xdc7SLzhr0eTNx5
+    image_url: https://i.scdn.co/image/ab67616d0000b27395921a7bb523b3421380156a
   - slug: beretta-9
     name: Beretta 9
     spotify_id: 3TTUz7m8TuRU8yBcUbQTKI
@@ -547,7 +555,6 @@ artists:
     spotify_id: 4QTIR7KM0trauXspUNduhh
     genres:
       - boom bap
-      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -622,6 +629,7 @@ artists:
     enabled: true
     editorial_order: 48
     notes: ""
+    external_url: https://open.spotify.com/artist/6ibKjQlrvEUbIggU7N1bUX
   - slug: dr-ama-aka-dark-skinned-assassin
     name: Dr. Ama Aka Dark Skinned Assassin
     spotify_id: ""
@@ -659,6 +667,8 @@ artists:
     enabled: true
     editorial_order: 51
     notes: ""
+    external_url: https://open.spotify.com/artist/1co5MV1wOKEZJLPVkml3Ri
+    image_url: https://i.scdn.co/image/ab6761610000e5eb741bc2e92ccdcc3e62759685
   - slug: free-murda
     name: Free Murda
     spotify_id: 7bcaPLwtiAQbJUcYYvHPlq
@@ -701,7 +711,7 @@ artists:
     editorial_order: 54
     notes: ""
     external_url: https://open.spotify.com/artist/59h4urZSPlBLaT0YharjOM
-    image_url: https://i.scdn.co/image/ab6761610000e5eb7d3c46e8d77ad0bb78d279db
+    image_url: https://i.scdn.co/image/ab6761610000e5eba2462a2bb2b2efa6fef95abe
   - slug: intell
     name: Intell
     spotify_id: 4jITyKWjSTPCdzK1iM5eaA
@@ -726,6 +736,7 @@ artists:
     enabled: true
     editorial_order: 56
     notes: ""
+    external_url: https://open.spotify.com/artist/7qmKiz1EjNCG6216Jc9S0C
   - slug: killah-priest
     name: Killah Priest
     spotify_id: 0JYmatsiEQMn2v5KchV8u2
@@ -750,6 +761,7 @@ artists:
       - 7mYFvApe9zG6Zi2C6wKyDk
     genres:
       - boom bap
+      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -838,6 +850,7 @@ artists:
     enabled: true
     editorial_order: 64
     notes: ""
+    external_url: https://open.spotify.com/artist/4kAt7aq5WVf9vJ5gdlj5KT
   - slug: prodigal-sunn
     name: Prodigal Sunn
     spotify_id: 3QnwfdgJNhOjR1i7jPBGi8
@@ -983,6 +996,8 @@ artists:
   - slug: sun-god
     name: Sun God
     spotify_id: 5FtiFDKYXZVHrm011mhQmL
+    genres:
+      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -990,6 +1005,8 @@ artists:
     enabled: true
     editorial_order: 75
     notes: ""
+    external_url: https://open.spotify.com/artist/5FtiFDKYXZVHrm011mhQmL
+    image_url: https://i.scdn.co/image/ab6761610000e5ebd0716307656f04cb505981ca
   - slug: timbo-king
     name: Timbo King
     spotify_id: 4b4EjCPu3Al1RBinELuIPJ
@@ -1027,7 +1044,7 @@ artists:
     editorial_order: 78
     notes: ""
     external_url: https://open.spotify.com/artist/0ZL948orsY5yM2hlESNF6O
-    image_url: https://i.scdn.co/image/ab67616d0000b273b3e40941f62881b981ffd9cc
+    image_url: https://i.scdn.co/image/ab67616d0000b273f99bffd1d4023b1dc8981602
   - slug: young-justice
     name: Young Justice
     spotify_id: 1r9Dad3vzvp6DQoCf9VvAv
@@ -1142,11 +1159,11 @@ artists:
     enabled: true
     editorial_order: 87
     notes: ""
+    external_url: https://open.spotify.com/artist/6MkzvK9huIhVIgvTZeVFBH
+    image_url: https://i.scdn.co/image/ab67616d0000b273b2d8f933f52c1c7dbf01c2d4
   - slug: 4th-disciple
     name: 4th Disciple
     spotify_id: 2tpSqPZjUTXghpgDsQDi9I
-    genres:
-      - east coast hip hop
     category: producer
     roles:
       - producer
@@ -1312,6 +1329,8 @@ artists:
     spotify_id: 1YfEcTuGvBQ8xSD1f53UnK
     genres:
       - east coast hip hop
+      - hip hop
+      - old school hip hop
     category: collaborator
     roles:
       - collaborator
@@ -1320,7 +1339,7 @@ artists:
     editorial_order: 101
     notes: ""
     external_url: https://open.spotify.com/artist/1YfEcTuGvBQ8xSD1f53UnK
-    image_url: https://i.scdn.co/image/ab6761610000e5eb7b31aba081ef084510cde4e3
+    image_url: https://i.scdn.co/image/ab6761610000e5eb649ab26ed0fa2f60b3a9ed51
   - slug: kool-g-rap
     name: Kool G Rap
     spotify_id: 099tLNCZZvtjC7myKD0mFp
@@ -1342,6 +1361,11 @@ artists:
   - slug: mf-doom
     name: MF DOOM
     spotify_id: 2pAWfrd7WFF3XhVt9GooDL
+    genres:
+      - alternative hip hop
+      - east coast hip hop
+      - experimental hip hop
+      - jazz rap
     category: collaborator
     roles:
       - collaborator
@@ -1349,6 +1373,8 @@ artists:
     enabled: true
     editorial_order: 103
     notes: ""
+    external_url: https://open.spotify.com/artist/2pAWfrd7WFF3XhVt9GooDL
+    image_url: https://i.scdn.co/image/ab6761610000e5eb6c8167ef48a872b6f190078f
   - slug: easy-mo-bee
     name: Easy Mo Bee
     spotify_id: ""
@@ -1426,6 +1452,7 @@ artists:
     genres:
       - east coast hip hop
       - finnish hip hop
+      - underground hip hop
     category: collaborator
     roles:
       - collaborator
@@ -1471,7 +1498,8 @@ artists:
     enabled: true
     editorial_order: 112
     notes: Discovered from Wikipedia (Rappers); review before enabling.
-    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#D1C3
+    external_url: https://open.spotify.com/artist/1woS1RWE7TTiECbhlxa5tk
+    image_url: https://i.scdn.co/image/ab6761610000e5eb15a1ae49e142b807da4c6dfc
   - slug: pxwer
     name: PXWER
     spotify_id: 2whjaggbS47XKb5D0HOHXj
@@ -1482,7 +1510,8 @@ artists:
     enabled: true
     editorial_order: 113
     notes: Discovered from Wikipedia (Rappers); review before enabling.
-    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#PXWER
+    external_url: https://open.spotify.com/artist/2whjaggbS47XKb5D0HOHXj
+    image_url: https://i.scdn.co/image/ab6761610000e5eb7055e1a25cd1a2adc304b45c
   - slug: dirty-clanzmen
     name: Dirty Clanzmen
     spotify_id: 0ZHzFnS3u6rKXgkaIvJGYQ
@@ -1493,7 +1522,8 @@ artists:
     enabled: true
     editorial_order: 114
     notes: Discovered from Wikipedia (Groups); review before enabling.
-    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Dirty_Clanzmen
+    external_url: https://open.spotify.com/artist/0ZHzFnS3u6rKXgkaIvJGYQ
+    image_url: https://i.scdn.co/image/ab67616d0000b27323d4875194e0f289a6ac5ba0
   - slug: othorized-f-a-m
     name: Othorized F.A.M.
     spotify_id: ""
@@ -1526,7 +1556,8 @@ artists:
     enabled: true
     editorial_order: 117
     notes: Discovered from Wikipedia (Producers); review before enabling.
-    external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#Nary_Da_Producer
+    external_url: https://open.spotify.com/artist/1TzL3A66GbWeFMURPKI6KG
+    image_url: https://i.scdn.co/image/ab6761610000e5eb47e47be2bc06aa8cbf791c46
   - slug: method-man
     name: Method Man
     spotify_id: 4VmEWwd8y9MCLwexFMdpwt
@@ -1560,6 +1591,8 @@ artists:
     enabled: true
     editorial_order: 119
     notes: Added as editorial placeholder; resolve Spotify ID before enabling.
+    external_url: https://open.spotify.com/artist/4jtcZjpuoSYBWP8xoXGi2P
+    image_url: https://i.scdn.co/image/ab67616d0000b273532a0bfb89d7441a7eb68f67
   - slug: 2nd-generation-wu
     name: 2nd Generation Wu
     spotify_id: 176ThSTKVe29Uxsae3mkUw
@@ -1573,7 +1606,7 @@ artists:
     editorial_order: 120
     notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
     external_url: https://open.spotify.com/artist/176ThSTKVe29Uxsae3mkUw
-    image_url: https://i.scdn.co/image/ab6761610000e5ebe981a05c080bfeb758d877ea
+    image_url: https://i.scdn.co/image/ab6761610000e5ebb6d4c717ba7a967e0220e13f
   - slug: 71raw
     name: 71Raw
     spotify_id: 7GvpugueCESGX1EvLX0CQL
@@ -1584,7 +1617,8 @@ artists:
     enabled: true
     editorial_order: 121
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/7GvpugueCESGX1EvLX0CQL
+    image_url: https://i.scdn.co/image/ab67616d0000b2735993a2c3b847b4d3659b977b
   - slug: a-c-g-137
     name: A.C.G. 137
     spotify_id: 3ny7ffC5QYSRmluiv2vdWc
@@ -1595,7 +1629,8 @@ artists:
     enabled: true
     editorial_order: 122
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/3ny7ffC5QYSRmluiv2vdWc
+    image_url: https://i.scdn.co/image/ab67616d0000b273059f2c8e662fee9d521ba30c
   - slug: actual-facts
     name: Actual Facts
     spotify_id: 1JJIbA2gwCCnbFtlmQBrlM
@@ -1606,7 +1641,8 @@ artists:
     enabled: true
     editorial_order: 123
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/1JJIbA2gwCCnbFtlmQBrlM
+    image_url: https://i.scdn.co/image/ab67616d0000b273ce60dfd1901f07e2d6cbb6eb
   - slug: the-almighty
     name: The Almighty
     spotify_id: ""
@@ -1631,7 +1667,7 @@ artists:
     editorial_order: 125
     notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
     external_url: https://open.spotify.com/artist/5qEjOQbO7okscrhr11skN5
-    image_url: https://i.scdn.co/image/ab67616d0000b2733d64e071af0a59877453d70e
+    image_url: https://i.scdn.co/image/ab67616d0000b2739fdccb35b86b80ad5281191b
   - slug: ancients-coins
     name: Ancients Coins
     spotify_id: ""
@@ -1657,8 +1693,6 @@ artists:
   - slug: armor-of-god
     name: Armor of God
     spotify_id: 5024w0wkcfyY5GSSHwfbol
-    genres:
-      - underground hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -1667,10 +1701,14 @@ artists:
     editorial_order: 128
     notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
     external_url: https://open.spotify.com/artist/5024w0wkcfyY5GSSHwfbol
-    image_url: https://i.scdn.co/image/ab67616d0000b27382c2511b5902a56f7806193b
+    image_url: https://i.scdn.co/image/ab67616d0000b2735a0e6901b424694678dc416d
   - slug: babylon-warchild
     name: Babylon Warchild
     spotify_id: 28JBnr6xDEXnmGo197dW6C
+    genres:
+      - hardcore hip hop
+      - horrorcore
+      - underground hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -1678,7 +1716,8 @@ artists:
     enabled: true
     editorial_order: 129
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/28JBnr6xDEXnmGo197dW6C
+    image_url: https://i.scdn.co/image/ab67616d0000b273d4b120bac4cf7a84fa832001
   - slug: black-knights-of-the-north-star
     name: Black Knights of the North Star
     spotify_id: 483kNB4WsnbqPyhgXFJLli
@@ -1689,7 +1728,8 @@ artists:
     enabled: true
     editorial_order: 130
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/483kNB4WsnbqPyhgXFJLli
+    image_url: https://i.scdn.co/image/ab67616d0000b273f55bb4ce46c12a2c07454590
   - slug: black-lotus
     name: Black Lotus
     spotify_id: ""
@@ -1755,7 +1795,8 @@ artists:
     enabled: true
     editorial_order: 136
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/2dmFUErIGL6qOF4PylZpvX
+    image_url: https://i.scdn.co/image/ab67616d0000b273978e55d4a34a0d716ac969e8
   - slug: c-i-a
     name: C.I.A.
     spotify_id: 2jcUiOe3qb2oaYz3jsI7yt
@@ -1766,7 +1807,8 @@ artists:
     enabled: true
     editorial_order: 137
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/2jcUiOe3qb2oaYz3jsI7yt
+    image_url: https://i.scdn.co/image/ab6761610000e5eb27d05abe81a6831f8df29e96
   - slug: coney-island-gankstas
     name: Coney Island Gankstas
     spotify_id: ""
@@ -1799,7 +1841,8 @@ artists:
     enabled: true
     editorial_order: 140
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/4John8fJ3LKqFho0pselVr
+    image_url: https://i.scdn.co/image/ab6761610000e5ebfff068e3c0d6c2b59009e2d1
   - slug: da-groove-stalkers
     name: Da Groove Stalkers
     spotify_id: ""
@@ -1846,7 +1889,8 @@ artists:
     enabled: true
     editorial_order: 144
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/67qUB0VR5Uaa7gbFVplebn
+    image_url: https://i.scdn.co/image/ab67616d0000b27325e016d6c2697b8cd4df610c
   - slug: disciples-of-armageddon
     name: Disciples of Armageddon
     spotify_id: ""
@@ -1916,6 +1960,8 @@ artists:
   - slug: goldminerz
     name: GoldMinerz
     spotify_id: 4R9jFVMezs2w4ZXZGXAB9A
+    genres:
+      - underground hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -1923,7 +1969,8 @@ artists:
     enabled: true
     editorial_order: 151
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/4R9jFVMezs2w4ZXZGXAB9A
+    image_url: https://i.scdn.co/image/ab67616d0000b2730d18702caaeb3fed2fdcaaf1
   - slug: green-back-gorillas
     name: Green Back Gorillas
     spotify_id: ""
@@ -2099,10 +2146,13 @@ artists:
     enabled: true
     editorial_order: 167
     notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit match is ambiguous; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/76bQw5ojE6kAY7m9RQI5zn
+    image_url: https://i.scdn.co/image/ab67616d0000b2739fdccb35b86b80ad5281191b
   - slug: the-odd-couple
     name: The Odd Couple
     spotify_id: 3raNtfTJXxmzGbBKMlRzl8
+    genres:
+      - underground hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -2110,7 +2160,8 @@ artists:
     enabled: true
     editorial_order: 168
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/3raNtfTJXxmzGbBKMlRzl8
+    image_url: https://i.scdn.co/image/ab67616d0000b27313f5cd4ccb4a2572f7f9cdbc
   - slug: premium-plus
     name: Premium Plus
     spotify_id: ""
@@ -2187,7 +2238,8 @@ artists:
     enabled: true
     editorial_order: 175
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/67e9chPUOk34vNcuGLXcmA
+    image_url: https://i.scdn.co/image/ab67616d0000b2732426fafa8fa764fe4080fa99
   - slug: shaolin-soldiers
     name: Shaolin Soldiers
     spotify_id: 302vYRHHgfQ7V4AF0Tyjgk
@@ -2198,7 +2250,7 @@ artists:
     enabled: true
     editorial_order: 176
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/302vYRHHgfQ7V4AF0Tyjgk
   - slug: the-shield-enforcers
     name: The Shield Enforcers
     spotify_id: 1LbdcQlYwhordhevATZ4Gr
@@ -2246,7 +2298,7 @@ artists:
     enabled: true
     editorial_order: 180
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/03VL9moVkZIyNBYiAER3Bh
   - slug: the-strength
     name: The Strength
     spotify_id: ""
@@ -2301,7 +2353,8 @@ artists:
     enabled: true
     editorial_order: 185
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/5ZlCwvxHRloduSXFXt9xX4
+    image_url: https://i.scdn.co/image/ab67616d0000b2732ef32288daba1911d418abe3
   - slug: two-4-war
     name: Two 4 War
     spotify_id: 1mMdTxJAt95GVVoOJ8NFuF
@@ -2312,7 +2365,8 @@ artists:
     enabled: true
     editorial_order: 186
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/1mMdTxJAt95GVVoOJ8NFuF
+    image_url: https://i.scdn.co/image/ab67616d0000b273667bb6fc7b3439f771bd0dee
   - slug: united-kingdom
     name: United Kingdom
     spotify_id: 3grYksp0csNBBSKDp1azcq
@@ -2354,6 +2408,8 @@ artists:
   - slug: wu-block
     name: Wu Block
     spotify_id: 1Tauz2QusnM8J5ZtD6JDY0
+    genres:
+      - east coast hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -2361,7 +2417,8 @@ artists:
     enabled: true
     editorial_order: 190
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/1Tauz2QusnM8J5ZtD6JDY0
+    image_url: https://i.scdn.co/image/ab67616d0000b2732efbd9d5cb8e942e6a55ba0c
   - slug: wu-elements
     name: Wu Elements
     spotify_id: ""
@@ -2376,6 +2433,9 @@ artists:
   - slug: wu-latino
     name: Wu-Latino
     spotify_id: 71XlJVu7vnyMLK0tMqqo4g
+    genres:
+      - hardcore hip hop
+      - latin hip hop
     category: affiliate_group
     roles:
       - affiliate_group
@@ -2383,4 +2443,5 @@ artists:
     enabled: true
     editorial_order: 192
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/71XlJVu7vnyMLK0tMqqo4g
+    image_url: https://i.scdn.co/image/ab6761610000e5ebd18bce77b4238ba2d86b5da3
