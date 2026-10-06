@@ -1,6 +1,6 @@
 # Architecture
 
-Spot Wu Family v2 is a hexagonal Go application that collects Spotify catalog data into versioned SQLite, exports deterministic JSON and builds a static Hugo site.
+Spot Wu Family v2 is a hexagonal Go application that collects Spotify catalog data into SQLite backed up in GitHub Releases with its version pinned in Git, exports deterministic JSON and builds a static Hugo site.
 
 ```mermaid
 flowchart LR

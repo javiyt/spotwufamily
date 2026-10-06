@@ -10,8 +10,8 @@ This is the acceptance checklist for the v2 rebuild.
 | 4 | Albums, singles, compilations and appearances are requested. | Done | `sync` include groups |
 | 5 | Tracks and credited artists are collected. | Done | sync and SQLite tests |
 | 6 | Data is normalized in SQLite. | Done | migrations and repository tests |
-| 7 | SQLite database is versioned in Git. | Done | `data/catalog.db` |
-| 8 | Logical snapshot is reviewable. | Done | `data/catalog.snapshot.sql.gz` |
+| 7 | Complete SQLite database is stored in Releases. | Done | `data/catalog.release.json` |
+| 8 | Catalog release pointer is reviewable. | Done | `data/catalog.release.json` |
 | 9 | A second unchanged sync leaves Git clean. | Needs live Spotify run | `sync`, then `audit` |
 | 10 | Generated JSON is deterministic. | Done | export tests and `audit` |
 | 11 | Hugo builds the web. | Done | `site build`, `make ci` |

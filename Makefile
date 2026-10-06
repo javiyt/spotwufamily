@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -19,8 +19,14 @@ MARKET ?= ES
 SITE_SOURCE ?= site
 SITE_DESTINATION ?= /tmp/spotwufamily-site
 
+RELEASE_PACKAGE ?= build/catalog-release
+CATALOG_REPOSITORY ?= javiyt/spotwufamily
+
 help:
 	@printf 'Spot Wu Family targets:\n'
+	@printf '  make catalog-fetch           Download the catalog pinned in Git (requires gh)\n'
+	@printf '  make catalog-release-prepare Package a complete catalog backup\n'
+	@printf '  make catalog-release-publish Upload package and update the manifest\n'
 	@printf '  make init-from-yaml          Validate YAML, prepare DB, export JSON, build site, audit\n'
 	@printf '  make refresh-from-spotify    Resolve strong IDs, sync one artist, snapshot/export/audit\n'
 	@printf '  make artists-resolve-apply   Apply strong Spotify ID matches to YAML\n'
@@ -50,6 +56,7 @@ lint:
 
 test:
 	go test ./...
+	python3 -m unittest discover -s scripts/automation -p 'test_catalog_release.py'
 
 test-race:
 	go test -race ./...
@@ -132,6 +139,16 @@ audit:
 
 audit-fast:
 	go run $(CLI) audit --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --output $(EXPORT_DIR) --static $(STATIC_DIR) --content $(CONTENT_DIR) --skip-site --skip-git-diff
+
+catalog-fetch:
+	python3 scripts/automation/catalog-release.py fetch --repo "$(CATALOG_REPOSITORY)" --db "$(DB)" --snapshot "$(SNAPSHOT)"
+
+# Use a new RELEASE_PACKAGE directory for each backup; packages are never overwritten.
+catalog-release-prepare:
+	python3 scripts/automation/catalog-release.py prepare --repo "$(CATALOG_REPOSITORY)" --db "$(DB)" --output "$(RELEASE_PACKAGE)"
+
+catalog-release-publish:
+	python3 scripts/automation/catalog-release.py publish --repo "$(CATALOG_REPOSITORY)" --output "$(RELEASE_PACKAGE)"
 
 db-verify:
 	go run $(CLI) db verify --db $(DB) --snapshot $(SNAPSHOT)

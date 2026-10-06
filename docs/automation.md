@@ -3,7 +3,7 @@
 Workflows:
 
 - `ci.yml`: validates the artist catalog, verifies SQLite, regenerates ignored exports, builds Hugo, tests, vets and builds the CLI.
-- `catalog-sync.yml`: runs scheduled or manual Spotify sync, regenerates SQLite and the snapshot, and opens or updates one catalog PR.
+- `catalog-sync.yml`: runs scheduled or manual Spotify sync, downloads the pinned catalog, runs Spotify sync, uploads a full backup to Releases, and opens or updates one manifest-only catalog PR.
 - `catalog-pr-review.yml`: approves generated catalog PRs only after checking trusted metadata, labels and changed paths.
 - `pages.yml`: verifies exports, builds Hugo and deploys GitHub Pages after merge to `main`.
 - `pages-preview.yml`: deploys same-repository PR branches to a Pages preview under `/pr-preview/pr-<number>/` and removes the preview when the PR closes.
@@ -35,8 +35,9 @@ Recommended repository secrets for automation identities:
 
 The sync identity and review identity must be separate GitHub Apps or bot credentials when branch protection requires review approval. The review guard only approves same-repository PRs targeting `main`, with `automation`, `catalog-update` and `spotify` labels, from `automation/catalog-sync-*` branches, and with changes restricted to versioned catalog artifacts:
 
-- `data/catalog.db`
-- `data/catalog.snapshot.sql.gz`
+- `data/catalog.release.json`
+
+CI, Pages and previews download the exact release pinned by the checked-out manifest using `GITHUB_TOKEN`. No storage service or additional storage credential is required. A catalog release is uploaded before its PR is created, allowing CI to verify it; production uses it only after the manifest merges. Upload failures leave the manifest unchanged.
 
 Hugo JSON exports are ignored by Git and regenerated during CI and Pages deployment.
 

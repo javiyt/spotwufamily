@@ -7,7 +7,7 @@ The v2 direction is:
 - Go CLI and collector.
 - Editorial artist catalog in `data/artists.yaml`.
 - Spotify Web API collection through server-side automation only.
-- SQLite database versioned in Git.
+- SQLite database backed up in GitHub Releases, with its version pinned in Git.
 - Deterministic JSON exports for Hugo.
 - Static Hugo site deployed to GitHub Pages.
 
@@ -21,6 +21,7 @@ Recommended Make targets:
 
 ```bash
 make help
+make catalog-fetch
 make init-from-yaml
 make artists-resolve-offline
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-apply
@@ -33,6 +34,8 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make sync-artist ARTIST=wu-tang-
 make db-rebuild
 make ci
 ```
+
+`make catalog-fetch` downloads the complete catalog referenced by `data/catalog.release.json` and verifies its SHA-256 checksums. It requires Python 3 and GitHub CLI (`gh auth login`). It refuses to overwrite an existing local catalog. Run it after cloning to retain all collected albums, tracks and checkpoints.
 
 `make init-from-yaml` is the local bootstrap path from `data/artists.yaml`: it validates the YAML, migrates SQLite, seeds configured artists and Spotify IDs into the database, refreshes the snapshot, exports JSON, builds Hugo and runs the audit gate. Album and track content still requires a Spotify sync.
 
@@ -199,7 +202,17 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make refresh-all-from-spotify
 
 ## Database
 
-`data/catalog.db` is the versioned SQLite catalog. `data/catalog.snapshot.sql.gz` is the deterministic logical snapshot used for reviewable diffs and rebuild verification.
+`data/catalog.db` is the local SQLite catalog. The database and `data/catalog.snapshot.sql.gz` are ignored by Git and stored as compressed assets in dated GitHub Releases. Only `data/catalog.release.json` is versioned: it pins a release and checksums so CI, previews and Pages use the same catalog.
+
+To publish a local update:
+
+```bash
+make catalog-release-prepare RELEASE_PACKAGE=build/catalog-backup-YYYYMMDD-HHMMSS
+make catalog-release-publish RELEASE_PACKAGE=build/catalog-backup-YYYYMMDD-HHMMSS
+git add data/catalog.release.json
+```
+
+Use a new package directory each time. Commit the manifest through the normal PR flow after upload. Releases retain all SQLite tables, including resume and metadata refresh checkpoints; the logical snapshot intentionally omits `artist_metadata_refreshes`. See [database operations](docs/database.md) for restoration and migration details.
 
 Run:
 

@@ -37,3 +37,8 @@ coverage.txt
 
 resolve.md
 data/artist-candidates.example.json
+
+# Catalog assets are backed up in GitHub Releases
+data/catalog.db
+data/catalog.snapshot.sql.gz
+__pycache__/

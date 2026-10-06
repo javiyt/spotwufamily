@@ -14,10 +14,11 @@
 - Code, workflow, migration, script, template, dependency and editorial YAML changes are blocked from automatic approval.
 - Use separate sync and review identities when branch protection requires reviews.
 
-## Versioned SQLite
+## Catalog release backups
 
 - SQLite sidecar files are ignored and should not be committed.
-- `data/catalog.snapshot.sql.gz` is the reviewable logical diff for database changes.
+- `data/catalog.release.json` is the reviewable release pointer with asset and complete-content SHA-256 checksums.
+- Complete SQLite backups and snapshots inherit repository visibility. Release downloads verify checksums before installing local files.
 - `db verify` and `audit` must pass before merging generated database updates.
 
 ## Frontend
