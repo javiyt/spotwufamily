@@ -1,0 +1,46 @@
+name: Pages Deploy
+
+on:
+  workflow_run:
+    workflows: [Pages, Pages Preview]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: publish-github-pages
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Run from the default branch, including when a PR produced the static
+      # preview. Only read static output from gh-pages; never execute PR code.
+      - name: Checkout assembled site
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: pages-artifact
+          persist-credentials: false
+
+      - name: Verify assembled site
+        run: test -f pages-artifact/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: pages-artifact
+
+      - name: Deploy assembled site
+        id: deployment
+        uses: actions/deploy-pages@v4

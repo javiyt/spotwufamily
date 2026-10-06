@@ -12,6 +12,7 @@
 - `catalog-pr-review.yml` checks PR metadata using trusted scripts from `main`, not code from the PR branch.
 - Automatic approval is restricted to same-repository PRs targeting `main`, with expected labels and an allowlist of generated paths.
 - Code, workflow, migration, script, template, dependency and editorial YAML changes are blocked from automatic approval.
+- The privileged `Pages Deploy` workflow runs from the default branch and reads only generated static files from `gh-pages`; it never executes code from the triggering PR.
 - Use separate sync and review identities when branch protection requires reviews.
 
 ## Catalog release backups
