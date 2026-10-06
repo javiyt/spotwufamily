@@ -36,6 +36,11 @@ jobs:
       - name: Validate artist catalog
         run: go run ./cmd/spotwufamily artists validate
 
+      - name: Download pinned catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/automation/catalog-release.py fetch
+
       - name: Verify SQLite catalog
         run: go run ./cmd/spotwufamily db verify
 
@@ -47,6 +52,9 @@ jobs:
 
       - name: Audit end-to-end
         run: go run ./cmd/spotwufamily audit --skip-git-diff
+
+      - name: Test catalog release storage
+        run: python3 -m unittest discover -s scripts/automation -p "test_catalog_release.py"
 
       - name: Test
         run: go test ./...

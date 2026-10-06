@@ -47,7 +47,7 @@ Expected workflow behavior:
 - CI does not require Spotify credentials.
 - Scheduled sync uses Spotify secrets.
 - No-change sync exits without creating a PR.
-- Changed sync creates or updates one `automation/catalog-sync-*` PR.
+- Changed sync publishes a complete backup to Releases and creates or updates one manifest-only `automation/catalog-sync-*` PR. CI and Pages download the version pinned by that manifest.
 - Generated-data PRs get a readable summary.
 - Automatic approval never approves code, workflow, migration, script, template, dependency or `data/artists.yaml` changes.
 - After merge to `main`, Pages rebuilds and deploys the Hugo site.

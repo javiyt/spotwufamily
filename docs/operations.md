@@ -8,6 +8,8 @@ Run the full local audit before merging catalog or automation changes:
 make audit
 ```
 
+After a fresh clone, run `make catalog-fetch` to download the catalog pinned by `data/catalog.release.json`. This refuses to overwrite existing local files.
+
 The audit validates `data/artists.yaml`, verifies `data/catalog.db`, checks that `data/catalog.snapshot.sql.gz` is fresh, regenerates ignored JSON exports, verifies generated artifacts and builds the Hugo site into `/tmp/spotwufamily-site`.
 
 For unit-test style runs without Hugo or Git checks:

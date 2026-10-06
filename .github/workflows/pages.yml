@@ -4,8 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "data/catalog.db"
-      - "data/catalog.snapshot.sql.gz"
+      - "data/catalog.release.json"
       - "data/artists.yaml"
       - "site/**"
       - "cmd/**"
@@ -15,6 +14,7 @@ on:
       - "go.sum"
       - ".github/workflows/pages.yml"
       - "scripts/automation/publish-pages.sh"
+      - "scripts/automation/catalog-release.py"
   workflow_dispatch:
 
 permissions:
@@ -47,6 +47,11 @@ jobs:
         with:
           hugo-version: "0.164.0"
           extended: true
+
+      - name: Download pinned catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/automation/catalog-release.py fetch
 
       - name: Verify and export
         run: |

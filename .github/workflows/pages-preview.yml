@@ -43,6 +43,12 @@ jobs:
           hugo-version: "0.164.0"
           extended: true
 
+      - name: Download pinned catalog
+        if: ${{ github.event.action != 'closed' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/automation/catalog-release.py fetch
+
       - name: Verify and export
         if: ${{ github.event.action != 'closed' }}
         run: |

@@ -67,6 +67,11 @@ jobs:
           git config user.name "spotwufamily-catalog-sync[bot]"
           git config user.email "spotwufamily-catalog-sync[bot]@users.noreply.github.com"
 
+      - name: Download pinned catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/automation/catalog-release.py fetch
+
       - name: Validate and migrate
         run: |
           go run ./cmd/spotwufamily artists validate
@@ -76,14 +81,16 @@ jobs:
         env:
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SYNC_FULL: ${{ inputs.full_sync || 'false' }}
+          SYNC_ARTIST: ${{ inputs.artist }}
           SPOTIFY_MARKET: ${{ inputs.market || 'ES' }}
         run: |
           args=(sync --market "${SPOTIFY_MARKET}" --resume)
-          if [[ "${{ inputs.full_sync || 'false' }}" == "true" ]]; then
+          if [[ "${SYNC_FULL}" == "true" ]]; then
             args+=(--full)
           fi
-          if [[ -n "${{ inputs.artist || '' }}" ]]; then
-            args+=(--artist "${{ inputs.artist }}")
+          if [[ -n "${SYNC_ARTIST}" ]]; then
+            args+=(--artist "${SYNC_ARTIST}")
           fi
           set +e
           go run ./cmd/spotwufamily "${args[@]}"
@@ -100,10 +107,17 @@ jobs:
           go test ./...
           go vet ./...
 
+      - name: Package and publish catalog backup
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.CATALOG_SYNC_TOKEN || github.token }}
+        run: |
+          python3 scripts/automation/catalog-release.py prepare
+          python3 scripts/automation/catalog-release.py publish
+
       - name: Detect changes
         id: changes
         run: |
-          if git diff --quiet -- data/catalog.db data/catalog.snapshot.sql.gz; then
+          if git diff --quiet -- data/catalog.release.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -118,7 +132,7 @@ jobs:
         run: |
           branch="automation/catalog-sync-$(date -u +%Y%m%d)"
           git switch -C "${branch}"
-          git add data/catalog.db data/catalog.snapshot.sql.gz
+          git add data/catalog.release.json
           git commit -m "chore(catalog): update Spotify catalog"
           git push --force-with-lease origin "${branch}"
           echo "branch=${branch}" >> "$GITHUB_ENV"

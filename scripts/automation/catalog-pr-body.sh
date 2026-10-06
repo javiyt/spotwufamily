@@ -6,7 +6,7 @@ summary_file="${1:-/tmp/catalog-pr-body.md}"
 {
   echo "## Catalog Sync"
   echo
-  echo "Automated Spotify catalog sync output."
+  echo "Automated Spotify catalog sync output. The manifest pins a complete SQLite backup and logical snapshot in GitHub Releases."
   echo
   echo "### Changed files"
   echo
@@ -20,6 +20,12 @@ summary_file="${1:-/tmp/catalog-pr-body.md}"
   echo
   echo '```text'
   git diff --stat HEAD~1..HEAD || true
+  echo '```'
+  echo
+  echo "### Catalog release manifest"
+  echo
+  echo '```json'
+  cat data/catalog.release.json
   echo '```'
   echo
   echo "### Verification"
