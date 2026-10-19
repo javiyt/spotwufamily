@@ -65,7 +65,7 @@ artists:
     editorial_order: 4
     notes: ""
     external_url: https://open.spotify.com/artist/4W91zWkx3syrUDACiK5Jxh
-    image_url: https://i.scdn.co/image/ab67616d0000b273264de14892a5c9e5d7829b9d
+    image_url: https://i.scdn.co/image/ab67616d0000b27374fb8b6c91363d34d765a8b4
   - slug: achozen
     name: Achozen
     spotify_id: ""
@@ -476,7 +476,7 @@ artists:
     editorial_order: 36
     notes: ""
     external_url: https://open.spotify.com/artist/4h45LoknPVdea6ePNiia1K
-    image_url: https://i.scdn.co/image/ab67616d0000b273d243ccdddef26003b28dfda3
+    image_url: https://i.scdn.co/image/ab67616d0000b273eda5d81fcc0962457a76dee9
   - slug: zu-ninjaz
     name: Zu Ninjaz
     spotify_id: 6WWD54LZfwes6Nl6IQQDL0
@@ -711,7 +711,7 @@ artists:
     editorial_order: 54
     notes: ""
     external_url: https://open.spotify.com/artist/59h4urZSPlBLaT0YharjOM
-    image_url: https://i.scdn.co/image/ab6761610000e5eba2462a2bb2b2efa6fef95abe
+    image_url: https://i.scdn.co/image/ab6761610000e5eb4d813548f34fa8823448c312
   - slug: intell
     name: Intell
     spotify_id: 4jITyKWjSTPCdzK1iM5eaA
@@ -761,7 +761,6 @@ artists:
       - 7mYFvApe9zG6Zi2C6wKyDk
     genres:
       - boom bap
-      - east coast hip hop
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -827,7 +826,7 @@ artists:
     editorial_order: 62
     notes: ""
     external_url: https://open.spotify.com/artist/3nksXkEKKByUQDyUB23ftO
-    image_url: https://i.scdn.co/image/ab67616d0000b273b644998a7b1aca26fc36a834
+    image_url: https://i.scdn.co/image/ab67616d0000b273fc7d7a43b13a5d6335052f89
   - slug: piro
     name: PiRo
     spotify_id: 06jtqet6GMetHMxOznw0zK
@@ -965,7 +964,7 @@ artists:
     editorial_order: 72
     notes: ""
     external_url: https://open.spotify.com/artist/5CWrorrSfRWfz0dYT4bLHu
-    image_url: https://i.scdn.co/image/ab67616d0000b273786ca892971448a1111b5dc0
+    image_url: https://i.scdn.co/image/ab67616d0000b27317ad6080017fba578eb29ebd
   - slug: solomon-childs
     name: Solomon Childs
     spotify_id: 6rp60Uul0bpZWR6B3a6wCc
@@ -1206,7 +1205,7 @@ artists:
     editorial_order: 91
     notes: ""
     external_url: https://open.spotify.com/artist/6T7ap0aCwj4aJVj3bJ0EWh
-    image_url: https://i.scdn.co/image/ab67616d0000b273564bc0f6cde071300da2341b
+    image_url: https://i.scdn.co/image/ab67616d0000b273f0ee3aa6f2fe7b932e219a62
   - slug: popsoundz
     name: Popsoundz
     spotify_id: 7iE9hHrF1NaG70SKjYM9oP
@@ -1686,10 +1685,11 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 127
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/1IrdspFNOH3IypZ6eCxOki
+    image_url: https://i.scdn.co/image/ab67616d0000b2731d1c5a4fb4a585f8eb8231ac
   - slug: armor-of-god
     name: Armor of God
     spotify_id: 5024w0wkcfyY5GSSHwfbol
@@ -1850,10 +1850,11 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 141
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/1WQWbgLPyQnWvRWgUahOIp
+    image_url: https://i.scdn.co/image/ab6761610000e5ebaaaf4395e3c56bd03f9d370c
   - slug: da-last-future
     name: Da Last Future
     spotify_id: ""
@@ -2011,10 +2012,11 @@ artists:
     roles:
       - affiliate_group
     aliases: []
-    enabled: false
+    enabled: true
     editorial_order: 155
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
-    external_url: https://www.rapreviews.com/2021/09/enter-the-wu-tang-affiliates-107-chambers/
+    external_url: https://open.spotify.com/artist/3WrLpviBLkmUTCqbfsPcZq
+    image_url: https://i.scdn.co/image/ab67616d0000b2732a000117373905380834dd60
   - slug: henchmen
     name: Henchmen
     spotify_id: ""
@@ -2378,7 +2380,7 @@ artists:
     editorial_order: 187
     notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
     external_url: https://open.spotify.com/artist/3grYksp0csNBBSKDp1azcq
-    image_url: https://i.scdn.co/image/ab67616d0000b273b7ca125f2529f10b50421e8d
+    image_url: https://i.scdn.co/image/ab67616d0000b273f36bbf7fe1d0bf1ba24dfafb
   - slug: west-coast-killa-beez
     name: West Coast Killa Beez
     spotify_id: 507DEVGD42PYBbxaMscxd2
