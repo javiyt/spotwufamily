@@ -51,7 +51,20 @@ type Catalog struct {
 	Albums        []Album
 	Tracks        []Track
 	Relationships []Relationship
-	Stats         Stats
+	// Reconciliations are the read-only pending identity-mapping corrections
+	// (configured YAML IDs not yet reconciled with the synced history).
+	Reconciliations []PendingReconciliation
+	Stats           Stats
+}
+
+// PendingReconciliation is the public, read-only impact summary of an artist
+// whose reviewed Spotify mapping and synced history are not aligned yet. It
+// carries no local paths or error text.
+type PendingReconciliation struct {
+	Slug        string   `json:"slug"`
+	Status      string   `json:"status"`
+	PreviousIDs []string `json:"previous_ids"`
+	TargetIDs   []string `json:"target_ids"`
 }
 
 // Relationship is a reviewed edge between two exported artists. Undirected
@@ -262,6 +275,13 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 		}
 	}
 	if err := write(filepath.Join(options.OutputDir, "relationships", "index.json"), mustJSON(Index[Relationship]{FormatVersion: FormatVersion, Items: catalog.Relationships}), keepGenerated); err != nil {
+		return report, err
+	}
+	pending := catalog.Reconciliations
+	if pending == nil {
+		pending = []PendingReconciliation{}
+	}
+	if err := write(filepath.Join(options.OutputDir, "reconciliation", "index.json"), mustJSON(Index[PendingReconciliation]{FormatVersion: FormatVersion, Items: pending}), keepGenerated); err != nil {
 		return report, err
 	}
 	searchPath := filepath.Join(options.StaticDir, "search-index.json")

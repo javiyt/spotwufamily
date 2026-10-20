@@ -38,6 +38,7 @@ Sync persistence:
 - Spotify artist, album and track rows are deduplicated by Spotify ID.
 - `artist_albums` and `artist_tracks` record which configured artist discovered a release or track.
 - `album_tracks`, `album_artists` and `track_artists` preserve album placement and credited artists.
+- `artist_mapping_snapshots` stores the last-synced Spotify ID mapping of each configured artist (migration 0006) and `artist_reconciliations` journals drift between that mapping and `data/artists.yaml`, the applied reconciliation (retire token, backup path and SHA-256, logical snapshot SHA-256) and whether replacement IDs still need syncing. Both tables are part of the logical snapshot. See `docs/operations.md` ("Reconcile A Corrected Spotify Mapping").
 - The current policy is conservative: sync upserts observed data and does not delete rows simply because they are absent from one run.
 
 Export:
@@ -89,3 +90,18 @@ CI, production Pages and PR previews fetch the manifest's release before verific
 ## Initial migration from Git
 
 Publish and test the initial release before removing the tracked database and snapshot. `git rm --cached data/catalog.db data/catalog.snapshot.sql.gz` stops tracking them while preserving local files. Old commits retain their existing binaries; this migration does not rewrite shared Git history or reduce the size of old clones. Cleaning that history is a separate coordinated operation.
+
+## Migration 0006 rollout
+
+Migration `0006_artist_mapping_reconciliation.sql` is additive (two new tables, no change to existing ones), so older binaries keep working with a migrated database. `db verify` requires every embedded migration to be applied, so the release pinned in `data/catalog.release.json` has to be rebuilt once with the migration applied:
+
+```bash
+make catalog-fetch            # current pinned release
+make db-migrate db-snapshot   # applies 0006 and regenerates the logical snapshot
+make db-verify
+make catalog-release-prepare RELEASE_PACKAGE=build/catalog-backup-YYYYMMDD-HHMMSS
+make catalog-release-publish RELEASE_PACKAGE=build/catalog-backup-YYYYMMDD-HHMMSS
+git add data/catalog.release.json
+```
+
+The previous release is not modified. To roll the schema back, restore the previous manifest from Git and fetch it; the two tables can simply be left unused.

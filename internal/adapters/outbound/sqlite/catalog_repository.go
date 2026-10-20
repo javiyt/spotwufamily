@@ -61,6 +61,10 @@ ON CONFLICT(artist_slug, alias) DO UPDATE SET position = excluded.position`,
 			}
 		}
 
+		if err := noteMappingDrift(ctx, tx, artist.Slug, artist.AllSpotifyIDs(), time.Now().UTC().Format(time.RFC3339)); err != nil {
+			return err
+		}
+
 		if _, err := tx.ExecContext(ctx, `DELETE FROM configured_artist_spotify_ids WHERE artist_slug = ?`, artist.Slug); err != nil {
 			return fmt.Errorf("delete configured Spotify IDs for %s: %w", artist.Slug, err)
 		}
@@ -221,7 +225,15 @@ func (d *Database) SaveArtistSyncCheckpoint(ctx context.Context, runID int64, ar
 		return fmt.Errorf("marshal artist sync summary: %w", err)
 	}
 
-	if _, err := d.db.ExecContext(ctx, `
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin artist sync checkpoint %s: %w", artist.Slug, err)
+	}
+	defer rollbackUnlessCommitted(tx)
+
+	fingerprint := catalogsync.SpotifyIDsFingerprint(artist)
+	finished := finishedAt.UTC().Format(time.RFC3339)
+	if _, err := tx.ExecContext(ctx, `
 INSERT INTO sync_run_artists(sync_run_id, artist_slug, spotify_ids, status, finished_at, summary)
 VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(sync_run_id, artist_slug) DO UPDATE SET
@@ -231,12 +243,21 @@ ON CONFLICT(sync_run_id, artist_slug) DO UPDATE SET
   summary = excluded.summary`,
 		runID,
 		artist.Slug,
-		catalogsync.SpotifyIDsFingerprint(artist),
+		fingerprint,
 		status,
-		finishedAt.UTC().Format(time.RFC3339),
+		finished,
 		string(data),
 	); err != nil {
 		return fmt.Errorf("save artist sync checkpoint %s: %w", artist.Slug, err)
+	}
+	if status == "completed" {
+		// A finished sync of the replacement IDs restores YAML/SQLite consistency.
+		if err := completeResync(ctx, tx, artist.Slug, fingerprint, finished); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit artist sync checkpoint %s: %w", artist.Slug, err)
 	}
 
 	return nil
