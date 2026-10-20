@@ -110,7 +110,7 @@ func TestReconcileActionsEndToEnd(t *testing.T) {
 		require.NotContains(t, l.Value, filepath.Dir(paths.db), "previews show names, not paths")
 	}
 
-	stale, err := apply.Spec(context.Background(), p)
+	stale, err := confirmedSpec(t, apply, p)
 	require.NoError(t, err)
 	out, err = runSpec(t, apply, p)
 	require.NoError(t, err)

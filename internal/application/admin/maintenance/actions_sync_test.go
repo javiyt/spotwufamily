@@ -343,7 +343,7 @@ func TestSyncUnavailableWithoutCredentials(t *testing.T) {
 	if ok, reason := a.Available(); ok || reason != "Spotify credentials are not configured" {
 		t.Fatalf("available=%v reason=%q", ok, reason)
 	}
-	if _, err := a.Spec(context.Background(), Params{"scope": "all"}); !errors.Is(err, ErrCredentialsMissing) {
+	if _, err := specFor(t, a, Params{"scope": "all"}); !errors.Is(err, ErrCredentialsMissing) {
 		t.Fatalf("spec: %v", err)
 	}
 }
@@ -351,7 +351,7 @@ func TestSyncUnavailableWithoutCredentials(t *testing.T) {
 func TestSyncStaleFingerprintAfterLockIsRefused(t *testing.T) {
 	fx := newSyncFixture(true)
 	a := NewSync(fx.deps)
-	spec, err := a.Spec(context.Background(), Params{"scope": "all"})
+	spec, err := specFor(t, a, Params{"scope": "all"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +384,7 @@ func TestSyncCancelledKeepsCheckpoints(t *testing.T) {
 	defer cancel()
 	fx.runner.onRun = func(string) { cancel() }
 
-	spec, err := NewSync(fx.deps).Spec(context.Background(), Params{"scope": "selected", "artists": "gza,rza,odb"})
+	spec, err := specFor(t, NewSync(fx.deps), Params{"scope": "selected", "artists": "gza,rza,odb"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -412,7 +412,7 @@ func TestSyncSelectedRejectsUnknownSlug(t *testing.T) {
 	if !errors.As(err, &se) || se.Code != "validation" || !strings.Contains(se.Message, `"cappadonna"`) {
 		t.Fatalf("want validation error naming the slug, got %v", err)
 	}
-	if _, err := a.Spec(context.Background(), p); safeCode(err) != "validation" {
+	if _, err := specFor(t, a, p); safeCode(err) != "validation" {
 		t.Fatalf("spec must refuse the unknown slug too: %v", err)
 	}
 	if len(fx.log.get()) != 0 {
@@ -444,5 +444,44 @@ func TestSyncValidateParams(t *testing.T) {
 		if err := a.Validate(p); err != nil {
 			t.Errorf("Validate(%v) = %v", p, err)
 		}
+	}
+}
+
+// digestChangingAt returns a digest that becomes "changed" from the n-th call
+// on. With Service.Run the calls are 1 = the user's preview, 2 = Run's
+// re-preview (verified against the token) and 3 = Spec.
+func digestChangingAt(n int, base string) CatalogDigest {
+	calls := 0
+	return func(context.Context) (string, error) {
+		calls++
+		if calls >= n {
+			return "changed between the re-preview and Spec", nil
+		}
+		return base, nil
+	}
+}
+
+func TestSyncSpecBindsVerifiedFingerprint(t *testing.T) {
+	fx := newSyncFixture(true)
+	fx.deps.Digest = digestChangingAt(3, "d1")
+	s, m, _ := newTestService(t, NewSync(fx.deps))
+	p := Params{"scope": "all"}
+	_, tok, err := s.Preview(context.Background(), "sync", p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Run(context.Background(), "sync", p, tok, "sync 7 artists"); !errors.Is(err, ErrStalePreview) {
+		t.Fatalf("want ErrStalePreview, got %v", err)
+	}
+	if len(m.List()) != 0 || len(fx.log.get()) != 0 {
+		t.Fatalf("nothing may be submitted or run: jobs=%v calls=%v", m.List(), fx.log.get())
+	}
+
+	plain := newSyncFixture(true)
+	if _, err := NewSync(plain.deps).Spec(context.Background(), p); !errors.Is(err, ErrConfirmationRequired) {
+		t.Fatalf("a real sync without a verified fingerprint must fail closed: %v", err)
+	}
+	if _, err := NewSyncDryRun(plain.deps).Spec(context.Background(), p); err != nil {
+		t.Fatalf("a dry run needs no confirmation: %v", err)
 	}
 }

@@ -121,7 +121,7 @@ func TestRefreshUnavailableWithoutCredentials(t *testing.T) {
 		if ok || reason != "Spotify credentials are not configured" {
 			t.Fatalf("%s: available=%v reason=%q", a.Name(), ok, reason)
 		}
-		if _, err := a.Spec(context.Background(), Params{}); !errors.Is(err, ErrCredentialsMissing) {
+		if _, err := specFor(t, a, Params{}); !errors.Is(err, ErrCredentialsMissing) {
 			t.Fatalf("%s: spec without credentials: %v", a.Name(), err)
 		}
 	}
@@ -305,7 +305,7 @@ func TestRefreshBackupFailureStopsBeforeRunning(t *testing.T) {
 
 func TestRefreshCancelledReturnsContextError(t *testing.T) {
 	fx := newRefreshFixture(true)
-	spec, err := NewRefreshMetadata(fx.deps).Spec(context.Background(), Params{})
+	spec, err := specFor(t, NewRefreshMetadata(fx.deps), Params{})
 	if err != nil {
 		t.Fatal(err)
 	}

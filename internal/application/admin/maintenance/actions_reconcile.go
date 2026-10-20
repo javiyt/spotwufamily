@@ -154,9 +154,10 @@ func (a *reconcileAction) Preview(ctx context.Context, p Params) (Preview, error
 	return pv, nil
 }
 
-// Spec plans now (the service has just verified the preview against this
-// plan) and, for apply, re-checks the checksum inside the job once the lock
-// is held.
+// Spec plans now (validating the artist). For apply it binds the job to the
+// verified preview fingerprint (fails closed without one), refuses a plan
+// that already differs, and re-checks the checksum inside the job once the
+// lock is held.
 func (a *reconcileAction) Spec(ctx context.Context, p Params) (jobs.Spec, error) {
 	slug := p["artist"]
 	rep, err := a.plan(ctx, slug)
@@ -171,10 +172,19 @@ func (a *reconcileAction) Spec(ctx context.Context, p Params) (jobs.Spec, error)
 		}
 		return spec, nil
 	}
+	// The job confirms the checksum the user reviewed (the verified preview
+	// fingerprint), never the plan just recomputed: a plan that changed
+	// since the preview is refused here and again inside the lock.
+	checksum, err := verifiedFingerprint(ctx)
+	if err != nil {
+		return jobs.Spec{}, err
+	}
+	if rep.PlanChecksum != checksum {
+		return jobs.Spec{}, ErrStalePreview
+	}
 	// The use case reads the catalog but only writes the database (and the
 	// backup directory), so only the database is held.
 	spec.Resources = []string{ResourceDatabase}
-	checksum := rep.PlanChecksum
 	spec.Run = func(ctx context.Context, r jobs.Reporter) (jobs.Outcome, error) {
 		return a.runApply(ctx, r, slug, checksum)
 	}

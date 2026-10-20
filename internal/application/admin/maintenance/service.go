@@ -87,7 +87,8 @@ func (s *Service) Run(ctx context.Context, name string, p Params, tok Token, typ
 	if pv.RequiresTyped != "" && typed != pv.RequiresTyped {
 		return jobs.Job{}, ErrConfirmationRequired
 	}
-	spec, err := a.Spec(ctx, maps.Clone(p))
+	// Spec must act on the state the user confirmed, not on a fresh plan.
+	spec, err := a.Spec(WithVerifiedFingerprint(ctx, pv.Fingerprint), maps.Clone(p))
 	if err != nil {
 		return jobs.Job{}, safeErr(err)
 	}
@@ -145,4 +146,32 @@ func safeErr(err error) error {
 		}
 	}
 	return Safe(err)
+}
+
+type verifiedFingerprintKey struct{}
+
+// WithVerifiedFingerprint returns ctx carrying the preview fingerprint the
+// user's token and typed confirmation were verified against. Service.Run sets
+// it before calling Action.Spec; outside Service.Run (tests, other callers)
+// it must only carry a fingerprint taken from a preview the user confirmed.
+func WithVerifiedFingerprint(ctx context.Context, fp string) context.Context {
+	return context.WithValue(ctx, verifiedFingerprintKey{}, fp)
+}
+
+// VerifiedFingerprint returns the fingerprint set by WithVerifiedFingerprint.
+// Actions that change state bind their job to it (never to a fingerprint they
+// recompute in Spec) and fail closed when it is absent.
+func VerifiedFingerprint(ctx context.Context) (string, bool) {
+	fp, ok := ctx.Value(verifiedFingerprintKey{}).(string)
+	return fp, ok && fp != ""
+}
+
+// verifiedFingerprint returns the verified fingerprint, or
+// ErrConfirmationRequired so a Spec without one fails closed.
+func verifiedFingerprint(ctx context.Context) (string, error) {
+	fp, ok := VerifiedFingerprint(ctx)
+	if !ok {
+		return "", ErrConfirmationRequired
+	}
+	return fp, nil
 }

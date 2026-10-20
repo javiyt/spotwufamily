@@ -46,13 +46,31 @@ func (r *recReporter) Count(key string, delta int) {
 // runAction builds the action's job spec and runs it synchronously.
 func runAction(t *testing.T, a Action, p Params) (jobs.Spec, jobs.Outcome, *recReporter, error) {
 	t.Helper()
-	spec, err := a.Spec(context.Background(), p)
+	spec, err := specFor(t, a, p)
 	if err != nil {
 		t.Fatalf("Spec: %v", err)
 	}
 	r := &recReporter{}
 	out, err := spec.Run(context.Background(), r)
 	return spec, out, r, err
+}
+
+// confirmedCtx carries the fingerprint of a fresh preview of a, as
+// Service.Run does once the user confirmed it. A failing preview yields a
+// plain context so Spec reports its own error.
+func confirmedCtx(t *testing.T, a Action, p Params) context.Context {
+	t.Helper()
+	pv, err := a.Preview(context.Background(), p)
+	if err != nil {
+		return context.Background()
+	}
+	return WithVerifiedFingerprint(context.Background(), pv.Fingerprint)
+}
+
+// specFor calls Spec as Service.Run does after a confirmed preview.
+func specFor(t *testing.T, a Action, p Params) (jobs.Spec, error) {
+	t.Helper()
+	return a.Spec(confirmedCtx(t, a, p), p)
 }
 
 func staticDigest(d string) CatalogDigest {

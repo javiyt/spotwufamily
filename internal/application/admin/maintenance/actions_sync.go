@@ -259,9 +259,10 @@ func (a *syncAction) Preview(ctx context.Context, p Params) (Preview, error) {
 	return pv, nil
 }
 
-// Spec plans the sync now (the service has just verified the preview against
-// this state) and re-checks the plan's fingerprint inside the job once the
-// lock is held, so a change while the job was queued refuses the run.
+// Spec plans the sync now and, for a real sync, refuses a plan whose
+// fingerprint is not the one the user confirmed (VerifiedFingerprint; absent
+// fails closed). The job re-checks it once the lock is held, so a change while
+// the job was queued refuses the run too.
 func (a *syncAction) Spec(ctx context.Context, p Params) (jobs.Spec, error) {
 	if !a.dryRun && !a.deps.Credentials() {
 		return jobs.Spec{}, ErrCredentialsMissing
@@ -269,6 +270,15 @@ func (a *syncAction) Spec(ctx context.Context, p Params) (jobs.Spec, error) {
 	pl, err := a.plan(ctx, p)
 	if err != nil {
 		return jobs.Spec{}, err
+	}
+	if !a.dryRun {
+		verified, err := verifiedFingerprint(ctx)
+		if err != nil {
+			return jobs.Spec{}, err
+		}
+		if pl.fingerprint != verified {
+			return jobs.Spec{}, ErrStalePreview
+		}
 	}
 	var resources []string
 	if !a.dryRun {

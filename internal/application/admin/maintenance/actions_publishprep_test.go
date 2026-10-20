@@ -226,7 +226,7 @@ func TestExportCancelledLeavesPreviousArtifacts(t *testing.T) {
 	defer cancel()
 	fx.export.cancel = cancel
 
-	spec, err := prepActions(fx.deps)["export"].Spec(context.Background(), Params{})
+	spec, err := specFor(t, prepActions(fx.deps)["export"], Params{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +350,7 @@ func TestCompositeCancelBetweenStepsStops(t *testing.T) {
 		cancel()
 		return SnapshotWrite{Changed: true}, nil
 	})
-	spec, err := prepActions(fx.deps)["refresh-export"].Spec(context.Background(), Params{})
+	spec, err := specFor(t, prepActions(fx.deps)["refresh-export"], Params{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,13 +374,13 @@ func TestPublishPrepUnavailableWithoutDatabase(t *testing.T) {
 		if ok || reason != "No database found; run the init workflow first" {
 			t.Fatalf("%s: available=%v reason=%q", a.Name(), ok, reason)
 		}
-		if _, err := a.Spec(context.Background(), Params{}); err == nil {
+		if _, err := specFor(t, a, Params{}); err == nil {
 			t.Fatalf("%s: spec without a database", a.Name())
 		}
 	}
 	// The database can disappear after the job was queued.
 	fx.exists = true
-	spec, err := prepActions(fx.deps)["db-snapshot"].Spec(context.Background(), Params{})
+	spec, err := specFor(t, prepActions(fx.deps)["db-snapshot"], Params{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func TestPublishPrepRechecksFingerprintInsideLock(t *testing.T) {
 	for _, name := range []string{"db-snapshot", "export", "refresh-export"} {
 		fx := newPrepFixture(t)
 		a := prepActions(fx.deps)[name]
-		spec, err := a.Spec(context.Background(), Params{})
+		spec, err := specFor(t, a, Params{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -604,6 +604,38 @@ func TestExportCommitFailureIsReportedHonestly(t *testing.T) {
 		m.Wait(j.ID)
 		if got, _ := m.Get(j.ID); got.Status != jobs.StatusFailed || !strings.Contains(got.Message, "run export again") {
 			t.Fatalf("%s: job %+v", name, got)
+		}
+	}
+}
+
+func TestPublishPrepSpecBindsVerifiedFingerprint(t *testing.T) {
+	for _, name := range []string{"db-snapshot", "export", "refresh-export"} {
+		fx := newPrepFixture(t)
+		fx.deps.Digest = digestChangingAt(3, "d1")
+		s, m, _ := newTestService(t, prepActions(fx.deps)[name])
+		_, tok, err := s.Preview(context.Background(), name, Params{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.Run(context.Background(), name, Params{}, tok, ""); !errors.Is(err, ErrStalePreview) {
+			t.Fatalf("%s: want ErrStalePreview, got %v", name, err)
+		}
+		if len(m.List()) != 0 || len(fx.log.get()) != 0 {
+			t.Fatalf("%s: nothing may be submitted or run: %v", name, fx.log.get())
+		}
+	}
+	fx := newPrepFixture(t)
+	for name, a := range prepActions(fx.deps) {
+		_, err := a.Spec(context.Background(), Params{})
+		switch name {
+		case "db-verify", "audit":
+			if err != nil {
+				t.Fatalf("%s is read-only and needs no confirmation: %v", name, err)
+			}
+		default:
+			if !errors.Is(err, ErrConfirmationRequired) {
+				t.Fatalf("%s without a verified fingerprint must fail closed: %v", name, err)
+			}
 		}
 	}
 }

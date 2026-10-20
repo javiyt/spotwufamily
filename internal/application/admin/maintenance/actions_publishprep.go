@@ -230,10 +230,23 @@ func (a *prepAction) Preview(ctx context.Context, _ Params) (Preview, error) {
 	return pv, nil
 }
 
+// Spec binds a writing action to the fingerprint the user confirmed
+// (VerifiedFingerprint; absent fails closed) and refuses a state that already
+// differs; the job re-checks it once the lock is held. Read-only actions
+// (db-verify, audit) take no lock and need no binding.
 func (a *prepAction) Spec(ctx context.Context, _ Params) (jobs.Spec, error) {
 	fp, err := a.fingerprint(ctx)
 	if err != nil {
 		return jobs.Spec{}, err
+	}
+	if a.writes() {
+		verified, err := verifiedFingerprint(ctx)
+		if err != nil {
+			return jobs.Spec{}, err
+		}
+		if fp != verified {
+			return jobs.Spec{}, ErrStalePreview
+		}
 	}
 	var resources []string
 	for _, s := range a.steps {

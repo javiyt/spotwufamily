@@ -105,7 +105,7 @@ func TestAuditProfilesOfflineNeedsNoCredentials(t *testing.T) {
 	if _, err := a.Preview(context.Background(), Params{}); !errors.Is(err, ErrCredentialsMissing) {
 		t.Fatalf("online preview without credentials: want ErrCredentialsMissing, got %v", err)
 	}
-	if _, err := a.Spec(context.Background(), Params{"offline": "false"}); !errors.Is(err, ErrCredentialsMissing) {
+	if _, err := specFor(t, a, Params{"offline": "false"}); !errors.Is(err, ErrCredentialsMissing) {
 		t.Fatalf("online spec without credentials: want ErrCredentialsMissing, got %v", err)
 	}
 }

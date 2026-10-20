@@ -91,9 +91,18 @@ type fakeReconcilePort struct {
 	migErr  error
 	onMig   func()
 	applies []string // confirm checksums
+	plans   int
+	// onPlan runs before each Plan with its 1-based call number.
+	onPlan func(n int)
+	// applyResult, when set, replaces the use case's Apply.
+	applyResult func() (artists.ReconcileReport, error)
 }
 
 func (p *fakeReconcilePort) Plan(ctx context.Context, slug string) (artists.ReconcileReport, error) {
+	p.plans++
+	if p.onPlan != nil {
+		p.onPlan(p.plans)
+	}
 	return p.use.Run(ctx, artists.ReconcileInput{Slug: slug})
 }
 
@@ -107,6 +116,9 @@ func (p *fakeReconcilePort) Migrate(context.Context) error {
 
 func (p *fakeReconcilePort) Apply(ctx context.Context, slug, checksum string) (artists.ReconcileReport, error) {
 	p.applies = append(p.applies, checksum)
+	if p.applyResult != nil {
+		return p.applyResult()
+	}
 	return p.use.Run(ctx, artists.ReconcileInput{
 		Slug: slug, Apply: true, ConfirmChecksum: checksum, BackupDir: "/secret/backups",
 		Now: time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC),
@@ -320,7 +332,7 @@ func TestReconcileApplyTakesBackupFirst(t *testing.T) {
 func TestReconcileApplyRefusedIfPlanChanged(t *testing.T) {
 	fx := newReconcileFixture()
 	a := NewReconcileApply(fx.deps)
-	spec, err := a.Spec(context.Background(), Params{"artist": "gza"})
+	spec, err := specFor(t, a, Params{"artist": "gza"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +357,7 @@ func TestReconcileApplyCancelledBeforeApply(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	fx.port.onMig = cancel
-	spec, err := NewReconcileApply(fx.deps).Spec(context.Background(), Params{"artist": "gza"})
+	spec, err := specFor(t, NewReconcileApply(fx.deps), Params{"artist": "gza"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +407,7 @@ func TestReconcileApplyReleasesLockOnFailures(t *testing.T) {
 	}
 
 	gone := newReconcileFixture()
-	spec, err := NewReconcileApply(gone.deps).Spec(context.Background(), Params{"artist": "gza"})
+	spec, err := specFor(t, NewReconcileApply(gone.deps), Params{"artist": "gza"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +462,7 @@ func TestReconcileRejectsUnknownOrInvalidArtist(t *testing.T) {
 		if !errors.As(err, &se) || se.Code != "validation" || !strings.Contains(se.Message, `"cappadonna"`) {
 			t.Fatalf("%s: want validation error naming the slug, got %v", a.Name(), err)
 		}
-		if _, err := a.Spec(context.Background(), p); safeCode(err) != "validation" {
+		if _, err := specFor(t, a, p); safeCode(err) != "validation" {
 			t.Fatalf("%s spec: %v", a.Name(), err)
 		}
 	}
@@ -469,5 +481,64 @@ func TestReconcileUnavailableWithoutDatabase(t *testing.T) {
 		if _, err := a.Preview(context.Background(), Params{"artist": "gza"}); safeCode(err) != "unavailable" {
 			t.Fatalf("%s preview: %v", a.Name(), err)
 		}
+	}
+}
+
+func TestReconcileApplyRefusesPlanChangedBetweenRunAndSpec(t *testing.T) {
+	fx := newReconcileFixture()
+	a := NewReconcileApply(fx.deps)
+	s, m, _ := newTestService(t, a)
+	p := Params{"artist": "gza"}
+	_, tok, err := s.Preview(context.Background(), "reconcile-apply", p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Plans: 1 = the user's preview, 2 = Run's re-preview (verified against
+	// the token), 3 = Spec. A sync lands between 2 and 3.
+	fx.port.onPlan = func(n int) {
+		if n == 3 {
+			fx.db.associations = append(fx.db.associations, artists.Association{
+				Kind: artists.AssociationAlbum, SpotifyID: "al-new", Name: "New", CreditedArtistIDs: []string{gzaOldID},
+			})
+		}
+	}
+	_, err = s.Run(context.Background(), "reconcile-apply", p, tok, "reconcile gza")
+	if !errors.Is(err, ErrStalePreview) {
+		t.Fatalf("want ErrStalePreview, got %v", err)
+	}
+	if len(m.List()) != 0 {
+		t.Fatalf("no job may be submitted: %+v", m.List())
+	}
+	if len(fx.port.applies) != 0 || len(fx.db.backups) != 0 || len(fx.log.get()) != 0 {
+		t.Fatalf("nothing may be locked, backed up or applied: %v", fx.log.get())
+	}
+}
+
+func TestReconcileApplySpecWithoutVerifiedFingerprintFailsClosed(t *testing.T) {
+	fx := newReconcileFixture()
+	_, err := NewReconcileApply(fx.deps).Spec(context.Background(), Params{"artist": "gza"})
+	if !errors.Is(err, ErrConfirmationRequired) {
+		t.Fatalf("want ErrConfirmationRequired, got %v", err)
+	}
+	if _, err := NewReconcileDryRun(fx.deps).Spec(context.Background(), Params{"artist": "gza"}); err != nil {
+		t.Fatalf("the read-only dry run needs no confirmation: %v", err)
+	}
+	if len(fx.log.get()) != 0 || len(fx.port.applies) != 0 {
+		t.Fatalf("calls %v", fx.log.get())
+	}
+}
+
+func TestReconcileApplyStaleWhenUseCaseSeesOtherChecksum(t *testing.T) {
+	fx := newReconcileFixture()
+	fx.port.applyResult = func() (artists.ReconcileReport, error) {
+		return artists.ReconcileReport{PlanChecksum: "other"},
+			errors.New("plan changed since review (confirmed x, current other); rerun the dry run")
+	}
+	_, _, _, err := runAction(t, NewReconcileApply(fx.deps), Params{"artist": "gza"})
+	if safeCode(err) != "stale_preview" {
+		t.Fatalf("want stale preview, got %v", err)
+	}
+	if want := []string{"lock", "migrate", "release"}; !slices.Equal(fx.log.get(), want) {
+		t.Fatalf("calls = %v", fx.log.get())
 	}
 }

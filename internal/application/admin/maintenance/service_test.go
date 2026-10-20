@@ -34,6 +34,8 @@ type fakeAction struct {
 	fingerprint atomic.Value // string
 	run         jobs.Func
 	submitted   atomic.Int32
+	// specFP is the VerifiedFingerprint Spec received ("" when absent).
+	specFP atomic.Value // string
 }
 
 func newFake(name string) *fakeAction {
@@ -59,7 +61,9 @@ func (a *fakeAction) Preview(_ context.Context, p Params) (Preview, error) {
 	return pv, nil
 }
 
-func (a *fakeAction) Spec(_ context.Context, _ Params) (jobs.Spec, error) {
+func (a *fakeAction) Spec(ctx context.Context, _ Params) (jobs.Spec, error) {
+	fp, _ := VerifiedFingerprint(ctx)
+	a.specFP.Store(fp)
 	a.submitted.Add(1)
 	run := a.run
 	if run == nil {
@@ -363,5 +367,30 @@ func TestActionsListsAvailability(t *testing.T) {
 	}
 	if got[1].Title != "Fake a-second" || !got[1].UsesNetwork || !got[1].Destructive || got[0].Destructive {
 		t.Fatalf("description not reported: %+v", got)
+	}
+}
+
+func TestRunPassesVerifiedFingerprintToSpec(t *testing.T) {
+	a := newFake("fake")
+	a.destructive = true
+	s, m, _ := newTestService(t, a)
+	p := Params{"scope": "all"}
+	pv, tok, err := s.Preview(context.Background(), "fake", p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, err := s.Run(context.Background(), "fake", p, tok, "delete all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Wait(j.ID)
+	if got, _ := a.specFP.Load().(string); got != pv.Fingerprint || got != "fp-1" {
+		t.Fatalf("Spec saw verified fingerprint %q, want the previewed %q", got, pv.Fingerprint)
+	}
+	if _, ok := VerifiedFingerprint(context.Background()); ok {
+		t.Fatal("a plain context carries no verified fingerprint")
+	}
+	if _, ok := VerifiedFingerprint(WithVerifiedFingerprint(context.Background(), "")); ok {
+		t.Fatal("an empty fingerprint is not a verified one")
 	}
 }

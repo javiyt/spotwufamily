@@ -42,10 +42,21 @@ func newActionsConfig(t *testing.T, env EnvLookup, opts ...MaintenanceOption) (M
 	}, paths
 }
 
+// confirmedSpec calls Spec as Service.Run does: with the fingerprint of a
+// fresh preview the user confirmed.
+func confirmedSpec(t *testing.T, a maintenance.Action, p maintenance.Params) (jobs.Spec, error) {
+	t.Helper()
+	ctx := context.Background()
+	if pv, err := a.Preview(ctx, p); err == nil {
+		ctx = maintenance.WithVerifiedFingerprint(ctx, pv.Fingerprint)
+	}
+	return a.Spec(ctx, p)
+}
+
 func runSpec(t *testing.T, a maintenance.Action, p maintenance.Params) (jobs.Outcome, error) {
 	t.Helper()
 	require.NoError(t, a.Validate(p))
-	spec, err := a.Spec(context.Background(), p)
+	spec, err := confirmedSpec(t, a, p)
 	require.NoError(t, err)
 	return spec.Run(context.Background(), nopReporter{})
 }

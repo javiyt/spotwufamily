@@ -116,7 +116,7 @@ func TestSnapshotActionCancelledLeavesPreviousSnapshot(t *testing.T) {
 	cfg, dir := newPrepConfig(t)
 	migrateDB(t, cfg.DBPath)
 	require.NoError(t, os.WriteFile(cfg.SnapshotPath, []byte("previous snapshot bytes"), 0o644))
-	spec, err := prepActionsByName(cfg)["db-snapshot"].Spec(context.Background(), maintenance.Params{})
+	spec, err := confirmedSpec(t, prepActionsByName(cfg)["db-snapshot"], maintenance.Params{})
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
