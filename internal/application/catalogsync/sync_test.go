@@ -234,6 +234,9 @@ func TestSyncCatalogReturnsPartialFailure(t *testing.T) {
 	report, err := usecase.Run(context.Background(), catalogsync.Options{CatalogPath: "ignored"})
 
 	require.ErrorContains(t, err, "1 artist syncs failed")
+	var failed *catalogsync.ArtistSyncsFailedError
+	require.ErrorAs(t, err, &failed)
+	require.Equal(t, 1, failed.Count)
 	require.Equal(t, 1, report.ArtistsFailed)
 	require.Len(t, report.Errors, 1)
 }

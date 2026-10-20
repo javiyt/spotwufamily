@@ -117,6 +117,16 @@ func (e *PartialSyncError) Unwrap() error {
 	return e.Err
 }
 
+// ArtistSyncsFailedError reports a run that finished but could not sync some
+// artists; their errors are in Report.Errors.
+type ArtistSyncsFailedError struct {
+	Count int
+}
+
+func (e *ArtistSyncsFailedError) Error() string {
+	return fmt.Sprintf("%d artist syncs failed", e.Count)
+}
+
 type ProgressEvent struct {
 	Stage           ProgressStage
 	ArtistSlug      string
@@ -306,7 +316,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 		return report, &PartialSyncError{Err: abortErr}
 	}
 	if report.ArtistsFailed > 0 {
-		return report, fmt.Errorf("%d artist syncs failed", report.ArtistsFailed)
+		return report, &ArtistSyncsFailedError{Count: report.ArtistsFailed}
 	}
 
 	return report, nil
@@ -491,6 +501,12 @@ func deduplicateTracks(tracks []catalog.Track) []catalog.Track {
 	}
 
 	return deduped
+}
+
+// MarketOrDefault returns the market a sync run records for market: the
+// trimmed value, or the default market when empty.
+func MarketOrDefault(market string) string {
+	return marketOrDefault(market)
 }
 
 func marketOrDefault(market string) string {

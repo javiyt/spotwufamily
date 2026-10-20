@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"sort"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/musicbrainz"
@@ -16,6 +17,7 @@ import (
 	yamlcatalog "github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/admin/maintenance"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
+	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
@@ -25,7 +27,10 @@ type MaintenanceActionsConfig struct {
 	CatalogPath string
 	LedgerPath  string
 	DBPath      string
-	// BackupDir receives the database backup taken before a metadata refresh.
+	// SnapshotPath receives the database snapshot written after a sync.
+	SnapshotPath string
+	// BackupDir receives the database backup taken before a metadata refresh
+	// or a sync.
 	BackupDir string
 	Env       EnvLookup
 	// Options tune the shared runners (e.g. WithWikipedia, test seams).
@@ -54,6 +59,88 @@ func NewDiscoveryAuditRefreshActions(cfg MaintenanceActionsConfig) []maintenance
 		maintenance.NewAuditProfiles(maintenance.AuditDeps{Runner: auditPort{cfg}, Digest: digest, Credentials: credentials}),
 		maintenance.NewRefreshMetadataPreview(refresh),
 		maintenance.NewRefreshMetadata(refresh),
+	}
+}
+
+// NewSyncActions wires sync-dry-run and sync to the shared sync runner, the
+// YAML catalog (for the scope), the SQLite database (for the resumable run)
+// and the database lock and backup.
+func NewSyncActions(cfg MaintenanceActionsConfig) []maintenance.Action {
+	deps := maintenance.SyncDeps{
+		Runner:    syncPort{cfg},
+		Digest:    fileDigest(cfg.CatalogPath),
+		Syncable:  syncableArtists(cfg.CatalogPath),
+		Resumable: resumableSyncRun(cfg.DBPath),
+		Credentials: func() bool {
+			return cfg.Env("SPOTIFY_CLIENT_ID") != "" && cfg.Env("SPOTIFY_CLIENT_SECRET") != ""
+		},
+		Locker:   databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
+		Backuper: databaseBackuper{dbPath: cfg.DBPath, dir: cfg.BackupDir},
+	}
+	return []maintenance.Action{maintenance.NewSyncDryRun(deps), maintenance.NewSync(deps)}
+}
+
+type syncPort struct{ cfg MaintenanceActionsConfig }
+
+var _ maintenance.SyncPort = syncPort{}
+
+// Run builds a sync runner for this call (dry or real) and runs it. The
+// runner records pending reconciliations and writes the (partial) snapshot.
+func (p syncPort) Run(ctx context.Context, o catalogsync.Options) (maintenance.SyncRunResult, error) {
+	opts := append([]MaintenanceOption{WithDryRun(o.DryRun)}, p.cfg.Options...)
+	runner, closeFn, err := NewSyncRunner(ctx, p.cfg.CatalogPath, p.cfg.DBPath, p.cfg.SnapshotPath, p.cfg.Env, opts...)
+	if errors.Is(err, ErrSpotifyCredentialsMissing) {
+		return maintenance.SyncRunResult{}, maintenance.ErrCredentialsMissing
+	}
+	if err != nil {
+		return maintenance.SyncRunResult{}, err
+	}
+	defer closeFn()
+	result, err := runner.Run(ctx, o)
+	return maintenance.SyncRunResult{Report: result.Report, SnapshotErr: result.SnapshotErr}, err
+}
+
+// syncableArtists lists enabled artists with a Spotify profile the catalog's
+// sync policy allows, exactly as catalogsync selects them.
+func syncableArtists(catalogPath string) func(context.Context) ([]string, error) {
+	return func(ctx context.Context) ([]string, error) {
+		c, err := yamlcatalog.NewStore().Load(ctx, catalogPath)
+		if err != nil {
+			return nil, err
+		}
+		var slugs []string
+		for _, artist := range c.Artists {
+			if artist.Enabled && len(artist.SyncableSpotifyIDs(c.ProfileSyncPolicy)) > 0 {
+				slugs = append(slugs, artist.Slug)
+			}
+		}
+		return slugs, nil
+	}
+}
+
+// resumableSyncRun finds the partial run a resumed sync would continue (the
+// default market, incremental sync). A missing database has none; an
+// existing one is read without being migrated.
+func resumableSyncRun(dbPath string) func(context.Context) (maintenance.ResumableRun, bool, error) {
+	return func(ctx context.Context) (maintenance.ResumableRun, bool, error) {
+		if info, err := os.Stat(dbPath); err != nil || info.IsDir() {
+			return maintenance.ResumableRun{}, false, nil
+		}
+		database, err := sqliteadapter.Open(dbPath)
+		if err != nil {
+			return maintenance.ResumableRun{}, false, err
+		}
+		defer func() { _ = database.Close() }()
+		run, ok, err := database.FindResumableSyncRun(ctx, catalogsync.SyncRun{Market: catalogsync.MarketOrDefault("")})
+		if err != nil || !ok {
+			return maintenance.ResumableRun{}, false, err
+		}
+		completed := make([]string, 0, len(run.CompletedArtistSpotifyIDs))
+		for slug := range run.CompletedArtistSpotifyIDs {
+			completed = append(completed, slug)
+		}
+		sort.Strings(completed)
+		return maintenance.ResumableRun{ID: run.ID, CompletedSlugs: completed}, true, nil
 	}
 }
 
