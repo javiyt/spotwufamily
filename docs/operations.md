@@ -90,28 +90,62 @@ make audit
 
 ## Reconcile A Corrected Spotify Mapping
 
-When a reviewed decision rejects or replaces a Spotify ID (`artists review-profile`), rows already synced for that configured artist stay in SQLite: sync only adds or reactivates `artist_albums` / `artist_tracks` rows, it never retires them. `artists reconcile` closes that gap for one configured artist at a time.
+When a reviewed decision rejects or replaces a Spotify ID (`artists review-profile`), rows already synced for that configured artist stay in SQLite: sync only adds or reactivates `artist_albums` / `artist_tracks` rows, it never retires them. `artists reconcile` closes that gap for one configured artist at a time, with a reviewed plan, a local backup and a transaction.
+
+SQLite keeps a durable **last-synced mapping** per artist (`artist_mapping_snapshots`). `artists seed-db` and `sync` record it the first time an artist is seen (from the IDs already projected in `configured_artist_spotify_ids`) and compare it with `data/artists.yaml` every time. A difference opens a `drifted` entry in `artist_reconciliations` and a warning is printed by `seed-db`, `sync` and `db verify` until it is resolved. `db verify`, `db snapshot` and `export` keep passing while a reconciliation is pending; they only warn.
 
 ```bash
-# 1. Re-seed the corrected IDs, then (optional) sync the replacement profile
+# 0. Which artists are not aligned? (read-only)
+spotwufamily artists reconcile --status [--format json]
+
+# 1. Re-seed the corrected IDs so the drift is recorded (writes only configured_* and journal rows)
 spotwufamily artists seed-db
-spotwufamily sync --artist streetlife
 
-# 2. Dry run: classify every active association (default, changes nothing)
-spotwufamily artists reconcile --slug streetlife [--format json]
+# 2. Dry run: write-free impact report (default). Also --format json|markdown, both deterministic.
+spotwufamily artists reconcile --artist streetlife --dry-run --format markdown
 
-# 3. Apply after review
-spotwufamily artists reconcile --slug streetlife --apply
+# 3. Apply the reviewed plan: needs the plan_checksum printed by the dry run
+spotwufamily artists reconcile --artist streetlife --apply --confirm <plan_checksum> [--backup-dir build/reconcile-backups]
 
-# 4. Verify, snapshot, export
+# 4. Resync the replacement IDs (resumable; safe to repeat after a 429 or failure)
+spotwufamily sync --artist streetlife --resume
+
+# 5. Verify, snapshot, export
 make db-verify db-snapshot export audit-fast
 ```
 
-Each active association is `supported` (an album/track credit points at a currently linked profile), `orphan` (credits exist but none points at a linked profile, or the artist has no linked profile) or `unverifiable` (no stored credits; reported and kept). `--apply` only soft-retires orphans of the named artist: `active = 0`, `missing_since = <retired_at>`. Nothing is deleted. Spotify artists, albums and tracks are shared rows, so the report lists which orphans other configured artists still reference (`shared_with`) and which become unreferenced; those unreferenced rows are left in place for a separate, reviewed pruning.
+The report shows the old/new identity diff (`previous`, `current`, `added`, `removed`), every active `artist_albums` / `artist_tracks` association, the Spotify artists credited on the affected ones, other configured artists sharing the media, completed sync checkpoints tied to other IDs and the stale metadata cache. Each association is `supported` (a credit points at a currently linked profile), `orphan` (credits exist but none points at a linked profile, or the artist has no linked profile) or `unverifiable` (no stored credits; reported and kept). Group membership or identical artist names are never evidence; only stored Spotify credit IDs are.
 
-Rollback: `--apply` prints a `retired_at` token. `spotwufamily artists reconcile --slug SLUG --restore <retired_at>` reactivates exactly those rows. No schema change is involved.
+The proposed decisions are all reversible:
 
-Release backups: the local database is not tracked by Git. A cleanup changes `data/catalog.db` / `data/catalog.snapshot.sql.gz` only, and `data/catalog.release.json` keeps pinning the previous GitHub Release (`catalog.db.gz` + snapshot, which still contain the rejected mapping) until `make catalog-release-prepare` / `catalog-release-publish` creates a **new** release and updates the manifest. Existing release tags are never overwritten, so the old backup remains the rollback target. `make catalog-fetch` on a fresh clone keeps returning the old contents until the new manifest is merged.
+| Action | Effect |
+| --- | --- |
+| `unlink_association` | soft-retires the orphan edge of **this** artist only: `active = 0`, `missing_since = <retired_at>` |
+| `preserve_shared_media` / `report_unreferenced_media` | albums, tracks, artists and credits are never deleted; media other artists use is untouched and unreferenced media is only reported for a separate reviewed prune |
+| `invalidate_checkpoint` | completed `sync_run_artists` rows bound to other IDs become `invalidated@<retired_at>`, so neither freshness skipping nor `--resume` trusts them |
+| `invalidate_metadata_cache` | the stale `artist_metadata_refreshes` row is removed (its value is journaled for rollback) |
+| `resync_replacement_ids` | the artist stays `awaiting_resync` until a completed sync checkpoint for the replacement IDs advances the snapshot |
+
+`--apply` refuses to run without `--confirm <plan_checksum>`, and rejects a checksum that no longer matches the current state, so only the reviewed plan is executed. Before changing anything it writes `<backup-dir>/<slug>-<timestamp>.db` (SQLite `VACUUM INTO`, never replacing an existing file) and `.manifest.json` with the plan, the backup SHA-256 and the logical snapshot SHA-256; these checksums are also journaled in `artist_reconciliations`. All changes then run in one SQLite transaction: any failure leaves the database untouched and the backup in place. Repeating `--apply` after it succeeded changes nothing (no second backup).
+
+Failures and rate limits: a failed or 429-aborted sync leaves the reconciliation `awaiting_resync`, records the last error and keeps warning; rerun `sync --artist SLUG --resume`. YAML and SQLite are never considered aligned until the replacement sync completes (or the YAML is reverted and re-seeded, which clears a never-applied drift).
+
+Rollback: `--apply` prints a `retired_at` token. `spotwufamily artists reconcile --artist SLUG --restore <retired_at>` reactivates exactly those edges, re-validates the invalidated checkpoints and cache, restores the previous snapshot and reopens the entry as `drifted`.
+
+Read-only impact data for the web UI: `export` writes `site/data/generated/reconciliation/index.json` (slug, status, previous and target IDs of every pending reconciliation; no local paths or errors).
+
+### Publishing the corrected catalog
+
+The local database is not tracked by Git. A reconciliation changes `data/catalog.db` / `data/catalog.snapshot.sql.gz` only, and `data/catalog.release.json` keeps pinning the previous GitHub Release (which still contains the rejected mapping) until a **new** release is published. Existing release tags and assets are never overwritten or deleted; the old release remains the rollback target. After the plan was reviewed and applied and the replacement sync completed:
+
+```bash
+make db-verify db-snapshot export audit-fast
+make catalog-release-prepare RELEASE_PACKAGE=build/catalog-backup-$(date -u +%Y%m%d-%H%M%S)
+make catalog-release-publish RELEASE_PACKAGE=build/catalog-backup-<same>
+git add data/catalog.release.json data/artists.yaml   # the manifest pins the new tag, sizes and checksums
+```
+
+Open the PR with the manifest change (the reconcile JSON/Markdown report makes a good description). `make catalog-fetch` on a fresh clone keeps returning the old contents until that manifest is merged.
 
 ## Artist Relationships
 

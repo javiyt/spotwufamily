@@ -21,12 +21,6 @@ type fakeAssoc struct {
 func (f fakeAssoc) ActiveAssociations(_ context.Context, slug string) ([]artists.Association, error) {
 	return f.bySlug[slug], f.err
 }
-func (fakeAssoc) RetireAssociations(context.Context, string, []string, []string, string) error {
-	return errors.New("must not write")
-}
-func (fakeAssoc) RestoreAssociations(context.Context, string, string) (int, int, error) {
-	return 0, 0, errors.New("must not write")
-}
 
 type fakeSyncReader struct {
 	info admin.SyncInfo

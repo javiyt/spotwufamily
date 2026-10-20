@@ -63,7 +63,18 @@ func (d *Database) LoadExportCatalog(ctx context.Context) (catalogexport.Catalog
 		return catalogexport.Catalog{}, err
 	}
 
-	return catalogexport.Catalog{Artists: artists, Albums: albums, Tracks: tracks, Stats: stats}, nil
+	pending, err := d.PendingReconciliations(ctx)
+	if err != nil {
+		return catalogexport.Catalog{}, err
+	}
+	reconciliations := make([]catalogexport.PendingReconciliation, 0, len(pending))
+	for _, row := range pending {
+		reconciliations = append(reconciliations, catalogexport.PendingReconciliation{
+			Slug: row.Slug, Status: row.Status, PreviousIDs: nonNil(row.PreviousIDs), TargetIDs: nonNil(row.TargetIDs),
+		})
+	}
+
+	return catalogexport.Catalog{Artists: artists, Albums: albums, Tracks: tracks, Reconciliations: reconciliations, Stats: stats}, nil
 }
 
 func (d *Database) exportArtists(ctx context.Context) ([]catalogexport.Artist, error) {
@@ -506,4 +517,12 @@ func credits(ctx context.Context, db *sql.DB, query string) (map[string][]catalo
 	}
 
 	return result, nil
+}
+
+func nonNil(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+
+	return values
 }

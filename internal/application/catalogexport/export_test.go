@@ -159,3 +159,20 @@ func TestExportCatalogWritesEmptyRelationshipsForLegacyCatalogs(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(writer.files["generated/relationships/index.json"]), `"items": []`)
 }
+
+func TestExportCatalogPublishesPendingReconciliationsReadOnly(t *testing.T) {
+	cat := sampleCatalog()
+	cat.Reconciliations = []catalogexport.PendingReconciliation{{Slug: "streetlife", Status: "drifted", PreviousIDs: []string{"old"}, TargetIDs: []string{"new"}}}
+	writer := &memoryWriter{files: map[string][]byte{}}
+	opts := catalogexport.Options{OutputDir: "generated", StaticDir: "static", ContentDir: "content/generated"}
+	_, err := catalogexport.NewExportCatalog(fakeReader{catalog: cat}, writer).Run(context.Background(), opts)
+	require.NoError(t, err)
+	out := string(writer.files["generated/reconciliation/index.json"])
+	require.Contains(t, out, `"slug": "streetlife"`)
+	require.Contains(t, out, `"status": "drifted"`)
+
+	empty := &memoryWriter{files: map[string][]byte{}}
+	_, err = catalogexport.NewExportCatalog(fakeReader{catalog: sampleCatalog()}, empty).Run(context.Background(), opts)
+	require.NoError(t, err)
+	require.Contains(t, string(empty.files["generated/reconciliation/index.json"]), `"items": []`)
+}

@@ -207,6 +207,13 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 	})
 
 	printSyncReport(stdout, report)
+	if !options.dryRun {
+		// A failed or rate-limited sync keeps the reconciliation pending and says why.
+		for _, item := range report.Errors {
+			_ = repository.RecordReconciliationError(ctx, item.Slug, item.Err.Error())
+		}
+		defer warnPendingReconciliations(ctx, stderr, repository)
+	}
 	if err != nil {
 		exitCode := syncErrorExitCode(err, nil)
 		if !options.dryRun && report.RunID > 0 {
@@ -910,6 +917,7 @@ func executeDBVerify(ctx context.Context, stdout, stderr io.Writer, options dbOp
 	}
 
 	_, _ = fmt.Fprintf(stdout, "database verified: %s (%d migrations; checks: %s)\n", options.dbPath, report.Migrations, strings.Join(report.Checks, ", "))
+	warnPendingReconciliations(ctx, stderr, database)
 	return 0
 }
 
@@ -1415,6 +1423,7 @@ func executeArtistsSeedDB(ctx context.Context, args []string, stdout, stderr io.
 		spotifyIDs += len(artist.AllSpotifyIDs())
 	}
 	_, _ = fmt.Fprintf(stdout, "seeded configured artists: artists=%d spotify_ids=%d db=%s\n", len(c.Artists), spotifyIDs, options.dbPath)
+	warnPendingReconciliations(ctx, stderr, database)
 	return 0
 }
 

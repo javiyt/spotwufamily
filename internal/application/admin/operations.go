@@ -12,14 +12,19 @@ type SyncReader interface {
 	LastSync(ctx context.Context) (SyncInfo, bool, error)
 }
 
+// AssociationReader is the read-only slice of the reconcile store.
+type AssociationReader interface {
+	ActiveAssociations(ctx context.Context, slug string) ([]artists.Association, error)
+}
+
 // Operations implements OperationsReader on top of read-only database ports.
 type Operations struct {
 	sync  SyncReader
-	assoc artists.ReconcileStore
+	assoc AssociationReader
 }
 
 // NewOperations never calls the write methods of the reconcile store.
-func NewOperations(sync SyncReader, assoc artists.ReconcileStore) Operations {
+func NewOperations(sync SyncReader, assoc AssociationReader) Operations {
 	return Operations{sync: sync, assoc: assoc}
 }
 

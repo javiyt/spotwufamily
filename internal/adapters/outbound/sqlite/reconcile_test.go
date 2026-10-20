@@ -121,9 +121,11 @@ func TestReconcileHomonymDryRunApplyAndRestore(t *testing.T) {
 	require.Equal(t, 5, count(activeAlbums), "a dry run must not change anything")
 
 	retiredAt := time.Date(2026, 10, 20, 9, 0, 0, 0, time.UTC)
-	applied, err := reconcile.Run(ctx, artists.ReconcileInput{Slug: "streetlife", Apply: true, Now: retiredAt})
+	applied, err := reconcile.Run(ctx, artists.ReconcileInput{Slug: "streetlife", Apply: true, ConfirmChecksum: dry.PlanChecksum, BackupDir: t.TempDir(), Now: retiredAt})
 	require.NoError(t, err)
 	require.False(t, applied.DryRun)
+	require.NotNil(t, applied.Backup)
+	require.FileExists(t, applied.Backup.Path)
 	require.Equal(t, "2026-10-20T09:00:00Z", applied.RetiredAt)
 	require.Equal(t, 3, count(activeAlbums), "only the two orphan streetlife albums are retired")
 	require.Equal(t, 2, count(activeTracks))
@@ -134,7 +136,7 @@ func TestReconcileHomonymDryRunApplyAndRestore(t *testing.T) {
 		require.Equal(t, want, count(`SELECT COUNT(*) FROM `+table), "%s rows are never deleted", table)
 	}
 
-	again, err := reconcile.Run(ctx, artists.ReconcileInput{Slug: "streetlife", Apply: true, Now: retiredAt})
+	again, err := reconcile.Run(ctx, artists.ReconcileInput{Slug: "streetlife", Apply: true, ConfirmChecksum: dry.PlanChecksum, BackupDir: t.TempDir(), Now: retiredAt})
 	require.NoError(t, err)
 	require.Equal(t, artists.ReconcileCounts{}, again.Orphan, "reconciliation is idempotent")
 	require.Empty(t, again.RetiredAt)
@@ -154,7 +156,10 @@ func TestReconcileQuarantinedArtistRetiresEverything(t *testing.T) {
 		{Slug: "streetlife", Name: "Streetlife"},
 	}}}
 
-	report, err := artists.NewReconcileArtist(quarantined, store).Run(ctx, artists.ReconcileInput{Slug: "streetlife", Apply: true, Now: time.Now()})
+	use := artists.NewReconcileArtist(quarantined, store)
+	dry, err := use.Run(ctx, artists.ReconcileInput{Slug: "streetlife"})
+	require.NoError(t, err)
+	report, err := use.Run(ctx, artists.ReconcileInput{Slug: "streetlife", Apply: true, ConfirmChecksum: dry.PlanChecksum, BackupDir: t.TempDir(), Now: time.Now()})
 	require.NoError(t, err)
 	require.Empty(t, report.LinkedIDs)
 	require.Equal(t, artists.ReconcileCounts{}, report.After)
