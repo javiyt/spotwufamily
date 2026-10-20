@@ -50,6 +50,9 @@ type EditorialCatalog struct {
 	// ProfileSyncPolicy is empty (verified only) unless explicitly migrated.
 	ProfileSyncPolicy ProfileSyncPolicy
 	Artists           []Artist
+	// Relationships are optional typed edges between artist slugs; legacy
+	// catalogs without them stay valid.
+	Relationships []Relationship
 }
 
 type ValidationIssue struct {
@@ -153,6 +156,8 @@ func ValidateEditorialCatalog(c EditorialCatalog) []ValidationIssue {
 			}
 		}
 	}
+
+	issues = append(issues, ValidateRelationships(c)...)
 
 	return issues
 }

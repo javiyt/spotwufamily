@@ -27,3 +27,7 @@ Boundaries:
 - CLI composition lives at the inbound edge.
 
 The domain and application packages do not import Spotify, SQLite, YAML, JSON filesystem code, Hugo or GitHub Actions. Technology-specific wiring stays in the CLI and outbound adapters.
+
+## Artist relationships
+
+Relationships are domain data (`internal/domain/catalog/relationship.go`: types, validation, rename/remove guards). Use cases live in `internal/application/artists/relationships.go` and only depend on the `CatalogStore` port; the CLI is a thin adapter. The YAML store persists them canonically sorted, and `catalogexport` writes the deterministic `relationships/index.json` from the verified edges, read from the YAML so SQLite and the release backup are unchanged. See `docs/catalog-policy.md`.

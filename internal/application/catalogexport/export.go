@@ -33,6 +33,9 @@ type Options struct {
 	OutputDir  string
 	StaticDir  string
 	ContentDir string
+	// Relationships are the verified editorial relationships to publish; see
+	// RelationshipsFromCatalog. They come from the editorial YAML, not SQLite.
+	Relationships []Relationship
 }
 
 type Report struct {
@@ -44,10 +47,32 @@ type Report struct {
 }
 
 type Catalog struct {
-	Artists []Artist
-	Albums  []Album
-	Tracks  []Track
-	Stats   Stats
+	Artists       []Artist
+	Albums        []Album
+	Tracks        []Track
+	Relationships []Relationship
+	Stats         Stats
+}
+
+// Relationship is a reviewed edge between two exported artists. Undirected
+// types list the lower slug in From.
+type Relationship struct {
+	Type       string                 `json:"type"`
+	From       string                 `json:"from"`
+	To         string                 `json:"to"`
+	Start      string                 `json:"start,omitempty"`
+	End        string                 `json:"end,omitempty"`
+	Era        string                 `json:"era,omitempty"`
+	Former     bool                   `json:"former,omitempty"`
+	Confidence string                 `json:"confidence,omitempty"`
+	Commentary string                 `json:"commentary,omitempty"`
+	Evidence   []RelationshipEvidence `json:"evidence,omitempty"`
+}
+
+type RelationshipEvidence struct {
+	Type      string `json:"type"`
+	URL       string `json:"url,omitempty"`
+	Rationale string `json:"rationale"`
 }
 
 type Stats struct {
@@ -172,6 +197,7 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 	if err != nil {
 		return Report{}, fmt.Errorf("load export catalog: %w", err)
 	}
+	catalog.Relationships = options.Relationships
 	sortCatalog(&catalog)
 
 	report := Report{Artists: len(catalog.Artists), Albums: len(catalog.Albums), Tracks: len(catalog.Tracks)}
@@ -235,6 +261,9 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 			return report, err
 		}
 	}
+	if err := write(filepath.Join(options.OutputDir, "relationships", "index.json"), mustJSON(Index[Relationship]{FormatVersion: FormatVersion, Items: catalog.Relationships}), keepGenerated); err != nil {
+		return report, err
+	}
 	searchPath := filepath.Join(options.StaticDir, "search-index.json")
 	if err := write(searchPath, mustJSON(searchIndex(catalog)), keepStatic); err != nil {
 		return report, err
@@ -276,6 +305,19 @@ func sortCatalog(catalog *Catalog) {
 	})
 	sort.SliceStable(catalog.Tracks, func(i, j int) bool {
 		return catalog.Tracks[i].Name < catalog.Tracks[j].Name
+	})
+	if catalog.Relationships == nil {
+		catalog.Relationships = []Relationship{}
+	}
+	sort.SliceStable(catalog.Relationships, func(i, j int) bool {
+		a, b := catalog.Relationships[i], catalog.Relationships[j]
+		if a.Type != b.Type {
+			return a.Type < b.Type
+		}
+		if a.From != b.From {
+			return a.From < b.From
+		}
+		return a.To < b.To
 	})
 }
 
