@@ -376,3 +376,38 @@ func TestSavingArtistNeverTriggersPublish(t *testing.T) {
 	ok(env.post("/operations/release-publish/run", url.Values{"from": {"publish"}, "token": {"tok-secret-release-publish"}, "typed": {"publish release"}}))
 	require.Equal(t, []string{"sync", "release-prepare", "release-publish"}, op.ranNames())
 }
+
+func TestPublishChecklistCommitsCatalogWithThePin(t *testing.T) {
+	e := newOpsEnv(t, withRelease(readyRelease()))
+	body := e.get(t, "/publish").Body.String()
+	require.Contains(t, body, "<code>data/catalog.release.json</code> together with the catalog changes")
+	require.Contains(t, body, "<code>data/artists.yaml</code>")
+	require.Contains(t, body, "<code>data/artists.yaml.reviews.jsonl</code>")
+	require.Contains(t, body, "one pull request")
+	require.Contains(t, body, "press Re-check", "step 1 says how to pick up a fresh package")
+}
+
+func TestPublishWarnsWhenDataMayNeedRefreshing(t *testing.T) {
+	const warning = "Data may need refreshing — check freshness before publishing."
+	e := newOpsEnv(t, withRelease(readyRelease()))
+	body := e.get(t, "/publish").Body.String()
+	require.Contains(t, body, warning, "unchecked freshness warns")
+	require.Contains(t, body, `action="/operations/release-publish/preview"`, "the warning never blocks")
+
+	// Only the expected "differs from published" reason: no warning.
+	e.svc.fresh = maintenance.Freshness{DiffersFromPublished: true, Reasons: []string{"Local data differs from the published catalog"}}
+	require.Equal(t, http.StatusSeeOther, e.send("/operations/freshness", e.form("from", "publish")).Code)
+	require.NotContains(t, e.get(t, "/publish").Body.String(), warning)
+
+	for _, f := range []maintenance.Freshness{{SeedNeeded: true}, {SnapshotNeeded: true}, {ExportNeeded: true}, {RebuildNeeded: true, Offline: true}} {
+		e := newOpsEnv(t, withRelease(readyRelease()), func(op *fakeOp) { op.fresh = f })
+		require.Equal(t, http.StatusSeeOther, e.send("/operations/freshness", e.form("from", "publish")).Code)
+		require.Contains(t, e.get(t, "/publish").Body.String(), warning, "%+v", f)
+	}
+}
+
+func TestPublishCheckingListsTheReasonForBothSteps(t *testing.T) {
+	e, _ := newRealOpsEnv(t)
+	body := e.get(t, "/publish").Body.String()
+	require.Equal(t, 2, strings.Count(body, "<li>Checking release prerequisites; reload the page in a moment</li>"), body)
+}

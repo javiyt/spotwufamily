@@ -3,6 +3,7 @@ package maintenance
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -41,6 +42,9 @@ type ReleaseDeps struct {
 	ManifestName string
 	// Now defaults to time.Now; it times the availability cache.
 	Now func() time.Time
+	// Logger, when set, receives a fixed line when a background check
+	// panics (never the panic value, which could carry paths).
+	Logger *slog.Logger
 }
 
 type releaseAction struct {
@@ -118,9 +122,7 @@ func (a *releaseAction) Available() (bool, string) {
 // check ends it reports the action as unavailable while checking. Listings
 // use it so a slow or hung GitHub CLI or release script never blocks a page.
 func (a *releaseAction) AvailableNow() (bool, string) {
-	a.mu.Lock()
-	a.kickLocked()
-	a.mu.Unlock()
+	a.kick()
 	p, err, ok := a.cachedResult()
 	if !ok {
 		return false, releaseCheckingReason
@@ -128,9 +130,11 @@ func (a *releaseAction) AvailableNow() (bool, string) {
 	return a.availability(p, err)
 }
 
-// kickLocked starts one background check when the cached result is missing,
-// expired or forced and none is running. a.mu must be held.
-func (a *releaseAction) kickLocked() {
+// kick starts one background check when the cached result is missing,
+// expired or forced and none is running.
+func (a *releaseAction) kick() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	expired := a.forced || a.cachedAt.IsZero() || a.now().Sub(a.cachedAt) >= availabilityTTL
 	if !expired || a.refreshing {
 		return
@@ -139,9 +143,14 @@ func (a *releaseAction) kickLocked() {
 	a.refreshed = make(chan struct{})
 	go func(done chan struct{}) {
 		defer func() {
-			// refresh recovers the preflight's own panics; this guards the
-			// rest so a background check can never crash the admin.
-			_ = recover()
+			// backgroundPreflight recovers the preflight's own panics; this
+			// guards the rest so a background check can never crash the
+			// admin, and records a failed check so the page does not stay
+			// "Checking…" or restart the check on every request.
+			if r := recover(); r != nil {
+				a.logPanic()
+				a.store(Prereq{}, "", false, errReleaseCheckPanicked)
+			}
 			a.mu.Lock()
 			a.refreshing = false
 			a.mu.Unlock()
@@ -157,27 +166,57 @@ func (a *releaseAction) kickLocked() {
 func (a *releaseAction) refresh() {
 	a.flight.Lock()
 	defer a.flight.Unlock()
-	a.mu.Lock()
-	fresh := !a.forced && !a.cachedAt.IsZero() && a.now().Sub(a.cachedAt) < availabilityTTL
-	if !fresh {
-		a.forced = false
-	}
-	a.mu.Unlock()
-	if fresh {
+	if a.fresh() {
 		return
 	}
-	p, prepared, prepOK, err := a.backgroundPreflight()
-	a.mu.Lock()
-	a.cached, a.cacheErr, a.cachedAt = p, err, a.now()
-	a.cachedPrepared, a.cachedPrepOK = prepared, prepOK
-	a.mu.Unlock()
+	a.store(a.backgroundPreflight())
 }
 
-// backgroundPreflight runs one bounded preflight and reads the last prepared content. A
-// panic in either is recovered and reported as a failed check.
+// fresh reports whether the cached check can be reused, clearing a forced
+// re-check otherwise.
+func (a *releaseAction) fresh() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.forced && !a.cachedAt.IsZero() && a.now().Sub(a.cachedAt) < availabilityTTL {
+		return true
+	}
+	a.forced = false
+	return false
+}
+
+// store records a finished check. It never panics: a failing clock falls
+// back to time.Now.
+func (a *releaseAction) store(p Prereq, prepared string, prepOK bool, err error) {
+	at := a.safeNow()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cached, a.cacheErr, a.cachedAt = p, err, at
+	a.cachedPrepared, a.cachedPrepOK = prepared, prepOK
+}
+
+func (a *releaseAction) safeNow() (t time.Time) {
+	defer func() {
+		if recover() != nil {
+			t = time.Now()
+		}
+	}()
+	return a.now()
+}
+
+func (a *releaseAction) logPanic() {
+	if a.deps.Logger == nil {
+		return
+	}
+	defer func() { _ = recover() }()
+	a.deps.Logger.Error("release prerequisites check panicked; reported as a failed check", "action", a.Name())
+}
+
+// backgroundPreflight runs one bounded preflight and reads the last prepared
+// content. A panic in either is logged and reported as a failed check.
 func (a *releaseAction) backgroundPreflight() (p Prereq, prepared string, prepOK bool, err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			a.logPanic()
 			p, prepared, prepOK, err = Prereq{}, "", false, errReleaseCheckPanicked
 		}
 	}()
@@ -193,8 +232,8 @@ func (a *releaseAction) backgroundPreflight() (p Prereq, prepared string, prepOK
 // forceRecheck makes the next check ignore availabilityTTL.
 func (a *releaseAction) forceRecheck() {
 	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.forced = true
-	a.mu.Unlock()
 }
 
 func (a *releaseAction) cachedResult() (Prereq, error, bool) {

@@ -1,11 +1,17 @@
 package maintenance
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"slices"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/javiyt/spotwufamily/internal/application/jobs"
 )
 
 // statusEventually polls ReleaseStatus until it has a result.
@@ -165,4 +171,90 @@ func TestReleaseBackgroundCheckPanicIsAFailedCheck(t *testing.T) {
 	wg.Add(1)
 	go func() { defer wg.Done(); a.refresh() }()
 	wg.Wait()
+}
+
+// countingPanicReleaser panics in every Preflight and counts calls.
+type countingPanicReleaser struct {
+	fakeReleaser
+	calls atomic.Int32
+}
+
+func (p *countingPanicReleaser) Preflight(context.Context) (Prereq, error) {
+	p.calls.Add(1)
+	panic("/secret/path boom")
+}
+
+func TestReleaseCheckPanicIsLoggedAndRecordedOnce(t *testing.T) {
+	fx := newReleaseFixture()
+	rel := &countingPanicReleaser{}
+	fx.deps.Releaser = rel
+	var buf bytes.Buffer
+	fx.deps.Logger = slog.New(slog.NewTextHandler(&buf, nil))
+	a := NewReleasePublish(fx.deps).(*releaseAction)
+	a.AvailableNow()
+	a.waitRefresh()
+	for range 5 {
+		if ok, reason := a.AvailableNow(); ok || reason != releaseScriptReason {
+			t.Fatalf("failed check: %v %q", ok, reason)
+		}
+	}
+	if n := rel.calls.Load(); n != 1 {
+		t.Fatalf("a recorded failure is reused, not re-run on every request: %d", n)
+	}
+	if !strings.Contains(buf.String(), "panicked") || strings.Contains(buf.String(), "/secret/path") {
+		t.Fatalf("panic must be logged without its value: %q", buf.String())
+	}
+}
+
+func TestReleaseClockPanicCannotDeadlock(t *testing.T) {
+	fx := newReleaseFixture()
+	var boom atomic.Bool
+	fx.deps.Now = func() time.Time {
+		if boom.Load() {
+			panic("clock")
+		}
+		return time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	}
+	a := NewReleasePublish(fx.deps).(*releaseAction)
+	a.AvailableNow()
+	a.waitRefresh()
+	boom.Store(true)
+	func() {
+		defer func() { _ = recover() }()
+		a.AvailableNow() // the clock panics while the cache lock is held
+	}()
+	boom.Store(false)
+	done := make(chan struct{})
+	go func() { a.AvailableNow(); a.forceRecheck(); a.releaseStatus(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("a panic under the cache lock deadlocked the release action")
+	}
+}
+
+func TestFinishedReleaseJobInvalidatesTheCachedCheck(t *testing.T) {
+	fx := newReleaseFixture()
+	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	fx.deps.Now = func() time.Time { return now }
+	s, _, _ := newTestService(t, NewReleasePrepare(fx.deps), NewReleasePublish(fx.deps))
+	statusAfterCheck(t, s)
+	before := len(fx.log.get())
+	s.FinishHook()(jobs.Job{ID: "job-1", Kind: "sync", Status: jobs.StatusSucceeded})
+	statusAfterCheck(t, s)
+	if len(fx.log.get()) != before {
+		t.Fatal("other jobs keep the cached check")
+	}
+	fx.prepared()
+	s.FinishHook()(jobs.Job{ID: "job-2", Kind: "release-prepare", Status: jobs.StatusSucceeded})
+	// The forced check needs a status request to start; the first one may
+	// still report the old result while re-checking.
+	s.ReleaseStatus()
+	st := statusAfterCheck(t, s)
+	if len(fx.log.get()) == before {
+		t.Fatalf("a finished release job forces a new check: %v", fx.log.get())
+	}
+	if st.Prereq.PreparedTag != "catalog-new" {
+		t.Fatalf("new package state not picked up: %+v", st.Prereq)
+	}
 }

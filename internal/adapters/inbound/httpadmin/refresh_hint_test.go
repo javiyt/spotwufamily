@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/javiyt/spotwufamily/internal/application/admin/maintenance"
 )
 
 const refreshHint = "Catalog changed — the database, snapshot and exports may need refreshing."
@@ -95,4 +97,13 @@ func TestCatalogWriteDuringFreshnessCheckStaysStale(t *testing.T) {
 	require.Equal(t, http.StatusSeeOther, <-done)
 	require.Contains(t, env.get("/operations").Body.String(), "Catalog changed since last check",
 		"a check that started before the write does not clear the marker")
+}
+
+func TestPublishWarnsAfterCatalogWrite(t *testing.T) {
+	env, op := newEditOpsEnv(t)
+	op.fresh = maintenance.Freshness{DiffersFromPublished: true}
+	require.Equal(t, http.StatusSeeOther, env.post("/operations/freshness", url.Values{}).Code)
+	require.NotContains(t, env.get("/publish").Body.String(), "Data may need refreshing")
+	require.Equal(t, http.StatusSeeOther, env.post("/artists/newcomer/archive", url.Values{"revision": {env.revision("newcomer")}}).Code)
+	require.Contains(t, env.get("/publish").Body.String(), "Data may need refreshing", "a write after the check warns")
 }

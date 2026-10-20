@@ -54,13 +54,19 @@ func (s *Service) ReleaseStatus() (ReleaseStatus, bool) {
 // RecheckRelease discards the cached preflight of every release action and
 // starts a new background check for the status source; it never waits.
 func (s *Service) RecheckRelease() {
+	s.invalidateRelease()
+	if a := s.releaseSource(); a != nil {
+		a.releaseStatus()
+	}
+}
+
+// invalidateRelease discards every release action's cached check without
+// starting one; the next listing or status starts it.
+func (s *Service) invalidateRelease() {
 	for _, a := range s.actions {
 		if r, ok := a.(releaseStatuser); ok {
 			r.forceRecheck()
 		}
-	}
-	if a := s.releaseSource(); a != nil {
-		a.releaseStatus()
 	}
 }
 
@@ -81,15 +87,18 @@ func (s *Service) releaseSource() releaseStatuser {
 	return found
 }
 
-func (a *releaseAction) releaseStatus() ReleaseStatus {
+func (a *releaseAction) snapshot() (ReleaseStatus, string, bool) {
 	a.mu.Lock()
-	a.kickLocked()
-	st := ReleaseStatus{
+	defer a.mu.Unlock()
+	return ReleaseStatus{
 		Prereq: a.cached, CheckFailed: a.cacheErr != nil, Checked: a.cachedAt, Checking: a.refreshing,
 		Repo: a.deps.Repo, PackageName: a.deps.PackageName, ManifestName: a.deps.ManifestName,
-	}
-	prepared, prepOK := a.cachedPrepared, a.cachedPrepOK
-	a.mu.Unlock()
+	}, a.cachedPrepared, a.cachedPrepOK
+}
+
+func (a *releaseAction) releaseStatus() ReleaseStatus {
+	a.kick()
+	st, prepared, prepOK := a.snapshot()
 	st.Prereq.PreparedAssets = slices.Clone(st.Prereq.PreparedAssets)
 
 	switch {

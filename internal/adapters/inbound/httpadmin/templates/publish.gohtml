@@ -17,7 +17,7 @@
 <tr><th scope="row">Differs from the published catalog</th><td>{{if .DiffersFromPublished}}yes{{else}}no{{end}}</td></tr>
 </tbody></table></div>
 {{if .Reasons}}<ul>{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>{{else}}<p>Everything derived from the catalog is up to date.</p>{{end}}
-{{if or .SeedNeeded .SnapshotNeeded .ExportNeeded}}<p class="notice warn">Refresh the data first (sync if the catalog changed, then <a href="/operations/refresh-export">refresh-export</a>), then prepare the package again.</p>{{end}}
+{{if or .SeedNeeded .SnapshotNeeded .ExportNeeded .RebuildNeeded}}<p class="notice warn">Refresh the data first (sync if the catalog changed, then <a href="/operations/refresh-export">refresh-export</a>), then prepare the package again.</p>{{end}}
 {{else}}<p class="muted">Freshness not checked yet. The check reads the whole database and can take a few seconds.</p>{{end}}{{end}}
 <form method="post" action="/operations/freshness">
 <input type="hidden" name="csrf_token" value="{{$csrf}}">
@@ -66,7 +66,7 @@
 <section id="steps" aria-labelledby="steps-h">
 <h2 id="steps-h">Steps</h2>
 <h3>Step 1 – Prepare package</h3>
-<p>Builds the release package (complete database backup, snapshot and manifest) in <code>{{.PackageName}}</code>. Nothing is uploaded.</p>
+<p>Builds the release package (complete database backup, snapshot and manifest) in <code>{{.PackageName}}</code>. Nothing is uploaded. After the prepare job finishes, come back here; if step 2 does not appear yet, press Re-check.</p>
 {{if .PrepareReady}}<form method="post" action="/operations/release-prepare/preview">
 <input type="hidden" name="csrf_token" value="{{$csrf}}">
 <input type="hidden" name="from" value="publish">
@@ -76,6 +76,7 @@
 
 <h3>Step 2 – Publish release</h3>
 <p>Uploads the prepared package as a GitHub release in <code>{{.Repo}}</code> and updates {{.ManifestName}}. The next page shows exactly what will be published and asks you to type <code>publish release</code>.</p>
+{{if .DataWarning}}<p class="notice warn" role="status">Data may need refreshing — check freshness before publishing.</p>{{end}}
 {{if .PublishReady}}<form method="post" action="/operations/release-publish/preview">
 <input type="hidden" name="csrf_token" value="{{$csrf}}">
 <input type="hidden" name="from" value="publish">
@@ -93,7 +94,7 @@
 <section id="manual" aria-labelledby="manual-h">
 <h2 id="manual-h">After publishing (manual)</h2>
 <ol>
-<li>Commit the updated pin <code>{{.ManifestName}}</code> on a branch and open a pull request; merge it once CI passes.</li>
+<li>Commit the updated pin <code>{{.ManifestName}}</code> together with the catalog changes it was built from (<code>data/artists.yaml</code> and its review log <code>data/artists.yaml.reviews.jsonl</code>, if changed) on one branch and open one pull request; merge it once CI passes. Committing the pin alone would publish a release whose catalog edits never reach the site.</li>
 <li>Wait for CI and the GitHub Pages deploy of the default branch to finish.</li>
 <li>Verify the site: open the published site, check that the artist count and a recently changed artist are right, and that it loads the new release.</li>
 </ol>

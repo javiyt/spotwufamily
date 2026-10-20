@@ -65,6 +65,9 @@ type publishPage struct {
 	PrepareWhy   []string
 	PublishReady bool
 	PublishWhy   []string
+	// DataWarning: freshness is unchecked, outdated by a catalog write, or
+	// says derived data needs refreshing. It warns; it does not block.
+	DataWarning  bool
 	PackageName  string
 	ManifestName string
 	Repo         string
@@ -147,6 +150,9 @@ func prereqRows(st maintenance.ReleaseStatus) []prereqRow {
 
 func (s *Server) publishPageData(r *http.Request) publishPage {
 	page := publishPage{Fresh: s.freshView(), ManifestName: defaultManifestName}
+	f := page.Fresh
+	page.DataWarning = !f.Checked || f.Stale || f.SeedNeeded || f.SnapshotNeeded || f.ExportNeeded || f.RebuildNeeded ||
+		f.Offline || f.Unreadable
 	if s.pub != nil {
 		if st, ok := s.pub.ReleaseStatus(); ok {
 			s.fillRelease(&page, st)
@@ -181,6 +187,7 @@ func (s *Server) fillRelease(page *publishPage, st maintenance.ReleaseStatus) {
 	}
 	if st.Checked.IsZero() {
 		page.Checking = true
+		page.PrepareWhy, page.PublishWhy = st.PrepareBlockers, st.PublishBlockers
 		return
 	}
 	page.Rechecking = st.Checking

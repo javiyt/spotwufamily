@@ -63,6 +63,7 @@ func NewReleaseActions(cfg ReleaseActionsConfig) ([]maintenance.Action, error) {
 		Repo:         cfg.Repo,
 		PackageName:  releasePackageName,
 		ManifestName: releaseManifestName,
+		Logger:       cfg.Logger,
 	}
 	return []maintenance.Action{maintenance.NewReleasePrepare(deps), maintenance.NewReleasePublish(deps)}, nil
 }

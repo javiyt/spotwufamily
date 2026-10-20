@@ -113,6 +113,12 @@ func (s *Service) reportLogErr(err error) {
 // entry. It is safe to call on a Service without an operation log.
 func (s *Service) FinishHook() func(jobs.Job) {
 	return func(j jobs.Job) {
+		// A finished release job changes the package, the journal or the
+		// pin: drop the cached check so the publish page does not show the
+		// old state for up to availabilityTTL.
+		if strings.HasPrefix(j.Kind, "release-") {
+			s.invalidateRelease()
+		}
 		// Wait for Run to log the matching confirmed entry first. The hook
 		// runs on the job goroutine, never inside Submit, so this cannot
 		// deadlock.
