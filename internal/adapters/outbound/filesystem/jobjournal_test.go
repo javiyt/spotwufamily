@@ -61,3 +61,22 @@ func TestJournalLoadMissingFile(t *testing.T) {
 		t.Fatalf("got %+v err %v", got, err)
 	}
 }
+
+func TestJournalSaveAfterTruncatedTailIsLoadable(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "jobs.jsonl")
+	j := NewJobJournal(path)
+	ctx := context.Background()
+	if err := j.Save(ctx, jobs.Job{ID: "a", Status: jobs.StatusQueued}); err != nil {
+		t.Fatal(err)
+	}
+	f, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o600)
+	_, _ = f.WriteString(`{"ID":"zz","Stat`)
+	_ = f.Close()
+	if err := j.Save(ctx, jobs.Job{ID: "b", Status: jobs.StatusRunning}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := j.Load(ctx)
+	if err != nil || len(got) != 2 || got[0].ID != "a" || got[1].ID != "b" {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+}

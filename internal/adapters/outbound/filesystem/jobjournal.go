@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
@@ -36,22 +35,7 @@ func (j *JobJournal) Save(ctx context.Context, job jobs.Job) error {
 
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if err := os.MkdirAll(filepath.Dir(j.path), 0o700); err != nil {
-		return fmt.Errorf("create job journal dir: %w", err)
-	}
-	f, err := os.OpenFile(j.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return fmt.Errorf("open job journal: %w", err)
-	}
-	if _, err := f.Write(line); err != nil {
-		_ = f.Close()
-		return fmt.Errorf("write job journal: %w", err)
-	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
-		return fmt.Errorf("sync job journal: %w", err)
-	}
-	return f.Close()
+	return appendJSONLine(j.path, line, "job journal")
 }
 
 // Load returns the latest snapshot per job ID in first-seen order. Lines that
