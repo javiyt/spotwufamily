@@ -162,3 +162,58 @@ func TestRepositoryCatalogHomonymDispositions(t *testing.T) {
 	require.Equal(t, catalog.ProfileRejected, rejected.Status)
 	require.NotEmpty(t, rejected.Evidence)
 }
+
+// TestRepositoryCatalogContainsEveryWuTangSoloArtistOnce pins the #264 solo
+// records: one editorial entry per core member, each Spotify profile backed by
+// independent evidence and none shared with the group or another member.
+func TestRepositoryCatalogContainsEveryWuTangSoloArtistOnce(t *testing.T) {
+	c, err := yamlcatalog.NewStore().Load(context.Background(), filepath.Join("..", "..", "..", "..", "data", "artists.yaml"))
+	require.NoError(t, err)
+	require.Empty(t, catalog.ValidateEditorialCatalog(c))
+
+	soloSlugs := []string{
+		"rza", "gza", "method-man", "ghostface-killah", "raekwon",
+		"inspectah-deck", "u-god", "masta-killa", "cappadonna", "ol-dirty-bastard",
+	}
+	bySlug := map[string][]catalog.Artist{}
+	for _, artist := range c.Artists {
+		bySlug[artist.Slug] = append(bySlug[artist.Slug], artist)
+	}
+
+	group := bySlug["wu-tang-clan"][0]
+	seenIDs := map[string]string{}
+	for _, slug := range soloSlugs {
+		require.Len(t, bySlug[slug], 1, "%s must be represented exactly once", slug)
+		artist := bySlug[slug][0]
+		require.Equal(t, catalog.CategoryCore, artist.Category, slug)
+		require.Contains(t, artist.Roles, catalog.CategoryCore, slug)
+
+		for _, id := range artist.AllSpotifyIDs() {
+			require.False(t, group.HasSpotifyID(id), "%s must not reuse a Wu-Tang Clan group profile", slug)
+			require.NotContains(t, seenIDs, id, "%s shares a Spotify ID with %s", slug, seenIDs[id])
+			seenIDs[id] = slug
+		}
+	}
+
+	// Every newly reviewed member is linked through verified, independent evidence.
+	for _, slug := range soloSlugs {
+		if slug == "method-man" {
+			continue // pre-existing record, reviewed separately
+		}
+		artist := bySlug[slug][0]
+		require.True(t, artist.Enabled, slug)
+		require.NotEmpty(t, artist.SpotifyID, slug)
+		profile, ok := artist.ProfileFor(artist.SpotifyID)
+		require.True(t, ok, slug)
+		require.Equal(t, catalog.ProfileVerified, profile.Status, slug)
+		require.NotEmpty(t, profile.Evidence, slug)
+		for _, evidence := range profile.Evidence {
+			require.Equal(t, catalog.EvidenceMusicBrainz, evidence.Type, slug)
+		}
+	}
+
+	// Cappadonna's historical membership is documented, not silently rewritten.
+	require.Contains(t, bySlug["cappadonna"][0].Notes, "Historical membership")
+	require.Contains(t, bySlug["ol-dirty-bastard"][0].Aliases, "ODB")
+	require.NotEqual(t, bySlug["young-dirty-bastard"][0].Slug, bySlug["ol-dirty-bastard"][0].Slug)
+}
