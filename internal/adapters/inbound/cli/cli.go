@@ -951,6 +951,10 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsReviewProfile(ctx, args[1:], stdout, stderr, store)
 	case "discover-wu":
 		return executeArtistsDiscoverWu(ctx, args[1:], stdout, stderr, store)
+	case "import-candidates":
+		return executeArtistsImportCandidates(ctx, args[1:], stdout, stderr, store)
+	case "review-candidate":
+		return executeArtistsReviewCandidate(ctx, args[1:], stdout, stderr, store)
 	case "refresh-genres":
 		return executeArtistsRefreshGenres(ctx, args[1:], stdout, stderr, store)
 	case "resolve":
@@ -1053,6 +1057,7 @@ func parseArtistsEnableWithIDsOptions(args []string) (artistsEnableWithIDsOption
 
 type artistsDiscoverWuOptions struct {
 	catalogPath     string
+	ledgerPath      string
 	reportPath      string
 	wikipediaAPIURL string
 	wikipediaPage   string
@@ -1062,7 +1067,7 @@ type artistsDiscoverWuOptions struct {
 
 func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
-		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists discover-wu [--catalog data/artists.yaml] [--report wu-discovery.md] [--apply] [--quiet] [--wikipedia-api-url URL] [--wikipedia-page TITLE]")
+		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists discover-wu [--catalog data/artists.yaml] [--ledger data/wu-candidates.yaml] [--report wu-discovery.md] [--apply] [--quiet] [--wikipedia-api-url URL] [--wikipedia-page TITLE]")
 		return 0
 	}
 
@@ -1079,8 +1084,9 @@ func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr
 		}
 	}
 	source := wikipedia.NewClient(wikipedia.Config{APIURL: options.wikipediaAPIURL, Page: options.wikipediaPage})
-	report, err := artists.NewDiscoverWuFamily(store, source).Run(ctx, artists.DiscoverWuFamilyOptions{
+	report, err := artists.NewDiscoverWuFamily(store, source).WithLedger(yamlcatalog.NewLedgerStore()).Run(ctx, artists.DiscoverWuFamilyOptions{
 		CatalogPath: options.catalogPath,
+		LedgerPath:  options.ledgerPath,
 		Apply:       options.apply,
 		Progress:    progress,
 	})
@@ -1102,12 +1108,16 @@ func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr
 	if options.apply {
 		mode = "applied"
 	}
-	_, _ = fmt.Fprintf(stdout, "artists discover-wu %s: found=%d existing=%d new=%d added=%d catalog=%s\n", mode, report.Found, len(report.Existing), len(report.New), len(report.Added), options.catalogPath)
+	suppressed := ""
+	if len(report.Suppressed) > 0 {
+		suppressed = fmt.Sprintf(" suppressed=%d", len(report.Suppressed))
+	}
+	_, _ = fmt.Fprintf(stdout, "artists discover-wu %s: found=%d existing=%d new=%d added=%d%s catalog=%s\n", mode, report.Found, len(report.Existing), len(report.New), len(report.Added), suppressed, options.catalogPath)
 	return 0
 }
 
 func parseArtistsDiscoverWuOptions(args []string) (artistsDiscoverWuOptions, error) {
-	options := artistsDiscoverWuOptions{catalogPath: defaultCatalogPath, reportPath: "wu-discovery.md"}
+	options := artistsDiscoverWuOptions{catalogPath: defaultCatalogPath, ledgerPath: defaultLedgerPath, reportPath: "wu-discovery.md"}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--catalog":
@@ -1116,6 +1126,12 @@ func parseArtistsDiscoverWuOptions(args []string) (artistsDiscoverWuOptions, err
 				return artistsDiscoverWuOptions{}, fmt.Errorf("--catalog requires a value")
 			}
 			options.catalogPath = args[i]
+		case "--ledger":
+			i++
+			if i >= len(args) {
+				return artistsDiscoverWuOptions{}, fmt.Errorf("--ledger requires a value")
+			}
+			options.ledgerPath = args[i]
 		case "--report":
 			i++
 			if i >= len(args) {
@@ -2284,6 +2300,8 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  enable-with-ids")
 	_, _ = fmt.Fprintln(w, "  review-profile")
 	_, _ = fmt.Fprintln(w, "  discover-wu")
+	_, _ = fmt.Fprintln(w, "  import-candidates")
+	_, _ = fmt.Fprintln(w, "  review-candidate")
 	_, _ = fmt.Fprintln(w, "  refresh-genres")
 	_, _ = fmt.Fprintln(w, "  resolve")
 	_, _ = fmt.Fprintln(w, "  seed-db")

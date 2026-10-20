@@ -13,7 +13,8 @@ site/content/generated/
 site/data/generated/
 site/static/search-index.json
 .hugo_build.lock
-site/.hugo_build.lock
+site/.hugo_build.loc
+tmp/
 
 # Test binary, built with `go test -c`
 *.test
