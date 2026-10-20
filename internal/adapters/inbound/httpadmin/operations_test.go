@@ -51,6 +51,14 @@ type fakeOp struct {
 	recentErr error
 	listCalls int
 	eligible  map[string]string // job ID -> action
+
+	// runNames records every RunAction call by action name.
+	runNames []string
+	// release is what ReleaseStatus returns (Publisher).
+	release     maintenance.ReleaseStatus
+	noRelease   bool
+	statusCalls atomic.Int32
+	rechecks    atomic.Int32
 }
 
 func (f *fakeOp) Actions() []maintenance.ActionInfo {
@@ -106,6 +114,7 @@ func (f *fakeOp) RunAction(ctx context.Context, name string, p maintenance.Param
 	f.opMu.Lock()
 	defer f.opMu.Unlock()
 	f.runCalls++
+	f.runNames = append(f.runNames, name)
 	f.lastParams, f.lastTyped = p, typed
 	if f.runErr != nil {
 		return jobs.Job{}, f.runErr

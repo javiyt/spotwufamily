@@ -1,14 +1,15 @@
-{{define "content"}}{{$csrf := .CSRF}}{{with .Data}}{{$name := .Action.Name}}
+{{define "content"}}{{$csrf := .CSRF}}{{with .Data}}{{$name := .Action.Name}}{{$from := .From}}{{$back := .Back}}
 {{if .Stale}}
 <p class="notice warn" role="alert">The preview is out of date; review it again. Nothing was started.</p>
 <form method="post" action="/operations/{{$name}}/preview">
 <input type="hidden" name="csrf_token" value="{{$csrf}}">
-{{range .Params}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
-{{end}}<div class="actions"><button type="submit" class="primary">Review again</button> <a href="/operations/{{$name}}">Change parameters</a></div>
+{{if $from}}<input type="hidden" name="from" value="{{$from}}">
+{{end}}{{range .Params}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
+{{end}}<div class="actions"><button type="submit" class="primary">Review again</button> <a href="{{$back}}">Change parameters</a></div>
 </form>
 {{else if .Conflict}}
 <p class="notice bad" role="alert">Another job is already using the resources this action needs, so nothing was started.{{if .HolderID}} It is job <a href="/jobs/{{.HolderID}}"><code>{{.Holder}}</code></a>; wait for it to finish or cancel it, then review this action again.{{end}}</p>
-<p><a href="/jobs">All jobs</a> · <a href="/operations/{{$name}}">Back to the form</a></p>
+<p><a href="/jobs">All jobs</a> · <a href="{{$back}}">Back to the form</a></p>
 {{else}}{{with .Preview}}
 <p class="notice" role="status">Nothing has run yet. This is what the action will do.</p>
 <p class="badges"><strong>{{.Title}}</strong>{{if .UsesNetwork}} <span class="badge warn">NETWORK</span>{{end}}{{if .Destructive}} <span class="badge bad">DESTRUCTIVE</span>{{end}}</p>
@@ -27,11 +28,12 @@
 <form method="post" action="/operations/{{$name}}/run" class="stack">
 <input type="hidden" name="csrf_token" value="{{$csrf}}">
 <input type="hidden" name="token" value="{{.Token}}">
+{{if $from}}<input type="hidden" name="from" value="{{$from}}">{{end}}
 {{range .Params}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
 {{end}}{{if .Preview.RequiresTyped}}<div class="field"><label for="typed">To confirm, type <code>{{.Preview.RequiresTyped}}</code></label>
 <input id="typed" type="text" name="typed" required autocomplete="off" spellcheck="false"></div>
-{{end}}<div class="actions"><button type="submit" class="primary" data-once>Confirm and run</button> <a href="/operations/{{$name}}" data-cancel>Cancel</a></div>
+{{end}}<div class="actions"><button type="submit" class="primary" data-once>Confirm and run</button> <a href="{{$back}}" data-cancel>Cancel</a></div>
 </form>
 {{end}}
-<p><a href="/operations">← All operations</a></p>
+<p>{{if $from}}<a href="{{$back}}">← Publication checklist</a>{{else}}<a href="/operations">← All operations</a>{{end}}</p>
 {{end}}{{end}}

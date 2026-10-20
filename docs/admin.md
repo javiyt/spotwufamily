@@ -29,6 +29,7 @@ The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?to
 | `/resolve`, `/resolve/{slug}` | `/api/v1/resolve`, `/api/v1/resolve/{slug}` | Spotify profile review queue and side-by-side workbench (see below) |
 | `/operations`, `/operations/{action}` | `/api/v1/operations`, `/api/v1/freshness` | status, data freshness, maintenance actions with preview and confirmation, recent operations (see below) |
 | `/jobs`, `/jobs/{id}` | `/api/v1/jobs`, `/api/v1/jobs/{id}` | background maintenance jobs: status, step, progress, counts, result and report downloads (see below) |
+| `/publish` | | guided publication checklist: data readiness, release prerequisites, what will be published, prepare and publish steps (see below) |
 
 List endpoints take `q`, `page` and `page_size` (default 25, max 100; out-of-range values are clamped). `/artists` and `/api/v1/artists` also take `category`, `enabled` (`yes`/`no`), `ids` (`verified`/`pending`/`unresolved`), `rel` (a relationship type, matches both endpoints), `archived=1`, `sort` (`name`, `slug`, `category`, `ids`, `order`) and `dir=desc`; unknown values are ignored. The API response adds `facets` with whole-catalog totals. Errors are always `{"error":{"code":"...","message":"..."}}` for `/api/*` and for clients sending `Accept: application/json`, and an HTML error page otherwise. Messages never include paths, stack traces or Go error text; details are logged server-side.
 
@@ -112,6 +113,33 @@ Job IDs in paths must be hexadecimal with dashes; anything else is a 404 before 
 - `GET /api/v1/operations` lists every action with `name`, `title`, `group`, `description`, `available`, `unavailable_reason`, `uses_network`, `destructive` and a `page` link.
 
 All operation POSTs need the session, the CSRF token and a same-origin request. Preview tokens are never logged, and pages never show paths or Go error text.
+
+## Publish
+
+`/publish` is the guided publication checklist and the **only** page in the admin from which a release can be prepared or published. It works without JavaScript and never blocks: it never computes data freshness on load and never runs the release preflight on the request.
+
+- **Data readiness** shows the cached freshness check (same 60-second cache and **Check data freshness** button as Operations, which returns here): seed, snapshot or export needed, unreadable database, offline, differs from the published catalog, and the fixed reasons. If anything needs refreshing, refresh first and prepare again.
+- **Prerequisites** shows pass/fail rows for python3 and the release script, Go, the GitHub CLI login and an empty package directory (plus the local database) with the fix for each failure, e.g. "Run `gh auth login` in a terminal" or "Empty or remove `build/catalog-release`". The rows come from the release actions' cached preflight (`Service.ReleaseStatus()`); while no check has finished the page says "Checking…" and reloads itself every 3 seconds. **Re-check** (`POST /publish/recheck`) discards the cached result and starts one background check; it does not wait for it.
+- **What will be published** shows the local and pinned content hashes (first 12 characters), the last release tag, whether the local content differs from the pinned release Pages serves, and the prepared package (tag, content hash, and whether it matches the local content).
+- **Step 1 – Prepare package** and **Step 2 – Publish release** are plain forms leading to the usual preview and confirmation pages for `release-prepare` and `release-publish` (the latter needs the typed phrase `publish release`). A step is shown as a form only when the cached check says it can run; otherwise the page lists why. Step 2 needs a prepared package that matches the local content, an authenticated GitHub CLI and a working release script. The preview, the run and the job re-check everything with a fresh preflight regardless of what the page showed.
+- The generic routes of the release actions are reserved for this page: `GET /operations/release-prepare|release-publish` redirects (`303`) to `/publish`, and their `POST …/preview` and `POST …/run` redirect there too unless the form carries the hidden field `from=publish` that only this page's forms (and the preview pages they lead to) emit. That field is not a security boundary (anyone can type it); session, CSRF, same-origin, the preview token, the typed phrase and the service's re-checks are the real gates. It keeps the checklist the one way into publishing.
+- The page lists the last release entries of the operations log with links to their jobs, and the manual rollout steps below.
+
+**Manual rollout procedure**
+
+1. In Operations, run `refresh-export` (verify, snapshot, export, audit) and check data freshness until nothing needs refreshing.
+2. On `/publish`, **Prepare package…** → review → confirm. The job writes the package to `build/catalog-release`.
+3. On `/publish`, **Review publish…** → type `publish release` → confirm. The job uploads the GitHub release and updates `data/catalog.release.json` locally.
+4. Commit the updated `data/catalog.release.json` pin on a branch and open a pull request; merge it once CI passes.
+5. Wait for CI and the GitHub Pages deploy, then verify the site (artist count, a recently changed artist, the new release loaded).
+
+**Prerequisites**: `python3` (runs `scripts/automation/catalog-release.py`), `go` on `PATH` (prepare), and the GitHub CLI logged in with `gh auth login` (publish; an already exported `GH_TOKEN`/`GITHUB_TOKEN` also works). The repository is the one the admin was configured with.
+
+**Where things live**: the package (complete database backup, snapshot and manifest) is in `build/catalog-release` until published or removed; jobs and their results are in the admin's job journal (`/jobs`), and every confirmed and finished operation is in the operations log (`/operations#recent`, `/publish`). The YAML editor keeps `<catalog>.bak`, and every sync takes its own database backup first.
+
+**Recovery from `interrupted`**: a publish job that was running when the admin stopped, or that hit its timeout, never counts as a success. Check the repository's GitHub Releases page before retrying, as the job message says: if a partial release with the prepared tag exists, remove it there by hand, then return to `/publish`, **Re-check**, and publish again (the package is still in `build/catalog-release`). Do not edit the pin by hand. A prepare that was interrupted can simply be repeated after emptying `build/catalog-release`.
+
+The admin itself is never deployed to Pages: nothing in `site/` references it, only the static site and the pinned release reach Pages.
 
 ## Offline mode
 

@@ -9,6 +9,7 @@
 {{if .Error}}<p class="notice bad" role="alert">{{.Error}}</p>{{end}}
 <form method="post" action="/operations/{{.Action.Name}}/preview" class="stack">
 <input type="hidden" name="csrf_token" value="{{$csrf}}">
+{{if .From}}<input type="hidden" name="from" value="{{.From}}">{{end}}
 {{range .Fields}}{{if eq .Type "checkbox"}}<p class="check"><input id="{{.ID}}" type="checkbox" name="{{.Name}}" value="{{.Value}}"{{if .Checked}} checked{{end}}><label for="{{.ID}}">{{.Label}}</label></p>
 {{if .Help}}<p class="hint">{{.Help}}</p>{{end}}
 {{else}}<div class="field"><label for="{{.ID}}">{{.Label}}</label>
@@ -17,8 +18,8 @@
 {{if .Help}}<p class="hint">{{.Help}}</p>{{end}}</div>
 {{end}}{{else}}<p class="muted">This action takes no parameters.</p>
 {{end}}<p class="muted">Previewing changes nothing; the next page shows exactly what will run.</p>
-<div class="actions"><button type="submit" class="primary">Preview</button> <a href="/operations" data-cancel>Cancel</a></div>
+<div class="actions"><button type="submit" class="primary">Preview</button> <a href="{{if .From}}{{.Back}}{{else}}/operations{{end}}" data-cancel>Cancel</a></div>
 </form>
 {{end}}
-<p><a href="/operations">← All operations</a></p>
+<p>{{if .From}}<a href="{{.Back}}">← Publication checklist</a>{{else}}<a href="/operations">← All operations</a>{{end}}</p>
 {{end}}{{end}}

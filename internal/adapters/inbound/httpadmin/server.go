@@ -50,6 +50,7 @@ type Server struct {
 	resolver  Resolver
 	maint     Maintenance
 	op        Operator
+	pub       Publisher
 	now       func() time.Time
 	fresh     freshnessCache
 	dynamic   *http.ServeMux

@@ -159,6 +159,18 @@ git add data/catalog.release.json data/artists.yaml   # the manifest pins the ne
 
 Open the PR with the manifest change (the reconcile JSON/Markdown report makes a good description). `make catalog-fetch` on a fresh clone keeps returning the old contents until that manifest is merged.
 
+## Publication Checklist
+
+The local admin's `/publish` page is the guided way to publish a catalog release (see `docs/admin.md`, *Publish*). It shows, without running anything on load:
+
+1. **Data readiness**: the cached data freshness check (seed/snapshot/export needed, unreadable database, offline, differs from published). Refresh first if anything is out of date.
+2. **Prerequisites**: python3 and the release script, Go, `gh auth login`, an empty `build/catalog-release`, a local database, each with its fix. **Re-check** refreshes them in the background.
+3. **What will be published**: local vs pinned content hash, last release tag, whether the content differs from what Pages serves, and the prepared package.
+4. **Step 1 – Prepare package** and **Step 2 – Publish release** (typed phrase `publish release`). Step 2 appears only when a prepared package matches the local content and the prerequisites pass.
+5. **Manual follow-up**: commit `data/catalog.release.json` through a pull request, wait for CI and the Pages deploy, verify the site.
+
+Edits and Spotify profile decisions never publish anything. The CLI route (`make catalog-release-prepare` / `make catalog-release-publish`, above) remains available.
+
 ## Artist Relationships
 
 ```

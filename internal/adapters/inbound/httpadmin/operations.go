@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -48,7 +49,7 @@ const (
 )
 
 // reservedFields are form fields that are never action parameters.
-var reservedFields = map[string]bool{"csrf_token": true, "token": true, "typed": true}
+var reservedFields = map[string]bool{"csrf_token": true, "token": true, "typed": true, guidedField: true}
 
 func (s *Server) registerOperator() {
 	s.routes["/api/v1/operations"] = route{methods: []string{http.MethodGet}, handler: s.apiOperations}
@@ -60,6 +61,7 @@ func (s *Server) registerOperator() {
 	s.dynamic.HandleFunc("GET /operations/{action}", s.handleOperationForm)
 	s.dynamic.HandleFunc("POST /operations/{action}/preview", s.handleOperationPreview)
 	s.dynamic.HandleFunc("POST /operations/{action}/run", s.handleOperationRun)
+	s.registerPublish()
 }
 
 // --- static per-action UI metadata ---
@@ -74,9 +76,18 @@ type actionSpec struct {
 	Group       string
 	Description string
 	Fields      []fieldSpec
-	// Link replaces the parameter form (release actions live on /publish).
-	Link string
+	// Guided names the page that owns this action's flow (the release
+	// actions live on /publish). Its dashboard card links there, the generic
+	// form redirects there, and the generic preview and run accept only
+	// requests carrying that page's hidden from= field (see guidedRedirect).
+	Guided string
 }
+
+// guidedField is the hidden form field a guided page's forms carry.
+const guidedField = "from"
+
+// guidedFrom is the from= value the forms of page emit ("/publish" -> "publish").
+func guidedFrom(page string) string { return strings.TrimPrefix(page, "/") }
 
 var actionGroups = []string{"Discover", "Audit", "Sync", "Refresh/Export", "Reconcile", "Release", "Other"}
 
@@ -117,8 +128,8 @@ var actionSpecs = map[string]actionSpec{
 	"refresh-export":           {Group: "Refresh/Export", Description: "Verify, snapshot, export and audit in one job."},
 	"reconcile-dry-run":        {Group: "Reconcile", Description: "Show the association changes reconciling one artist would make.", Fields: reconcileFields},
 	"reconcile-apply":          {Group: "Reconcile", Description: "Apply one artist's pending association changes to the database.", Fields: reconcileFields},
-	"release-prepare":          {Group: "Release", Description: "Build the catalog release package.", Link: "/publish"},
-	"release-publish":          {Group: "Release", Description: "Publish the prepared release to GitHub.", Link: "/publish"},
+	"release-prepare":          {Group: "Release", Description: "Build the catalog release package.", Guided: "/publish"},
+	"release-publish":          {Group: "Release", Description: "Publish the prepared release to GitHub.", Guided: "/publish"},
 }
 
 func specFor(name string) actionSpec {
@@ -139,6 +150,35 @@ func (s *Server) lookupAction(w http.ResponseWriter, r *http.Request) (maintenan
 	}
 	s.fail(w, r, http.StatusNotFound, "not_found", "action not found")
 	return maintenance.ActionInfo{}, false
+}
+
+// guidedRedirect keeps guided actions on their own page: the generic form
+// always redirects there, and a preview or run without the page's from=
+// field is sent back to it (303) before the action is even looked up. The
+// field is user-tamperable on purpose. It is not a security boundary (the
+// session, CSRF and same-origin checks, the preview token, the typed phrase
+// and the service's fresh prerequisite re-checks are); it only keeps the
+// explicit guided checklist the one way to reach these actions in the UI.
+// It reports whether it answered the request.
+func (s *Server) guidedRedirect(w http.ResponseWriter, r *http.Request, post bool) bool {
+	sp, ok := actionSpecs[r.PathValue("action")]
+	if !ok || sp.Guided == "" {
+		return false
+	}
+	if post && r.PostForm.Get(guidedField) == guidedFrom(sp.Guided) {
+		return false
+	}
+	http.Redirect(w, r, sp.Guided, http.StatusSeeOther)
+	return true
+}
+
+// flowLinks returns the hidden from= value and the "back" page of an
+// action's preview and form pages.
+func flowLinks(name string) (from, back string) {
+	if sp := specFor(name); sp.Guided != "" {
+		return guidedFrom(sp.Guided), sp.Guided
+	}
+	return "", "/operations/" + name
 }
 
 func unavailableReason(a maintenance.ActionInfo) string {
@@ -181,8 +221,8 @@ type operationsPage struct {
 }
 
 func actionPage(a maintenance.ActionInfo) string {
-	if sp := specFor(a.Name); sp.Link != "" {
-		return sp.Link
+	if sp := specFor(a.Name); sp.Guided != "" {
+		return sp.Guided
 	}
 	return "/operations/" + a.Name
 }
@@ -292,12 +332,16 @@ func (s *Server) handleFreshnessCheck(w http.ResponseWriter, r *http.Request) {
 	if !s.postChecked(w, r) {
 		return
 	}
+	back := "/operations#freshness"
+	if r.PostForm.Get(guidedField) == guidedFrom(publishPath) {
+		back = publishPath + "#readiness"
+	}
 	if err := s.checkFreshness(r.Context()); err != nil {
 		s.logger.Printf("freshness check failed: %v", err)
-		s.refused(w, r, "freshness_unavailable", "Data freshness could not be checked.", "/operations#freshness")
+		s.refused(w, r, "freshness_unavailable", "Data freshness could not be checked.", back)
 		return
 	}
-	s.done(w, r, "Data freshness checked.", "/operations#freshness")
+	s.done(w, r, "Data freshness checked.", back)
 }
 
 func (s *Server) apiFreshness(w http.ResponseWriter, _ *http.Request) {
@@ -361,6 +405,8 @@ type operationForm struct {
 	ResumeShort string
 	ResumeField bool
 	ResumeNote  string
+	// From and Back keep a guided action on its page.
+	From, Back string
 }
 
 func buildFields(name string, values maintenance.Params) []fieldView {
@@ -378,6 +424,7 @@ func buildFields(name string, values maintenance.Params) []fieldView {
 
 func (s *Server) renderForm(w http.ResponseWriter, r *http.Request, status int, a maintenance.ActionInfo, values maintenance.Params, message string) {
 	page := operationForm{Action: a, Description: specFor(a.Name).Description, Fields: buildFields(a.Name, values), Error: message}
+	page.From, page.Back = flowLinks(a.Name)
 	if !a.Available {
 		page.Unavailable = unavailableReason(a)
 	}
@@ -385,11 +432,15 @@ func (s *Server) renderForm(w http.ResponseWriter, r *http.Request, status int, 
 }
 
 func (s *Server) handleOperationForm(w http.ResponseWriter, r *http.Request) {
+	if s.guidedRedirect(w, r, false) {
+		return
+	}
 	a, ok := s.lookupAction(w, r)
 	if !ok {
 		return
 	}
 	page := operationForm{Action: a, Description: specFor(a.Name).Description}
+	page.From, page.Back = flowLinks(a.Name)
 	if !a.Available {
 		page.Unavailable = unavailableReason(a)
 		s.render(w, r, "operation", a.Title, page)
@@ -452,6 +503,8 @@ type operationPreviewPage struct {
 	Conflict bool
 	HolderID string
 	Holder   string
+	// From and Back keep a guided action on its page.
+	From, Back string
 }
 
 func (s *Server) renderPreview(w http.ResponseWriter, r *http.Request, status int, a maintenance.ActionInfo, p maintenance.Params, message string) {
@@ -460,13 +513,13 @@ func (s *Server) renderPreview(w http.ResponseWriter, r *http.Request, status in
 		s.actionFailed(w, r, a, p, err)
 		return
 	}
-	s.renderStatus(w, r, status, "operation_preview", "Review: "+a.Title, operationPreviewPage{
-		Action: a, Preview: pv, Token: string(tok), Params: echoParams(p), Error: message,
-	})
+	page := operationPreviewPage{Action: a, Preview: pv, Token: string(tok), Params: echoParams(p), Error: message}
+	page.From, page.Back = flowLinks(a.Name)
+	s.renderStatus(w, r, status, "operation_preview", "Review: "+a.Title, page)
 }
 
 func (s *Server) handleOperationPreview(w http.ResponseWriter, r *http.Request) {
-	if !s.postChecked(w, r) {
+	if !s.postChecked(w, r) || s.guidedRedirect(w, r, true) {
 		return
 	}
 	a, ok := s.lookupAction(w, r)
@@ -482,7 +535,7 @@ func (s *Server) handleOperationPreview(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleOperationRun(w http.ResponseWriter, r *http.Request) {
-	if !s.postChecked(w, r) {
+	if !s.postChecked(w, r) || s.guidedRedirect(w, r, true) {
 		return
 	}
 	a, ok := s.lookupAction(w, r)
@@ -521,14 +574,16 @@ func (s *Server) actionFailed(w http.ResponseWriter, r *http.Request, a maintena
 	switch {
 	case errors.As(err, &conflict):
 		page := operationPreviewPage{Action: a, Conflict: true, Params: echoParams(p)}
+		page.From, page.Back = flowLinks(a.Name)
 		if jobIDPattern.MatchString(conflict.HolderID) {
 			page.HolderID, page.Holder = conflict.HolderID, shortID(conflict.HolderID)
 		}
 		s.renderStatus(w, r, http.StatusConflict, "operation_preview", "Another job is running", page)
 		return
 	case errors.Is(err, maintenance.ErrStalePreview):
-		s.renderStatus(w, r, http.StatusConflict, "operation_preview", "Preview out of date",
-			operationPreviewPage{Action: a, Stale: true, Params: echoParams(p)})
+		page := operationPreviewPage{Action: a, Stale: true, Params: echoParams(p)}
+		page.From, page.Back = flowLinks(a.Name)
+		s.renderStatus(w, r, http.StatusConflict, "operation_preview", "Preview out of date", page)
 		return
 	case errors.Is(err, maintenance.ErrUnavailable):
 		// Re-read this action so its own reason is shown, not a stale one.

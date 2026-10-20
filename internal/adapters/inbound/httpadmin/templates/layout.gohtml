@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-{{if .Refresh}}<noscript><meta http-equiv="refresh" content="3"></noscript>{{end}}
+{{if .Reload}}<meta http-equiv="refresh" content="3">{{else if .Refresh}}<noscript><meta http-equiv="refresh" content="3"></noscript>{{end}}
 <title>{{.Title}} · Spot Wu Family admin</title>
 <link rel="stylesheet" href="/static/admin.css">
 <script src="/static/admin.js" defer></script>

@@ -49,14 +49,22 @@ type releaseAction struct {
 
 	// flight serialises availability preflights; mu guards only the cached
 	// result, so AvailableNow never waits for a running preflight.
-	flight     sync.Mutex
-	mu         sync.Mutex
-	cachedAt   time.Time
-	cached     Prereq
-	cacheErr   error
+	flight         sync.Mutex
+	mu             sync.Mutex
+	cachedAt       time.Time
+	cached         Prereq
+	cacheErr       error
+	cachedPrepared string
+	cachedPrepOK   bool
+	// forced makes the next check run even within availabilityTTL (RecheckRelease).
+	forced     bool
 	refreshing bool
 	refreshed  chan struct{} // closed when the running background check ends
 }
+
+// errReleaseCheckPanicked stands for a preflight that panicked; it is shown
+// as the generic release-script reason.
+var errReleaseCheckPanicked = errors.New("release preflight panicked")
 
 // NewReleasePrepare returns release-prepare: under the database lock it
 // builds the release package (complete backup, snapshot, manifest) in the
@@ -111,20 +119,7 @@ func (a *releaseAction) Available() (bool, string) {
 // use it so a slow or hung GitHub CLI or release script never blocks a page.
 func (a *releaseAction) AvailableNow() (bool, string) {
 	a.mu.Lock()
-	expired := a.cachedAt.IsZero() || a.now().Sub(a.cachedAt) >= availabilityTTL
-	if expired && !a.refreshing {
-		a.refreshing = true
-		a.refreshed = make(chan struct{})
-		go func(done chan struct{}) {
-			defer func() {
-				a.mu.Lock()
-				a.refreshing = false
-				a.mu.Unlock()
-				close(done)
-			}()
-			a.refresh()
-		}(a.refreshed)
-	}
+	a.kickLocked()
 	a.mu.Unlock()
 	p, err, ok := a.cachedResult()
 	if !ok {
@@ -133,32 +128,72 @@ func (a *releaseAction) AvailableNow() (bool, string) {
 	return a.availability(p, err)
 }
 
-// waitRefresh waits for a running background check (tests).
-func (a *releaseAction) waitRefresh() {
-	a.mu.Lock()
-	done := a.refreshed
-	a.mu.Unlock()
-	if done != nil {
-		<-done
+// kickLocked starts one background check when the cached result is missing,
+// expired or forced and none is running. a.mu must be held.
+func (a *releaseAction) kickLocked() {
+	expired := a.forced || a.cachedAt.IsZero() || a.now().Sub(a.cachedAt) >= availabilityTTL
+	if !expired || a.refreshing {
+		return
 	}
+	a.refreshing = true
+	a.refreshed = make(chan struct{})
+	go func(done chan struct{}) {
+		defer func() {
+			// refresh recovers the preflight's own panics; this guards the
+			// rest so a background check can never crash the admin.
+			_ = recover()
+			a.mu.Lock()
+			a.refreshing = false
+			a.mu.Unlock()
+			close(done)
+		}()
+		a.refresh()
+	}(a.refreshed)
 }
 
 // refresh runs a preflight unless the cached one is younger than
-// availabilityTTL; concurrent callers share one preflight.
+// availabilityTTL (and no re-check was forced); concurrent callers share one
+// preflight.
 func (a *releaseAction) refresh() {
 	a.flight.Lock()
 	defer a.flight.Unlock()
 	a.mu.Lock()
-	fresh := !a.cachedAt.IsZero() && a.now().Sub(a.cachedAt) < availabilityTTL
+	fresh := !a.forced && !a.cachedAt.IsZero() && a.now().Sub(a.cachedAt) < availabilityTTL
+	if !fresh {
+		a.forced = false
+	}
 	a.mu.Unlock()
 	if fresh {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), availabilityTimeout)
-	p, err := a.deps.Releaser.Preflight(ctx)
-	cancel()
+	p, prepared, prepOK, err := a.backgroundPreflight()
 	a.mu.Lock()
 	a.cached, a.cacheErr, a.cachedAt = p, err, a.now()
+	a.cachedPrepared, a.cachedPrepOK = prepared, prepOK
+	a.mu.Unlock()
+}
+
+// backgroundPreflight runs one bounded preflight and reads the last prepared content. A
+// panic in either is recovered and reported as a failed check.
+func (a *releaseAction) backgroundPreflight() (p Prereq, prepared string, prepOK bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			p, prepared, prepOK, err = Prereq{}, "", false, errReleaseCheckPanicked
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), availabilityTimeout)
+	defer cancel()
+	p, err = a.deps.Releaser.Preflight(ctx)
+	if err == nil && a.deps.Prepared != nil {
+		prepared, prepOK = a.deps.Prepared.LastPrepared()
+	}
+	return p, prepared, prepOK, err
+}
+
+// forceRecheck makes the next check ignore availabilityTTL.
+func (a *releaseAction) forceRecheck() {
+	a.mu.Lock()
+	a.forced = true
 	a.mu.Unlock()
 }
 
@@ -178,17 +213,24 @@ func (a *releaseAction) availability(p Prereq, err error) (bool, string) {
 		}
 		return true, ""
 	}
-	if err := a.prepareBlocked(p); err != nil {
-		switch err {
-		case ErrNoDatabase:
-			return false, noDatabaseReason
-		case ErrReleasePackageNotClean:
-			return false, "The release package directory " + a.deps.PackageName + " is not empty; publish or remove it first"
-		default:
-			return false, goMissingReason
-		}
+	if reason := a.prepareReason(p); reason != "" {
+		return false, reason
 	}
 	return true, ""
+}
+
+// prepareReason is why prepare cannot run with p, or "".
+func (a *releaseAction) prepareReason(p Prereq) string {
+	switch a.prepareBlocked(p) {
+	case nil:
+		return ""
+	case ErrNoDatabase:
+		return noDatabaseReason
+	case ErrReleasePackageNotClean:
+		return "The release package directory " + a.deps.PackageName + " is not empty; publish or remove it first"
+	default:
+		return goMissingReason
+	}
 }
 
 // prepareBlocked returns why prepare cannot run, or nil.
@@ -209,6 +251,10 @@ func (a *releaseAction) prepareBlocked(p Prereq) error {
 // local content.
 func (a *releaseAction) publishBlocked(p Prereq) error {
 	prepared, ok := a.deps.Prepared.LastPrepared()
+	return publishBlockedBy(p, prepared, ok)
+}
+
+func publishBlockedBy(p Prereq, prepared string, ok bool) error {
 	if !ok || p.LocalContentSHA256 == "" || prepared != p.LocalContentSHA256 ||
 		p.PreparedTag == "" || p.PreparedContentSHA256 != p.LocalContentSHA256 {
 		return ErrNothingPrepared

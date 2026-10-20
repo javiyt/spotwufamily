@@ -55,6 +55,9 @@ type view struct {
 	Data   any
 	// Refresh adds a no-JS auto refresh while a page shows live progress.
 	Refresh bool
+	// Reload adds an auto refresh for every client (JS or not) while a page
+	// waits for a background check it cannot poll for.
+	Reload bool
 }
 
 type pager struct {
@@ -406,7 +409,7 @@ type relRowView struct {
 
 func parseTemplates() (map[string]*template.Template, error) {
 	out := map[string]*template.Template{}
-	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm", "jobs", "job", "operation", "operation_preview"} {
+	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm", "jobs", "job", "operation", "operation_preview", "publish"} {
 		t, err := template.New("").Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.gohtml", "templates/"+name+".gohtml")
 		if err != nil {
 			return nil, err
@@ -424,6 +427,9 @@ func (s *Server) renderStatus(w http.ResponseWriter, r *http.Request, status int
 	v := view{Title: title, Path: r.URL.Path, Nav: s.nav(), Data: data}
 	if rf, ok := data.(interface{ autoRefresh() bool }); ok {
 		v.Refresh = rf.autoRefresh()
+	}
+	if rl, ok := data.(interface{ reload() bool }); ok {
+		v.Reload = rl.reload()
 	}
 	if id := s.sessionID(r); s.sessions.valid(id) {
 		v.Authed, v.CSRF = true, s.sessions.csrf(id)
