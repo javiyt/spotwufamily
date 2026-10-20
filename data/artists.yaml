@@ -2503,3 +2503,210 @@ artists:
     editorial_order: 195
     notes: Discovered from Wikipedia (Producers); review before enabling.
     external_url: https://en.wikipedia.org/wiki/List%20of%20Wu-Tang%20Clan%20affiliates#DJ_Iceman
+  - slug: rza
+    name: RZA
+    spotify_id: 4iCwCMnqsNZ6atvRiADgtn
+    spotify_profiles:
+      - id: 4iCwCMnqsNZ6atvRiADgtn
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/29c28ac3-27c5-4822-8eb6-0af89a3a7240
+            rationale: '2026-10-20: MusicBrainz artist 29c28ac3 (RZA, American rapper and actor) lists Spotify artist 4iCwCMnqsNZ6atvRiADgtn as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - Bobby Digital
+      - Prince Rakeem
+    enabled: true
+    editorial_order: 196
+    notes: Core Wu-Tang Clan member and founder. "Bobby Digital" is his solo producer persona.
+    external_url: https://open.spotify.com/artist/4iCwCMnqsNZ6atvRiADgtn
+  - slug: gza
+    name: GZA
+    spotify_id: 6ns6XAOsw4B0nDUIovAOUO
+    spotify_profiles:
+      - id: 6ns6XAOsw4B0nDUIovAOUO
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/550cb78b-4995-4873-baea-76ef265531f5
+            rationale: '2026-10-20: MusicBrainz artist 550cb78b (GZA, Wu‐Tang Clan) lists Spotify artist 6ns6XAOsw4B0nDUIovAOUO as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - The Genius
+      - Genius
+    enabled: true
+    editorial_order: 197
+    notes: Core Wu-Tang Clan member and founder.
+    external_url: https://open.spotify.com/artist/6ns6XAOsw4B0nDUIovAOUO
+  - slug: ghostface-killah
+    name: Ghostface Killah
+    spotify_id: 6FD0unjzGQhX3b6eMccMJe
+    spotify_profiles:
+      - id: 6FD0unjzGQhX3b6eMccMJe
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/3b39abeb-0064-4eed-9ddd-ee47a45c54cb
+            rationale: '2026-10-20: MusicBrainz artist 3b39abeb (Ghostface Killah, Person) lists Spotify artist 6FD0unjzGQhX3b6eMccMJe as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - Ghost
+      - Tony Starks
+    enabled: true
+    editorial_order: 198
+    notes: Core Wu-Tang Clan member.
+    external_url: https://open.spotify.com/artist/6FD0unjzGQhX3b6eMccMJe
+  - slug: raekwon
+    name: Raekwon
+    spotify_id: 2yQf6b8hxahZaT5dHlWaB1
+    spotify_profiles:
+      - id: 2yQf6b8hxahZaT5dHlWaB1
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/4e954b02-fae2-4bd7-9547-e055a6ac0527
+            rationale: '2026-10-20: MusicBrainz artist 4e954b02 (Raekwon, US rapper, Wu‐Tang Clan) lists Spotify artist 2yQf6b8hxahZaT5dHlWaB1 as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - Raekwon the Chef
+      - Lex Diamonds
+    enabled: true
+    editorial_order: 199
+    notes: Core Wu-Tang Clan member.
+    external_url: https://open.spotify.com/artist/2yQf6b8hxahZaT5dHlWaB1
+  - slug: inspectah-deck
+    name: Inspectah Deck
+    spotify_id: 4OBbOrkD4geIjOLrICN3wO
+    spotify_profiles:
+      - id: 4OBbOrkD4geIjOLrICN3wO
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/a6b90dc0-e22e-44e1-890b-87900bd9aca6
+            rationale: '2026-10-20: MusicBrainz artist a6b90dc0 (Inspectah Deck, east coast hip hop) lists Spotify artist 4OBbOrkD4geIjOLrICN3wO as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - Rebel INS
+    enabled: true
+    editorial_order: 200
+    notes: Core Wu-Tang Clan member.
+    external_url: https://open.spotify.com/artist/4OBbOrkD4geIjOLrICN3wO
+  - slug: u-god
+    name: U-God
+    spotify_id: 0G070wUUUBptmqGEKAAUVx
+    spotify_profiles:
+      - id: 0G070wUUUBptmqGEKAAUVx
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/29edaca5-7e7d-4391-b137-ff1c94a4d262
+            rationale: '2026-10-20: MusicBrainz artist 29edaca5 (U-God, Person) lists Spotify artist 0G070wUUUBptmqGEKAAUVx as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - U God
+      - Golden Arms
+    enabled: true
+    editorial_order: 201
+    notes: Core Wu-Tang Clan member.
+    external_url: https://open.spotify.com/artist/0G070wUUUBptmqGEKAAUVx
+  - slug: masta-killa
+    name: Masta Killa
+    spotify_id: 0ME1RawvWt3qOJnYnxVqeh
+    spotify_profiles:
+      - id: 0ME1RawvWt3qOJnYnxVqeh
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/43ffac1a-f46a-4bd0-88f9-7715e104a122
+            rationale: '2026-10-20: MusicBrainz artist 43ffac1a (Masta Killa, Person) lists Spotify artist 0ME1RawvWt3qOJnYnxVqeh as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - High Priest
+    enabled: true
+    editorial_order: 202
+    notes: Core Wu-Tang Clan member.
+    external_url: https://open.spotify.com/artist/0ME1RawvWt3qOJnYnxVqeh
+  - slug: cappadonna
+    name: Cappadonna
+    spotify_id: 0dS5xeDefwoUNasLUHnCjR
+    spotify_profiles:
+      - id: 0dS5xeDefwoUNasLUHnCjR
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/20292c32-1fe2-4e5d-82c8-7e04e6b8cf73
+            rationale: '2026-10-20: MusicBrainz artist 20292c32 (Cappadonna, Person) lists Spotify artist 0dS5xeDefwoUNasLUHnCjR as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - Cappachino
+    enabled: true
+    editorial_order: 203
+    notes: 'Historical membership is nuanced: he began as a Wu-Tang affiliate and is credited as a full member from the later group albums. Kept as core by editorial decision; the exact membership period belongs in the Wu-Tang membership relation, not in this category.'
+    external_url: https://open.spotify.com/artist/0dS5xeDefwoUNasLUHnCjR
+  - slug: ol-dirty-bastard
+    name: Ol’ Dirty Bastard
+    spotify_id: 50NoVNy9GU1lCrDV8iGpyu
+    spotify_profiles:
+      - id: 50NoVNy9GU1lCrDV8iGpyu
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/d50548a0-3cfd-4d7a-964b-0aef6545d819
+            rationale: '2026-10-20: MusicBrainz artist d50548a0 (Ol’ Dirty Bastard, Wu‐Tang founder, NYC rapper/producer) lists Spotify artist 50NoVNy9GU1lCrDV8iGpyu as its free-streaming URL. The match comes from the MusicBrainz URL relation, not from the name or from Wu-Tang Clan release credits.'
+        reviewed_at: "2026-10-20T08:34:41Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:34:41Z"
+    category: core
+    roles:
+      - core
+    aliases:
+      - Ol' Dirty Bastard
+      - Ol Dirty Bastard
+      - ODB
+      - Big Baby Jesus
+      - Osirus
+    enabled: true
+    editorial_order: 204
+    notes: Core Wu-Tang Clan founding member (1968-2004). Distinct from the Young Dirty Bastard record.
+    external_url: https://open.spotify.com/artist/50NoVNy9GU1lCrDV8iGpyu

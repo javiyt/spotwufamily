@@ -156,3 +156,12 @@ Decisions recorded on 2026-10-20 (issue #263):
 | `k-g-b` | `2gKwx0Lm0JoOrN2mY9Z0PG` | **Quarantined** (rejected, no replacement, entry disabled) | The profile mixes French releases (Retour d'exil, Seule la lutte paye), Neat Face/Trax Records releases and compilations. MusicBrainz K.G.B. `2d9e108a-8f89-4ac3-8e6c-98f0ab323a62` (US, alias Klik Ga Bow) is not shown to own it. Unverified candidate `7Jab8mHFYj7jSkFwKtPpxB` (KGB: Freek Tha Flo 1994, Bless Ya Life) matches MusicBrainz recording titles but has no Spotify URL relation; it is noted, not adopted. |
 
 To lift the K.G.B. quarantine, confirm a candidate against a primary Wu discography source, then `review-profile --status verified --link` it and enable the entry.
+
+## Core Wu-Tang Clan solo records
+
+Every core member has exactly one editorial record: `rza`, `gza`, `method-man`, `ghostface-killah`, `raekwon`, `inspectah-deck`, `u-god`, `masta-killa`, `cappadonna` and `ol-dirty-bastard`. Their primary Spotify profile is `verified` through the MusicBrainz URL relation of the matching artist, never through the name or through Wu-Tang Clan credits, and no member reuses a group profile.
+
+- Other Spotify profiles with the same name that exist in the local cache (several members have a second, same-named profile) are **not** linked: nothing independent ties them to the artist. Link them with `artists review-profile` only after evidence is found.
+- `category: core` is an editorial label. Group membership must come from relation records once the relationships model exists; this change does not create them.
+- Cappadonna began as an affiliate and is credited as a full member on later group albums. He is kept as `core`, with the nuance recorded in `notes`; the membership period belongs in his relation record.
+- New records get appended `editorial_order` values (196-204). Existing orders are never shifted: `seed-db` upserts row by row against a unique `editorial_order` index, so renumbering breaks seeding of existing databases.
