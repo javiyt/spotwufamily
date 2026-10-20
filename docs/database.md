@@ -49,6 +49,10 @@ Export:
 - Does not rewrite unchanged files.
 - Removes obsolete generated JSON files under the export directories.
 
+## Profile review metadata
+
+Spotify profile review status (`spotify_profiles`) lives only in `data/artists.yaml`; SQLite does not store it and no migration is required. `configured_artist_spotify_ids` still projects the linked IDs, and sync decides which of them may be ingested from the YAML review state (see `docs/catalog-policy.md`).
+
 ## Release backups and restoration
 
 Requires Python 3 (standard library only), Go and GitHub CLI. Authenticate with `gh auth login`; private repositories require read access for downloads. Releases have the same visibility as the repository.

@@ -42,3 +42,5 @@ data/artist-candidates.example.json
 data/catalog.db
 data/catalog.snapshot.sql.gz
 __pycache__/
+
+*.yaml.bak

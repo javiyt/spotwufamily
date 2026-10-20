@@ -196,7 +196,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 		return Report{}, fmt.Errorf("artist catalog is invalid: %s", issues[0].Error())
 	}
 
-	eligibleArtists := enabledArtists(editorialCatalog.Artists, options.ArtistSlug)
+	eligibleArtists := enabledArtists(editorialCatalog.Artists, options.ArtistSlug, editorialCatalog.ProfileSyncPolicy)
 	report := Report{DryRun: options.DryRun, ArtistsPlanned: len(eligibleArtists)}
 	progress(options.Progress, ProgressEvent{Stage: ProgressCatalogLoaded, ArtistTotal: len(eligibleArtists), ConfiguredCount: len(editorialCatalog.Artists)})
 	if options.ArtistSlug != "" && len(eligibleArtists) == 0 {
@@ -426,12 +426,16 @@ func shouldAbortSync(err error) bool {
 		strings.Contains(message, "SPOTIFY REQUESTED RETRY AFTER") && strings.Contains(message, "ABOVE MAX WAIT")
 }
 
-func enabledArtists(artists []catalog.Artist, slug string) []catalog.Artist {
+func enabledArtists(artists []catalog.Artist, slug string, policy catalog.ProfileSyncPolicy) []catalog.Artist {
 	enabled := make([]catalog.Artist, 0, len(artists))
 	for _, artist := range artists {
-		if !artist.Enabled || len(artist.AllSpotifyIDs()) == 0 {
+		syncable := artist.SyncableSpotifyIDs(policy)
+		if !artist.Enabled || len(syncable) == 0 {
 			continue
 		}
+		// Sync only sees reviewed profiles; unlinked or blocked ones never reach Spotify.
+		artist.SpotifyID = ""
+		artist.SpotifyIDs = syncable
 		if slug != "" && artist.Slug != slug {
 			continue
 		}

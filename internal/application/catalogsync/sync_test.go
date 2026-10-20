@@ -13,8 +13,9 @@ import (
 
 func TestSyncCatalogDryRunDoesNotCallFetcherOrRepository(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
-		Version: 1,
-		Artists: []catalog.Artist{enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")},
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
+		Artists:           []catalog.Artist{enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")},
 	}}
 	usecase := catalogsync.NewSyncCatalog(store, nil, nil, fixedClock{})
 
@@ -31,7 +32,8 @@ func TestSyncCatalogDryRunDoesNotCallFetcherOrRepository(t *testing.T) {
 
 func TestSyncCatalogProcessesEnabledArtistsAndDeduplicates(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
-		Version: 1,
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
 		Artists: []catalog.Artist{
 			func() catalog.Artist {
 				artist := enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")
@@ -81,8 +83,9 @@ func TestSyncCatalogProcessesEnabledArtistsAndDeduplicates(t *testing.T) {
 
 func TestSyncCatalogReportsProgress(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
-		Version: 1,
-		Artists: []catalog.Artist{enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")},
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
+		Artists:           []catalog.Artist{enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")},
 	}}
 	fetcher := &fakeFetcher{
 		artist:   catalog.ArtistCandidate{Name: "Wu-Tang Clan", SpotifyID: "34EP7KEpOjXcM2TCat1ISk"},
@@ -124,7 +127,8 @@ func TestSyncCatalogReportsProgress(t *testing.T) {
 
 func TestSyncCatalogResumesFromPartialRun(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
-		Version: 1,
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
 		Artists: []catalog.Artist{
 			enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk"),
 			func() catalog.Artist {
@@ -168,8 +172,9 @@ func TestSyncCatalogResumesFromPartialRun(t *testing.T) {
 func TestSyncCatalogSkipsRecentlySyncedArtists(t *testing.T) {
 	artist := enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")
 	store := fakeStore{catalog: catalog.EditorialCatalog{
-		Version: 1,
-		Artists: []catalog.Artist{artist},
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
+		Artists:           []catalog.Artist{artist},
 	}}
 	fetcher := &fakeFetcher{}
 	repository := &fakeRepository{
@@ -195,8 +200,9 @@ func TestSyncCatalogSkipsRecentlySyncedArtists(t *testing.T) {
 func TestSyncCatalogFullSyncRefreshesRecentlySyncedArtists(t *testing.T) {
 	artist := enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")
 	store := fakeStore{catalog: catalog.EditorialCatalog{
-		Version: 1,
-		Artists: []catalog.Artist{artist},
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
+		Artists:           []catalog.Artist{artist},
 	}}
 	fetcher := &fakeFetcher{artist: catalog.ArtistCandidate{Name: "Wu-Tang Clan", SpotifyID: "34EP7KEpOjXcM2TCat1ISk"}}
 	repository := &fakeRepository{
@@ -219,8 +225,9 @@ func TestSyncCatalogFullSyncRefreshesRecentlySyncedArtists(t *testing.T) {
 
 func TestSyncCatalogReturnsPartialFailure(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
-		Version: 1,
-		Artists: []catalog.Artist{enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")},
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
+		Artists:           []catalog.Artist{enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk")},
 	}}
 	usecase := catalogsync.NewSyncCatalog(store, &fakeFetcher{err: errors.New("spotify down")}, &fakeRepository{}, fixedClock{})
 
@@ -233,7 +240,8 @@ func TestSyncCatalogReturnsPartialFailure(t *testing.T) {
 
 func TestSyncCatalogAbortsAfterSpotifyQuotaExceeded(t *testing.T) {
 	store := fakeStore{catalog: catalog.EditorialCatalog{
-		Version: 1,
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
 		Artists: []catalog.Artist{
 			enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk"),
 			func() catalog.Artist {
