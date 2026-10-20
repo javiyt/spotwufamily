@@ -73,3 +73,17 @@ details{margin:.5rem 0}summary{cursor:pointer;font-weight:600}
 section{margin-bottom:1.5rem}
 th a{color:inherit}th[aria-sort=ascending] a::after{content:" ▲"}th[aria-sort=descending] a::after{content:" ▼"}
 @media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+.workbench{display:grid;grid-template-columns:minmax(14rem,18rem) 1fr;gap:1.5rem;align-items:start}
+.workbench .editorial{position:sticky;top:.5rem;padding:.75rem;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.cards{display:grid;gap:1rem;min-width:0}
+.pcard{padding:.75rem 1rem;border:1px solid var(--line);border-radius:8px;background:var(--card);margin-bottom:1rem}
+.pcard.owned{border-left:4px solid #b00020}
+.pcard header{display:flex;gap:.75rem;align-items:flex-start}
+.pcard header h3{margin:0}.pcard header p{margin:.25rem 0}
+.pcard img,.pcard .noimg{width:64px;height:64px;border-radius:6px;object-fit:cover;background:var(--line);flex:none;display:grid;place-items:center}
+.pcard h4{margin:.75rem 0 .25rem}
+.gate{padding:.4rem .6rem;border:1px dashed var(--line);border-radius:6px}
+.state.candidate,.state.needs_review,.state.unreviewed{border-color:#b26a00}
+.state.needs_review,.state.candidate,.state.unreviewed,.state.verified,.state.rejected,.state.unresolved,.state.pending{display:inline-block;padding:.05rem .5rem;border:1px solid var(--line);border-radius:999px;font-size:.8125rem}
+button.link{border:0;background:none;color:inherit;text-decoration:underline;cursor:pointer;padding:0;font:inherit}
+@media (max-width:50rem){.workbench{grid-template-columns:1fr}.workbench .editorial{position:static}}

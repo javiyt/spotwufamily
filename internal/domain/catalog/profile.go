@@ -482,3 +482,34 @@ func isUTCTimestamp(value string) bool {
 func ValidateEvidence(e Evidence) []ValidationIssue {
 	return validateEvidence("evidence", e)
 }
+
+// Clone returns a copy that shares no slice with the original, so reviewing
+// one profile can be abandoned half way without leaking into the source.
+func (a Artist) Clone() Artist {
+	a.SpotifyIDs = append([]string(nil), a.SpotifyIDs...)
+	a.Genres = append([]string(nil), a.Genres...)
+	a.Roles = append([]Category(nil), a.Roles...)
+	a.Aliases = append([]string(nil), a.Aliases...)
+	profiles := make([]SpotifyProfile, len(a.SpotifyProfiles))
+	for i, p := range a.SpotifyProfiles {
+		p.Evidence = append([]Evidence(nil), p.Evidence...)
+		profiles[i] = p
+	}
+	a.SpotifyProfiles = profiles
+	if len(a.SpotifyIDs) == 0 {
+		a.SpotifyIDs = nil
+	}
+	if len(a.SpotifyProfiles) == 0 {
+		a.SpotifyProfiles = nil
+	}
+	if len(a.Genres) == 0 {
+		a.Genres = nil
+	}
+	if len(a.Roles) == 0 {
+		a.Roles = nil
+	}
+	if len(a.Aliases) == 0 {
+		a.Aliases = nil
+	}
+	return a
+}

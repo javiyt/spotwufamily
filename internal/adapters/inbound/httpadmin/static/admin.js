@@ -102,3 +102,28 @@
     });
   });
 })();
+
+// Profile review: remember the reviewer's name for this browser, and let a
+// suggested source fill the evidence fields of the form it sits in.
+(function () {
+  'use strict';
+  var key = 'swf-admin-reviewer';
+  var saved = '';
+  try { saved = window.localStorage.getItem(key) || ''; } catch (e) { saved = ''; }
+  document.querySelectorAll('input[data-reviewer]').forEach(function (input) {
+    if (!input.value && saved) input.value = saved;
+    input.addEventListener('change', function () {
+      try { window.localStorage.setItem(key, input.value.trim()); } catch (e) { /* storage may be blocked */ }
+    });
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-fill-url]');
+    if (!b) return;
+    var form = b.closest('form');
+    if (!form) return;
+    var set = function (name, value) { var el = form.elements[name]; if (el) el.value = value; };
+    set('evidence_type', b.getAttribute('data-fill-type'));
+    set('evidence_url', b.getAttribute('data-fill-url'));
+    set('evidence_rationale', b.getAttribute('data-fill-rationale'));
+  });
+})();

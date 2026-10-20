@@ -1,0 +1,47 @@
+{{define "content"}}{{with .Data}}{{$p := .}}
+<section aria-labelledby="cf-h">
+<h2 id="cf-h">{{if .ActionLabel}}{{.ActionLabel}}{{else}}Profile change{{end}}{{with .Preview.Request.SpotifyID}} · <code>{{.}}</code>{{end}}</h2>
+{{if .Error}}<p class="notice" role="alert">{{.Error}}</p>{{end}}
+{{if .Preview.Contradictions}}<p><strong>Contradicting evidence</strong></p><ul class="evidence">{{range .Preview.Contradictions}}<li>{{.}}</li>{{end}}</ul>{{end}}
+{{if .Confirmable}}
+<p class="notice" role="status">Nothing has been saved yet. This is exactly what will be written to the catalog file.</p>
+<h3>Catalog change for <code>{{.Preview.Artist.Slug}}</code></h3>
+{{if .Preview.Changes}}<div class="table-wrap"><table class="diff"><caption class="sr">Pending changes</caption>
+<thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead><tbody>
+{{range .Preview.Changes}}<tr><th scope="row">{{.Field}}</th><td class="before">{{if .Before}}{{.Before}}{{else}}<span class="muted">empty</span>{{end}}</td><td class="after">{{if .After}}{{.After}}{{else}}<span class="muted">empty</span>{{end}}</td></tr>{{end}}
+</tbody></table></div>{{else}}<p>No catalog field changes.</p>{{end}}
+
+<h3>Downstream impact</h3>
+<dl class="facts">
+<dt>Linked IDs</dt><dd>{{if .Preview.Impact.LinkedBefore}}{{join .Preview.Impact.LinkedBefore ", "}}{{else}}none{{end}} → {{if .Preview.Impact.LinkedAfter}}{{join .Preview.Impact.LinkedAfter ", "}}{{else}}none{{end}}</dd>
+<dt>Ingested by sync</dt><dd>{{if .Preview.Impact.SyncBefore}}{{join .Preview.Impact.SyncBefore ", "}}{{else}}none{{end}} → {{if .Preview.Impact.SyncAfter}}{{join .Preview.Impact.SyncAfter ", "}}{{else}}none{{end}}</dd>
+<dt>Artist enabled</dt><dd>{{if .Preview.Impact.EnabledBefore}}yes{{else}}no{{end}} → {{if .Preview.Impact.EnabledAfter}}yes{{else}}no{{end}}</dd>
+{{if .Preview.Impact.ReconcileKnown}}<dt>Pending reconciliation</dt><dd>{{.Preview.Impact.ReconcileBefore}} → {{.Preview.Impact.ReconcileAfter}} synced link(s)</dd>{{else}}<dt>Pending reconciliation</dt><dd class="muted">unknown (database unavailable)</dd>{{end}}
+</dl>
+{{range .Preview.Impact.Notes}}<p class="notice">{{.}}</p>{{end}}
+{{range .Preview.Warnings}}<p class="notice" role="alert">{{.}}</p>{{end}}
+<p class="muted">The database is never changed here. A changed mapping shows up as pending reconciliation until you run <code>artists reconcile</code>.</p>
+{{if .Evidence}}<h3>Evidence you supplied</h3><ul class="evidence">{{range .Evidence}}<li><span class="badge">{{label .Type}}</span> {{.Rationale}}{{if .URL}} {{.URL}}{{end}}</li>{{end}}</ul>{{end}}
+
+<form method="post" action="/resolve/{{.Preview.Artist.Slug}}/apply" class="stack">
+<input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+<input type="hidden" name="confirm" value="1">
+{{range .Fields}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
+{{if .Override}}<input type="hidden" name="override_reason" value="{{.Override}}">{{end}}
+<p class="check"><input id="cf-ok" type="checkbox" required><label for="cf-ok">I have checked the change and its downstream impact</label></p>
+<div class="actions"><button type="submit" class="primary">Confirm and save</button> <a href="{{.Back}}" data-cancel>Cancel</a></div>
+</form>
+{{else}}
+{{if .NeedsOverride}}
+<form method="post" action="/resolve/{{.Preview.Request.Slug}}/preview" class="stack">
+<input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+{{range .Fields}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
+<div class="field"><label for="ov">Override reason (recorded with your name)</label>
+<textarea id="ov" name="override_reason" rows="3" maxlength="1000" required>{{.Override}}</textarea></div>
+<p class="muted">An override never replaces the independent evidence a verified profile needs; it only explains why you accept the profile despite the contradiction.</p>
+<div class="actions"><button type="submit" class="primary">Preview again</button> <a href="{{.Back}}" data-cancel>Cancel</a></div>
+</form>
+{{else}}<p><a href="{{.Back}}">← Back to the review page</a></p>{{end}}
+{{end}}
+</section>
+{{end}}{{end}}

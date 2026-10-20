@@ -11,6 +11,25 @@ artists:
     spotify_id: 34EP7KEpOjXcM2TCat1ISk
     spotify_ids:
       - 0H8YCcvC3MPLKnbDRasGiG
+    spotify_profiles:
+      - id: 34EP7KEpOjXcM2TCat1ISk
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/610fb60f-900a-3c42-ac7d-f6b6aa8035f9
+            rationale: 'MusicBrainz release group "Enter the Wu‐Tang (36 Chambers)" (1993) matches releases on this Spotify profile: 6 of 32 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T12:09:45Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T12:09:45Z"
+      - id: 0H8YCcvC3MPLKnbDRasGiG
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/610fb60f-900a-3c42-ac7d-f6b6aa8035f9
+            rationale: 'MusicBrainz release group "Enter the Wu‐Tang (36 Chambers)" (1993) matches releases on this Spotify profile: 6 of 32 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T12:10:54Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T12:10:54Z"
     genres:
       - east coast hip hop
       - gangster rap
@@ -33,6 +52,25 @@ artists:
     spotify_id: 6UEytD2shU7Z8fMKj08puK
     spotify_ids:
       - 6g1mStOYDxXonJEPqiU7xd
+    spotify_profiles:
+      - id: 6UEytD2shU7Z8fMKj08puK
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/244f660e-5e68-47d7-8184-46dc204ee326
+            rationale: Found the artist
+        reviewed_at: "2026-10-20T12:13:15Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T12:13:15Z"
+      - id: 6g1mStOYDxXonJEPqiU7xd
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/244f660e-5e68-47d7-8184-46dc204ee326
+            rationale: Found the artist
+        reviewed_at: "2026-10-20T12:13:33Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T12:13:33Z"
     category: affiliate_group
     roles:
       - affiliate_group

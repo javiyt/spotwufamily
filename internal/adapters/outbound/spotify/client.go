@@ -36,8 +36,12 @@ var (
 )
 
 type rateLimitAbortError struct {
-	err error
+	err   error
+	after time.Duration
 }
+
+// RetryAfter is the wait Spotify asked for with its 429, or zero when unknown.
+func (e rateLimitAbortError) RetryAfter() time.Duration { return e.after }
 
 func (e rateLimitAbortError) Error() string {
 	return e.err.Error()
@@ -50,6 +54,17 @@ func (e rateLimitAbortError) Unwrap() error {
 func (e rateLimitAbortError) AbortSync() bool {
 	return true
 }
+
+// retryAfterError reports the wait Spotify asked for once retries ran out. Unlike
+// rateLimitAbortError it does not tell a sync to stop.
+type retryAfterError struct {
+	err   error
+	after time.Duration
+}
+
+func (e retryAfterError) Error() string             { return e.err.Error() }
+func (e retryAfterError) Unwrap() error             { return e.err }
+func (e retryAfterError) RetryAfter() time.Duration { return e.after }
 
 type Config struct {
 	ClientID      string
@@ -362,6 +377,7 @@ func (c *Client) bearerToken(ctx context.Context) (string, error) {
 
 func (c *Client) doWithRetry(ctx context.Context, options retryOptions, buildRequest func() (*http.Request, error)) ([]byte, error) {
 	var lastErr error
+	var lastWait time.Duration
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
 		if attempt > 0 {
 			if err := c.sleep(ctx, backoff(attempt)); err != nil {
@@ -420,6 +436,7 @@ func (c *Client) doWithRetry(ctx context.Context, options retryOptions, buildReq
 			}
 			lastErr = spotifyHTTPError(resp.StatusCode, data, kind)
 			wait := retryAfter(resp.Header)
+			lastWait = wait
 			event.Stage = "request_retrying"
 			event.Wait = wait
 			event.Err = lastErr
@@ -430,7 +447,7 @@ func (c *Client) doWithRetry(ctx context.Context, options retryOptions, buildReq
 				if c.maxRetryAfter > 0 && wait > c.maxRetryAfter {
 					abortErr = fmt.Errorf("%w: Spotify requested retry after %s, above max wait %s: %w", kind, wait, c.maxRetryAfter, lastErr)
 				}
-				event.Err = spotifyRateLimitAbortError(abortErr)
+				event.Err = spotifyRateLimitAbortError(abortErr, wait)
 				c.emitProgress(event)
 				return nil, event.Err
 			}
@@ -462,6 +479,9 @@ func (c *Client) doWithRetry(ctx context.Context, options retryOptions, buildReq
 		}
 	}
 
+	if lastWait > 0 && errors.Is(lastErr, ErrRateLimited) {
+		return nil, retryAfterError{err: lastErr, after: lastWait}
+	}
 	return nil, lastErr
 }
 
@@ -514,8 +534,8 @@ func spotifyHTTPError(statusCode int, body []byte, kind error) error {
 	return fmt.Errorf("%w: HTTP %d: %s", kind, statusCode, message)
 }
 
-func spotifyRateLimitAbortError(err error) error {
-	return rateLimitAbortError{err: err}
+func spotifyRateLimitAbortError(err error, after time.Duration) error {
+	return rateLimitAbortError{err: err, after: after}
 }
 
 func spotifyQuotaExceeded(body []byte) bool {

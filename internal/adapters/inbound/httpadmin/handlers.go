@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/admin"
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
@@ -23,6 +24,21 @@ var navItems = []struct{ Path, Label string }{
 	{"/groups", "Groups"},
 	{"/review", "Review queue"},
 	{"/operations", "Operations"},
+}
+
+// nav lists the pages, adding the profile review workbench when it is enabled.
+func (s *Server) nav() []struct{ Path, Label string } {
+	if s.resolver == nil {
+		return navItems
+	}
+	out := make([]struct{ Path, Label string }, 0, len(navItems)+1)
+	for _, item := range navItems {
+		out = append(out, item)
+		if item.Path == "/review" {
+			out = append(out, struct{ Path, Label string }{"/resolve", "Spotify profiles"})
+		}
+	}
+	return out
 }
 
 type view struct {
@@ -140,7 +156,7 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "review", "Review queue", map[string]any{
-		"Page": page, "Pager": newPager("/review", r.URL.Query(), page.Page, page.Pages, page.Total, page.PageSize, page.Search),
+		"Resolver": s.resolver != nil, "Page": page, "Pager": newPager("/review", r.URL.Query(), page.Page, page.Pages, page.Total, page.PageSize, page.Search),
 	})
 }
 
@@ -343,6 +359,42 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 // --- rendering and errors ---
 
 var templateFuncs = template.FuncMap{
+	"identity": func(e catalog.IdentityEvidence) string {
+		parts := []string{strings.ReplaceAll(string(e.Kind), "_", " ")}
+		if e.Strong {
+			parts = append(parts, "strong")
+		}
+		if e.ReleaseName != "" {
+			release := e.ReleaseName
+			if e.ReleaseYear != "" {
+				release += " (" + e.ReleaseYear + ")"
+			}
+			parts = append(parts, "release: "+release)
+		}
+		if e.Detail != "" {
+			parts = append(parts, e.Detail)
+		}
+		return strings.Join(parts, " · ")
+	},
+	"seconds": seconds,
+	"cardCtx": func(c admin.Card, p workbenchPage, zone string) cardView {
+		return cardView{Card: c, Page: p, Zone: zone}
+	},
+	"join":  strings.Join,
+	"label": func(v string) string { return strings.ReplaceAll(v, "_", " ") },
+	"assess": func(c artists.ProfileClassification) string {
+		switch c {
+		case artists.ClassVerified:
+			return "supported by evidence"
+		case artists.ClassSuspicious:
+			return "contradicted by evidence"
+		case artists.ClassAmbiguous:
+			return "ambiguous"
+		case artists.ClassUnavailable:
+			return "could not be checked"
+		}
+		return "not enough evidence"
+	},
 	// relView hands a relationship row its page-level context.
 	"relView": func(r relRow, csrf string, editable bool) relRowView {
 		return relRowView{relRow: r, CSRF: csrf, Editable: editable}
@@ -357,7 +409,7 @@ type relRowView struct {
 
 func parseTemplates() (map[string]*template.Template, error) {
 	out := map[string]*template.Template{}
-	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict"} {
+	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm"} {
 		t, err := template.New("").Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.gohtml", "templates/"+name+".gohtml")
 		if err != nil {
 			return nil, err
@@ -372,7 +424,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title stri
 }
 
 func (s *Server) renderStatus(w http.ResponseWriter, r *http.Request, status int, name, title string, data any) {
-	v := view{Title: title, Path: r.URL.Path, Nav: navItems, Data: data}
+	v := view{Title: title, Path: r.URL.Path, Nav: s.nav(), Data: data}
 	if id := s.sessionID(r); s.sessions.valid(id) {
 		v.Authed, v.CSRF = true, s.sessions.csrf(id)
 		v.Flash = s.sessions.takeFlash(id)
@@ -399,7 +451,7 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, status int, code, 
 		return
 	}
 	var buf bytes.Buffer
-	v := view{Title: http.StatusText(status), Path: r.URL.Path, Nav: navItems,
+	v := view{Title: http.StatusText(status), Path: r.URL.Path, Nav: s.nav(),
 		Data: map[string]any{"Status": status, "Message": message, "Code": code}}
 	if err := s.templates["error"].ExecuteTemplate(&buf, "layout", v); err != nil {
 		http.Error(w, message, status)

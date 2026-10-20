@@ -21,20 +21,22 @@ func NewProfileSource(client *Client) ProfileSource {
 
 func (s ProfileSource) GetArtist(ctx context.Context, id string) (catalog.ArtistCandidate, error) {
 	artist, err := s.client.GetArtist(ctx, id)
-	return artist, mapSourceError(err)
+	return artist, MapSourceError(err)
 }
 
 func (s ProfileSource) GetArtistAlbums(ctx context.Context, id string, groups []string) ([]catalog.Release, error) {
 	albums, err := s.client.GetArtistAlbums(ctx, id, groups)
-	return albums, mapSourceError(err)
+	return albums, MapSourceError(err)
 }
 
 func (s ProfileSource) GetAlbumTracks(ctx context.Context, id string) ([]catalog.Track, error) {
 	tracks, err := s.client.GetAlbumTracks(ctx, id)
-	return tracks, mapSourceError(err)
+	return tracks, MapSourceError(err)
 }
 
-func mapSourceError(err error) error {
+// MapSourceError translates a Spotify transport error into the application's
+// source errors, keeping the original in the chain (including Retry-After).
+func MapSourceError(err error) error {
 	switch {
 	case err == nil:
 		return nil
