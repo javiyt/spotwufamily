@@ -20,11 +20,13 @@ type Service struct {
 	byName  map[string]Action
 	secret  []byte
 	now     func() time.Time
+
+	freshness FreshnessSource
 }
 
 // NewService registers actions in order. It panics if two actions share a
 // name, since that is a wiring bug rather than a runtime condition.
-func NewService(m *jobs.Manager, actions []Action, secret []byte, now func() time.Time) *Service {
+func NewService(m *jobs.Manager, actions []Action, secret []byte, now func() time.Time, opts ...Option) *Service {
 	s := &Service{
 		jobs:    m,
 		actions: append([]Action(nil), actions...),
@@ -37,6 +39,9 @@ func NewService(m *jobs.Manager, actions []Action, secret []byte, now func() tim
 			panic("maintenance: duplicate action name " + a.Name())
 		}
 		s.byName[a.Name()] = a
+	}
+	for _, o := range opts {
+		o(s)
 	}
 	return s
 }
