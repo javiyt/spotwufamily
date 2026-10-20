@@ -99,6 +99,14 @@ func executeArtistsReconcile(ctx context.Context, args []string, stdout, stderr 
 		return 2
 	}
 
+	if options.apply {
+		release, ok := lockDatabase(options.dbPath, "artists reconcile", stderr)
+		if !ok {
+			return 1
+		}
+		defer release()
+	}
+
 	database, err := sqliteadapter.Open(options.dbPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists reconcile: %v\n", err)

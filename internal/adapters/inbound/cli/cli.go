@@ -166,6 +166,14 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 		return 2
 	}
 
+	if !options.dryRun {
+		release, ok := lockDatabase(options.dbPath, "sync", stderr)
+		if !ok {
+			return 1
+		}
+		defer release()
+	}
+
 	runner, closeRunner, err := bootstrap.NewSyncRunner(options.catalogPath, options.dbPath, options.snapshotPath, os.Getenv,
 		bootstrap.WithDryRun(options.dryRun),
 		bootstrap.WithMarket(options.market),
@@ -226,6 +234,23 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 	}
 
 	return 0
+}
+
+// lockDatabase takes the cross-process lock that keeps admin jobs and CLI runs
+// from writing the database at once. It reports false after printing why the
+// command must stop.
+func lockDatabase(dbPath, command string, stderr io.Writer) (func(), bool) {
+	release, err := filesystem.NewResourceLock(dbPath + ".lock").TryLock()
+	if errors.Is(err, filesystem.ErrLocked) {
+		_, _ = fmt.Fprintln(stderr, "another operation holds the database")
+		return nil, false
+	}
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "%s: lock database: %v\n", command, err)
+		return nil, false
+	}
+
+	return release, true
 }
 
 func syncErrorExitCode(err error, snapshotErr error) int {

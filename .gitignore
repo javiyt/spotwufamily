@@ -32,6 +32,7 @@ coverage.txt
 data/catalog.db-wal
 data/catalog.db-shm
 data/catalog.db-journal
+data/catalog.db.lock
 
 mock_*.go
 coverage.txt
