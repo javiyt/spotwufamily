@@ -143,3 +143,16 @@ spotwufamily artists review-profile \
 2. Review profiles with `artists review-profile`, starting with groups and shared names.
 3. When every linked profile is reviewed, drop `profile_sync_policy` (or set `verified_only`).
 4. Rollback: the new keys are optional; deleting them returns to the legacy file shape.
+
+## Homonym reviews
+
+Identical or similar artist names, genres and group membership are never identity evidence. A profile is accepted only with independent evidence (for example a MusicBrainz artist credited on a release that the Spotify profile also lists), and a rejected ID stays in `spotify_profiles` with its evidence so the history is visible in the YAML, `artists audit-profiles` and the future admin. Reconcile already-synced rows with `artists reconcile` (see `docs/operations.md`).
+
+Decisions recorded on 2026-10-20 (issue #263):
+
+| Entry | Previous ID | Disposition | Evidence |
+| --- | --- | --- | --- |
+| `streetlife` | `0FCYBhXjpfQIQWNKiVEDg5` | **Rejected**, replaced by `7CrVv4zLga71gdlMOMfjXL` (verified) | The rejected profile is named "Streetlife Originals" (nu jazz, 1.2K followers): Sidewalk Stories (Paper Recordings, 1999) and compilation appearances, no Wu credits. The replacement lists "Street Education (Method Man Presents Street Life)" (2006), Wu-Tang Forever, Tical 2000, Iron Flag and The W; MusicBrainz `e70e310e-8e92-4da7-9aba-071bc6032a34` is credited with Method Man on release `ff16ca9f-137a-4638-9120-fdc1ac160ee1` "Street Education". |
+| `k-g-b` | `2gKwx0Lm0JoOrN2mY9Z0PG` | **Quarantined** (rejected, no replacement, entry disabled) | The profile mixes French releases (Retour d'exil, Seule la lutte paye), Neat Face/Trax Records releases and compilations. MusicBrainz K.G.B. `2d9e108a-8f89-4ac3-8e6c-98f0ab323a62` (US, alias Klik Ga Bow) is not shown to own it. Unverified candidate `7Jab8mHFYj7jSkFwKtPpxB` (KGB: Freek Tha Flo 1994, Bless Ya Life) matches MusicBrainz recording titles but has no Spotify URL relation; it is noted, not adopted. |
+
+To lift the K.G.B. quarantine, confirm a candidate against a primary Wu discography source, then `review-profile --status verified --link` it and enable the entry.

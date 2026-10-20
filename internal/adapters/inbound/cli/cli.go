@@ -961,6 +961,8 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsAuditProfiles(ctx, args[1:], stdout, stderr, store)
 	case "seed-db":
 		return executeArtistsSeedDB(ctx, args[1:], stdout, stderr, store)
+	case "reconcile":
+		return executeArtistsReconcile(ctx, args[1:], stdout, stderr, store)
 	case "help", "--help", "-h":
 		printArtistsHelp(stdout)
 		return 0
@@ -2287,6 +2289,7 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  seed-db")
 	_, _ = fmt.Fprintln(w, "  audit-albums")
 	_, _ = fmt.Fprintln(w, "  audit-profiles")
+	_, _ = fmt.Fprintln(w, "  reconcile")
 }
 
 func printSyncHelp(w io.Writer) {

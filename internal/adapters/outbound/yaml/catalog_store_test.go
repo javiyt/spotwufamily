@@ -131,3 +131,34 @@ func TestRepositoryCatalogRoundTripsByteForByte(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(original), string(saved), "loading and saving must not lose or reorder anything")
 }
+
+// TestRepositoryCatalogHomonymDispositions pins the #263 review decisions so a
+// later edit cannot silently re-link a rejected homonym profile.
+func TestRepositoryCatalogHomonymDispositions(t *testing.T) {
+	c, err := yamlcatalog.NewStore().Load(context.Background(), filepath.Join("..", "..", "..", "..", "data", "artists.yaml"))
+	require.NoError(t, err)
+	require.Empty(t, catalog.ValidateEditorialCatalog(c))
+
+	bySlug := map[string]catalog.Artist{}
+	for _, artist := range c.Artists {
+		bySlug[artist.Slug] = artist
+	}
+
+	streetlife := bySlug["streetlife"]
+	require.Equal(t, []string{"7CrVv4zLga71gdlMOMfjXL"}, streetlife.AllSpotifyIDs())
+	verified, ok := streetlife.ProfileFor("7CrVv4zLga71gdlMOMfjXL")
+	require.True(t, ok)
+	require.Equal(t, catalog.ProfileVerified, verified.Status)
+	rejected, ok := streetlife.ProfileFor("0FCYBhXjpfQIQWNKiVEDg5")
+	require.True(t, ok, "the previous ID stays in the audit history")
+	require.Equal(t, catalog.ProfileRejected, rejected.Status)
+	require.NotEmpty(t, rejected.Evidence)
+
+	kgb := bySlug["k-g-b"]
+	require.Empty(t, kgb.AllSpotifyIDs(), "no verified replacement: quarantined, not guessed")
+	require.False(t, kgb.Enabled)
+	rejected, ok = kgb.ProfileFor("2gKwx0Lm0JoOrN2mY9Z0PG")
+	require.True(t, ok)
+	require.Equal(t, catalog.ProfileRejected, rejected.Status)
+	require.NotEmpty(t, rejected.Evidence)
+}
