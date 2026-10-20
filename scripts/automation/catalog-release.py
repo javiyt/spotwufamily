@@ -141,6 +141,63 @@ def publish(args):
     print(f"Published https://github.com/{args.repo}/releases/tag/{tag}")
 
 
+def gh_authenticated():
+    # Exit code only: gh's output can name accounts, hosts or token sources,
+    # so it is discarded and never echoed.
+    try:
+        return subprocess.run(["gh", "auth", "status"], cwd=ROOT, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                              timeout=60).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def manifest_or_none(path, repo):
+    try:
+        return read_manifest(path, repo)
+    except (ValueError, OSError, TypeError, AttributeError, KeyError):
+        return None
+
+
+def preflight(args):
+    """Print one JSON object describing release prerequisites.
+
+    Read-only: it writes nothing and prints no paths or credentials. Unmet
+    prerequisites are reported, never raised.
+    """
+    output = Path(args.output)
+    try:
+        package_dir_clean = not output.exists() or (output.is_dir() and not any(output.iterdir()))
+    except OSError:
+        package_dir_clean = False
+    local = None
+    if Path(args.db).is_file():
+        try:
+            local = content_hash(args.db)
+        except (sqlite3.Error, OSError):
+            local = None
+    pinned = manifest_or_none(args.manifest, args.repo)
+    prepared = manifest_or_none(output / "catalog.release.json", args.repo)
+    if prepared is not None:
+        try:
+            check_assets(output, prepared)
+        except (ValueError, OSError):
+            prepared = None
+    pinned_sha = pinned["content_sha256"] if pinned else None
+    print(json.dumps({
+        "gh_authenticated": gh_authenticated(),
+        "go_available": shutil.which("go") is not None,
+        "package_dir_clean": package_dir_clean,
+        "pinned_matches_local": local is not None and pinned_sha == local,
+        "local_content_sha256": local,
+        "pinned_content_sha256": pinned_sha,
+        "last_release_tag": pinned["tag"] if pinned else None,
+        "prepared_tag": prepared["tag"] if prepared else None,
+        "prepared_content_sha256": prepared["content_sha256"] if prepared else None,
+        "prepared_assets": sorted((*ASSETS, "catalog.release.json")) if prepared else [],
+    }, sort_keys=True))
+
+
 def install(directory, manifest, db_path, snapshot_path, force=False):
     db_path, snapshot_path = Path(db_path), Path(snapshot_path)
     if db_path.resolve() == snapshot_path.resolve():
@@ -188,7 +245,7 @@ def fetch(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("prepare", "publish", "fetch"))
+    parser.add_argument("command", choices=("prepare", "publish", "fetch", "preflight"))
     parser.add_argument("--repo", default="javiyt/spotwufamily")
     parser.add_argument("--db", default="data/catalog.db")
     parser.add_argument("--snapshot", default="data/catalog.snapshot.sql.gz")
@@ -200,7 +257,7 @@ def main():
     args = parser.parse_args()
     os.chdir(ROOT)
     try:
-        {"prepare": prepare, "publish": publish, "fetch": fetch}[args.command](args)
+        {"prepare": prepare, "publish": publish, "fetch": fetch, "preflight": preflight}[args.command](args)
     except (ValueError, OSError, sqlite3.Error, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Catalog release: {error}\n")
 

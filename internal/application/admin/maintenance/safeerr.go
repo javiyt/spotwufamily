@@ -53,6 +53,14 @@ func Safe(err error) error {
 		return &SafeError{"rate_limited", fmt.Sprintf("The source is rate limited; retry after %d seconds.", secs)}
 	}
 	switch {
+	case errors.Is(err, ErrGhNotAuthenticated):
+		return &SafeError{"credentials_missing", "GitHub CLI is not authenticated. Run `gh auth login` in a terminal."}
+	case errors.Is(err, ErrReleasePackageNotClean):
+		return &SafeError{"conflict", "The release package directory is not empty; publish or remove the prepared package before preparing another."}
+	case errors.Is(err, ErrNothingPrepared):
+		return &SafeError{"validation", "Nothing is prepared for the current catalog content; run release-prepare first."}
+	case errors.Is(err, ErrReleasePrerequisite):
+		return &SafeError{"unavailable", "A release prerequisite is missing or the release script failed (python3, Go and the release script are required)."}
 	case errors.As(err, &jc), errors.Is(err, jobs.ErrConflict), errors.As(err, &ac), errors.As(err, &ar), errors.Is(err, ErrLocked):
 		return &SafeError{"conflict", "Another change or job is in progress for this resource."}
 	case errors.As(err, &av), errors.Is(err, artists.ErrInvalidMapping):
