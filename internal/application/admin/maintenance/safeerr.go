@@ -53,7 +53,7 @@ func Safe(err error) error {
 		return &SafeError{"rate_limited", fmt.Sprintf("The source is rate limited; retry after %d seconds.", secs)}
 	}
 	switch {
-	case errors.As(err, &jc), errors.Is(err, jobs.ErrConflict), errors.As(err, &ac), errors.As(err, &ar):
+	case errors.As(err, &jc), errors.Is(err, jobs.ErrConflict), errors.As(err, &ac), errors.As(err, &ar), errors.Is(err, ErrLocked):
 		return &SafeError{"conflict", "Another change or job is in progress for this resource."}
 	case errors.As(err, &av), errors.Is(err, artists.ErrInvalidMapping):
 		return &SafeError{"validation", "The request is not valid."}
