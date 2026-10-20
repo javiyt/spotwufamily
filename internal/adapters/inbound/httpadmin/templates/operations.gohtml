@@ -1,0 +1,14 @@
+{{define "content"}}{{with .Data}}
+<dl class="stats">
+<div><dt>Database</dt><dd>{{if .DatabaseAvailable}}available{{else}}unavailable (offline){{end}}</dd></div>
+<div><dt>Spotify credentials</dt><dd>{{if .SpotifyCredentialsPresent}}present{{else}}missing{{end}}</dd></div>
+<div><dt>Last sync</dt><dd>{{if .LastSyncAt}}{{.LastSyncStatus}} · {{.LastSyncAt}}{{else}}never{{end}}</dd></div>
+</dl>
+<p>Operations run from the CLI; this UI never calls Spotify. Common commands:</p>
+<ul>
+<li><code>make artists-validate</code> validate the YAML catalog</li>
+<li><code>make sync-all</code> sync enabled artists (needs credentials)</li>
+<li><code>make db-verify</code> verify the database</li>
+<li><code>make export</code> regenerate the static JSON</li>
+</ul>
+{{end}}{{end}}

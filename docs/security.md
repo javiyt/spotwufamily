@@ -6,6 +6,11 @@
 - Spotify credentials must never be written to `site/`, generated JSON, logs or PR bodies.
 - The static site must never call Spotify directly.
 
+## Local admin
+
+- `admin serve` is local-only by default, requires a session token, CSRF tokens and Host/Origin checks, and is never deployed with the static site. See [Local admin](admin.md).
+- Spotify credentials stay in the Go process; the admin only reports whether they are present.
+
 ## GitHub Automation
 
 - `catalog-sync.yml` writes only catalog artifacts to `automation/catalog-sync-*` branches.

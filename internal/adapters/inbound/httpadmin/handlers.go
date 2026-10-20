@@ -1,0 +1,360 @@
+package httpadmin
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"html/template"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/javiyt/spotwufamily/internal/application/admin"
+)
+
+const maxSearchLength = 100
+
+var navItems = []struct{ Path, Label string }{
+	{"/", "Dashboard"},
+	{"/artists", "Artists"},
+	{"/groups", "Groups"},
+	{"/review", "Review queue"},
+	{"/operations", "Operations"},
+}
+
+type view struct {
+	Title  string
+	Path   string
+	Nav    []struct{ Path, Label string }
+	Authed bool
+	CSRF   string
+	Data   any
+}
+
+type pager struct {
+	Path     string
+	Search   string
+	Page     int
+	Pages    int
+	Total    int
+	PrevURL  string
+	NextURL  string
+	HasPrev  bool
+	HasNext  bool
+	PageSize int
+}
+
+func newPager(path string, page, pages, total, size int, search string) pager {
+	p := pager{Path: path, Search: search, Page: page, Pages: pages, Total: total, PageSize: size, HasPrev: page > 1, HasNext: page < pages}
+	link := func(n int) string {
+		v := url.Values{}
+		if search != "" {
+			v.Set("q", search)
+		}
+		v.Set("page", strconv.Itoa(n))
+		return path + "?" + v.Encode()
+	}
+	p.PrevURL, p.NextURL = link(page-1), link(page+1)
+	return p
+}
+
+func listQuery(r *http.Request) admin.ListQuery {
+	q := r.URL.Query()
+	search := strings.TrimSpace(q.Get("q"))
+	if len(search) > maxSearchLength {
+		search = search[:maxSearchLength]
+	}
+	page, _ := strconv.Atoi(q.Get("page"))
+	size, _ := strconv.Atoi(q.Get("page_size"))
+	return admin.ListQuery{Search: search, Page: page, PageSize: size}
+}
+
+func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	d, err := s.svc.Dashboard(r.Context())
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	s.render(w, r, "dashboard", "Dashboard", dashboardView(d))
+}
+
+func (s *Server) handleArtists(w http.ResponseWriter, r *http.Request) {
+	page, err := s.svc.ListArtists(r.Context(), listQuery(r))
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	s.render(w, r, "artists", "Artists", map[string]any{
+		"Page": page, "Pager": newPager("/artists", page.Page, page.Pages, page.Total, page.PageSize, page.Search),
+	})
+}
+
+func (s *Server) handleGroups(w http.ResponseWriter, r *http.Request) {
+	page, err := s.svc.ListGroups(r.Context(), listQuery(r))
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	s.render(w, r, "groups", "Groups", map[string]any{
+		"Page": page, "Pager": newPager("/groups", page.Page, page.Pages, page.Total, page.PageSize, page.Search),
+	})
+}
+
+func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
+	page, err := s.svc.ReviewQueue(r.Context(), listQuery(r))
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	s.render(w, r, "review", "Review queue", map[string]any{
+		"Page": page, "Pager": newPager("/review", page.Page, page.Pages, page.Total, page.PageSize, page.Search),
+	})
+}
+
+func (s *Server) handleOperations(w http.ResponseWriter, r *http.Request) {
+	d, err := s.svc.Dashboard(r.Context())
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	s.render(w, r, "operations", "Operations", dashboardView(d))
+}
+
+type dashboardViewModel struct {
+	admin.Dashboard
+	LastSyncStatus string
+	LastSyncAt     string
+}
+
+func dashboardView(d admin.Dashboard) dashboardViewModel {
+	vm := dashboardViewModel{Dashboard: d}
+	if d.LastSync != nil {
+		vm.LastSyncStatus = d.LastSync.Status
+		t := d.LastSync.FinishedAt
+		if t.IsZero() {
+			t = d.LastSync.StartedAt
+		}
+		if !t.IsZero() {
+			vm.LastSyncAt = t.UTC().Format(time.RFC3339)
+		}
+	}
+	return vm
+}
+
+// --- authentication ---
+
+func (s *Server) handleAuth(w http.ResponseWriter, r *http.Request) {
+	s.exchangeToken(w, r, r.URL.Query().Get("token"))
+}
+
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		s.render(w, r, "login", "Sign in", nil)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		s.formError(w, r, err)
+		return
+	}
+	s.exchangeToken(w, r, r.PostForm.Get("token"))
+}
+
+func (s *Server) exchangeToken(w http.ResponseWriter, r *http.Request, got string) {
+	if s.limiter.blocked() {
+		w.Header().Set("Retry-After", "60")
+		s.fail(w, r, http.StatusTooManyRequests, "rate_limited", "too many failed attempts; try again later")
+		return
+	}
+	if !tokenEqual(got, s.opts.Token) {
+		s.limiter.record()
+		s.fail(w, r, http.StatusUnauthorized, "unauthorized", "invalid token")
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: s.sessions.create(), Path: "/",
+		HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: r.TLS != nil,
+		MaxAge: int(sessionTTL.Seconds()),
+	})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.formError(w, r, err)
+		return
+	}
+	id := s.sessionID(r)
+	if !s.sessions.checkCSRF(id, r.PostForm.Get("csrf_token")) {
+		s.fail(w, r, http.StatusForbidden, "invalid_csrf", "invalid or missing CSRF token")
+		return
+	}
+	s.sessions.destroy(id)
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteStrictMode})
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+func (s *Server) formError(w http.ResponseWriter, r *http.Request, err error) {
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		s.fail(w, r, http.StatusRequestEntityTooLarge, "payload_too_large", "request body too large")
+		return
+	}
+	s.fail(w, r, http.StatusBadRequest, "bad_request", "malformed request")
+}
+
+// --- JSON API ---
+
+type apiPage[T any] struct {
+	Items    []T    `json:"items"`
+	Total    int    `json:"total"`
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
+	Pages    int    `json:"pages"`
+	Search   string `json:"search,omitempty"`
+}
+
+func toAPIPage[S, T any](p admin.Page[S], conv func(S) T) apiPage[T] {
+	items := make([]T, 0, len(p.Items))
+	for _, it := range p.Items {
+		items = append(items, conv(it))
+	}
+	return apiPage[T]{Items: items, Total: p.Total, Page: p.Page, PageSize: p.PageSize, Pages: p.Pages, Search: p.Search}
+}
+
+func (s *Server) apiDashboard(w http.ResponseWriter, r *http.Request) {
+	d, err := s.svc.Dashboard(r.Context())
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	vm := dashboardView(d)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"artists": d.Artists, "enabled": d.Enabled, "groups": d.Groups, "people": d.People,
+		"spotify_ids":   map[string]int{"verified": d.VerifiedIDs, "pending": d.PendingIDs, "unresolved": d.UnresolvedIDs},
+		"relationships": d.Relationships, "review_queue": d.ReviewQueue,
+		"pending_reconciliation": d.PendingReconciliation, "database_available": d.DatabaseAvailable,
+		"last_sync":                   map[string]string{"status": vm.LastSyncStatus, "at": vm.LastSyncAt},
+		"spotify_credentials_present": d.SpotifyCredentialsPresent,
+	})
+}
+
+func (s *Server) apiArtists(w http.ResponseWriter, r *http.Request) {
+	p, err := s.svc.ListArtists(r.Context(), listQuery(r))
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	type row struct {
+		Slug     string `json:"slug"`
+		Name     string `json:"name"`
+		Category string `json:"category"`
+		Enabled  bool   `json:"enabled"`
+		IDState  string `json:"id_state"`
+		IDs      int    `json:"spotify_id_count"`
+		Group    bool   `json:"group"`
+	}
+	writeJSON(w, http.StatusOK, toAPIPage(p, func(a admin.ArtistRow) row {
+		return row{a.Slug, a.Name, string(a.Category), a.Enabled, string(a.IDState), a.IDs, a.Group}
+	}))
+}
+
+func (s *Server) apiGroups(w http.ResponseWriter, r *http.Request) {
+	p, err := s.svc.ListGroups(r.Context(), listQuery(r))
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	type row struct {
+		Slug            string `json:"slug"`
+		Name            string `json:"name"`
+		IDState         string `json:"id_state"`
+		VerifiedMembers int    `json:"verified_members"`
+		ProposedMembers int    `json:"proposed_members"`
+	}
+	writeJSON(w, http.StatusOK, toAPIPage(p, func(g admin.GroupRow) row {
+		return row{g.Slug, g.Name, string(g.IDState), g.VerifiedMembers, g.ProposedMembers}
+	}))
+}
+
+func (s *Server) apiReview(w http.ResponseWriter, r *http.Request) {
+	p, err := s.svc.ReviewQueue(r.Context(), listQuery(r))
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	type row struct {
+		Kind   string `json:"kind"`
+		Artist string `json:"artist"`
+		Name   string `json:"name"`
+		Detail string `json:"detail"`
+		Status string `json:"status"`
+	}
+	writeJSON(w, http.StatusOK, toAPIPage(p, func(i admin.ReviewItem) row {
+		return row{i.Kind, i.Artist, i.Name, i.Detail, i.Status}
+	}))
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+// --- rendering and errors ---
+
+func parseTemplates() (map[string]*template.Template, error) {
+	out := map[string]*template.Template{}
+	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error"} {
+		t, err := template.ParseFS(templateFS, "templates/layout.gohtml", "templates/"+name+".gohtml")
+		if err != nil {
+			return nil, err
+		}
+		out[name] = t
+	}
+	return out, nil
+}
+
+func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title string, data any) {
+	v := view{Title: title, Path: r.URL.Path, Nav: navItems, Data: data}
+	if id := s.sessionID(r); s.sessions.valid(id) {
+		v.Authed, v.CSRF = true, s.sessions.csrf(id)
+	}
+	var buf bytes.Buffer
+	if err := s.templates[name].ExecuteTemplate(&buf, "layout", v); err != nil {
+		s.logger.Printf("render %s: %v", name, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(buf.Bytes())
+}
+
+func wantsJSON(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, "/api/") || strings.Contains(r.Header.Get("Accept"), "application/json")
+}
+
+// fail writes a structured, non-secret error in the format the client expects.
+func (s *Server) fail(w http.ResponseWriter, r *http.Request, status int, code, message string) {
+	if wantsJSON(r) {
+		writeJSON(w, status, map[string]any{"error": map[string]string{"code": code, "message": message}})
+		return
+	}
+	var buf bytes.Buffer
+	v := view{Title: http.StatusText(status), Path: r.URL.Path, Nav: navItems,
+		Data: map[string]any{"Status": status, "Message": message, "Code": code}}
+	if err := s.templates["error"].ExecuteTemplate(&buf, "layout", v); err != nil {
+		http.Error(w, message, status)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write(buf.Bytes())
+}
+
+// internal logs the real error server-side and tells the client nothing more.
+func (s *Server) internal(w http.ResponseWriter, r *http.Request, err error) {
+	s.logger.Printf("internal error on %s %s: %v", r.Method, r.URL.Path, err)
+	s.fail(w, r, http.StatusInternalServerError, "internal", "internal error")
+}

@@ -1,0 +1,5 @@
+{{define "content"}}{{with .Data}}
+<p class="notice" role="alert">{{.Status}} · {{.Message}}</p>
+{{if eq .Status 401}}<p>Open the launch URL printed by <code>spotwufamily admin serve</code>, or <a href="/login">sign in with the token</a>.</p>{{end}}
+<p><a href="/">Back to dashboard</a></p>
+{{end}}{{end}}

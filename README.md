@@ -257,6 +257,7 @@ make site-build
 - [Spotify](docs/spotify.md)
 - [Automation](docs/automation.md)
 - [Operations](docs/operations.md)
+- [Local admin](docs/admin.md)
 - [Security](docs/security.md)
 - [End-to-end verification](docs/e2e.md)
 - [Release readiness](docs/release-readiness.md)

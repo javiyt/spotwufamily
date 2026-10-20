@@ -1,0 +1,9 @@
+{{define "content"}}{{with .Data}}{{template "search" .Pager}}
+<table>
+<caption class="sr">Review queue</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Artist</th><th scope="col">Detail</th><th scope="col">Status</th></tr></thead>
+<tbody>
+{{range .Page.Items}}<tr><td>{{.Kind}}</td><th scope="row">{{.Name}} <code>{{.Artist}}</code></th><td>{{.Detail}}</td><td>{{.Status}}</td></tr>
+{{else}}<tr><td colspan="4">Nothing is waiting for review.</td></tr>
+{{end}}</tbody></table>
+{{template "pager" .Pager}}{{end}}{{end}}

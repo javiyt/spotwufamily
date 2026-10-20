@@ -1,0 +1,43 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>{{.Title}} · Spot Wu Family admin</title>
+<link rel="stylesheet" href="/static/admin.css">
+<script src="/static/admin.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+<strong class="brand">Spot Wu Family <span>local admin</span></strong>
+{{if .Authed}}
+<nav aria-label="Main">
+<ul>
+{{$path := .Path}}{{range .Nav}}<li><a href="{{.Path}}"{{if eq .Path $path}} aria-current="page"{{end}}>{{.Label}}</a></li>
+{{end}}</ul>
+</nav>
+<form method="post" action="/logout" class="logout">
+<input type="hidden" name="csrf_token" value="{{.CSRF}}">
+<button type="submit">Sign out</button>
+</form>
+{{end}}
+</header>
+<main id="main" tabindex="-1">
+<h1>{{.Title}}</h1>
+{{template "content" .}}
+</main>
+<footer>Read-only foundation. Edits happen via the CLI or YAML for now.</footer>
+</body>
+</html>{{end}}
+{{define "pager"}}<nav class="pager" aria-label="Pagination">
+<span>{{.Total}} result{{if ne .Total 1}}s{{end}} · page {{.Page}} of {{.Pages}}</span>
+{{if .HasPrev}}<a rel="prev" href="{{.PrevURL}}">Previous</a>{{end}}
+{{if .HasNext}}<a rel="next" href="{{.NextURL}}">Next</a>{{end}}
+</nav>{{end}}
+{{define "search"}}<form method="get" action="{{.Path}}" class="search" role="search">
+<label for="q">Search</label>
+<input id="q" type="search" name="q" value="{{.Search}}" maxlength="100" autocomplete="off" data-hotkey="/">
+<button type="submit">Search</button>
+</form>{{end}}

@@ -1,0 +1,8 @@
+{{define "content"}}
+<p>Paste the token printed by <code>spotwufamily admin serve</code>, or open the full launch URL it printed.</p>
+<form method="post" action="/login" class="search">
+<label for="token">Token</label>
+<input id="token" type="password" name="token" autocomplete="off" required>
+<button type="submit">Sign in</button>
+</form>
+{{end}}

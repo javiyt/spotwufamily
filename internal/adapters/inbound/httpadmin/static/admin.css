@@ -1,0 +1,28 @@
+:root{--bg:#fafafa;--fg:#1a1a1a;--muted:#555;--line:#d6d6d6;--accent:#8a5a00;--card:#fff;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#141414;--fg:#eee;--muted:#aaa;--line:#333;--accent:#f0b84a;--card:#1d1d1d}}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:var(--card);padding:.5rem;z-index:2}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.top{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;align-items:center;padding:.75rem 1rem;border-bottom:1px solid var(--line);background:var(--card)}
+.brand span{color:var(--muted);font-weight:400}
+nav ul{display:flex;flex-wrap:wrap;gap:1rem;margin:0;padding:0;list-style:none}
+a{color:var(--accent)}a[aria-current=page]{font-weight:700}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+main{max-width:70rem;margin:0 auto;padding:1rem}
+footer{max-width:70rem;margin:0 auto;padding:1rem;color:var(--muted);font-size:.875rem}
+.logout{margin-left:auto}
+button,input{font:inherit;padding:.4rem .7rem;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg)}
+button{cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.75rem;margin:0 0 1.5rem}
+.stats div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.75rem}
+.stats dt{color:var(--muted);font-size:.875rem}.stats dd{margin:0;font-size:1.4rem;font-weight:600}
+.search{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;background:var(--card)}
+th,td{text-align:left;padding:.5rem;border-bottom:1px solid var(--line);vertical-align:top}
+.table-wrap{overflow-x:auto}
+@media (max-width:40rem){table{display:block;overflow-x:auto}}
+.pager{display:flex;gap:1rem;align-items:center;margin-top:1rem}
+.notice{padding:.6rem .8rem;border:1px solid var(--line);border-left:4px solid var(--accent);background:var(--card)}
+.tag,.state{font-size:.75rem;padding:.1rem .4rem;border:1px solid var(--line);border-radius:999px}
+.state.verified{border-color:#2e7d32}.state.unresolved{border-color:#b00020}

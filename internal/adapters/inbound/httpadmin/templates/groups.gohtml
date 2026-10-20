@@ -1,0 +1,9 @@
+{{define "content"}}{{with .Data}}{{template "search" .Pager}}
+<table>
+<caption class="sr">Groups</caption>
+<thead><tr><th scope="col">Group</th><th scope="col">Slug</th><th scope="col">Spotify ID</th><th scope="col">Verified members</th><th scope="col">Proposed members</th></tr></thead>
+<tbody>
+{{range .Page.Items}}<tr><th scope="row">{{.Name}}</th><td><code>{{.Slug}}</code></td><td><span class="state {{.IDState}}">{{.IDState}}</span></td><td>{{.VerifiedMembers}}</td><td>{{.ProposedMembers}}</td></tr>
+{{else}}<tr><td colspan="5">No groups match.</td></tr>
+{{end}}</tbody></table>
+{{template "pager" .Pager}}{{end}}{{end}}
