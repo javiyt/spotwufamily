@@ -251,6 +251,7 @@ func (m *Manager) Recover(ctx context.Context) error {
 		j := l
 		if !j.Status.Terminal() {
 			j.Status = StatusInterrupted
+			j.Message = "interrupted by server restart"
 			j.FinishedAt = m.now()
 			if err := m.store.Save(ctx, snapshot(&j)); err != nil {
 				return fmt.Errorf("persist interrupted job: %w", err)

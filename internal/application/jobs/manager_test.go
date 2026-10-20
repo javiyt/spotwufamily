@@ -236,3 +236,51 @@ func TestRecoverMarksActiveJobsInterrupted(t *testing.T) {
 		t.Fatalf("not persisted: %v", s)
 	}
 }
+
+func TestRecoverMarksRunningAndQueuedInterrupted(t *testing.T) {
+	store := &fakeStore{load: []jobs.Job{
+		{ID: "r", Status: jobs.StatusRunning, Resumable: true, Resources: []string{"x"}},
+		{ID: "q", Status: jobs.StatusQueued},
+	}}
+	m := newManager(store)
+	if err := m.Recover(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"r", "q"} {
+		j, _ := m.Get(id)
+		if j.Status != jobs.StatusInterrupted || j.FinishedAt.IsZero() || j.Message == "" {
+			t.Fatalf("%s: %+v", id, j)
+		}
+	}
+	r, _ := m.Get("r")
+	if !r.Resumable {
+		t.Fatalf("resumable lost: %+v", r)
+	}
+	// resources must not be held after recovery
+	started := make(chan struct{})
+	release := make(chan struct{})
+	close(release)
+	if _, err := m.Submit(context.Background(), jobs.Spec{Kind: "k", Resources: []string{"x"}, Run: blocking(started, release)}); err != nil {
+		t.Fatalf("resource still held: %v", err)
+	}
+}
+
+func TestRecoverKeepsTerminalJobs(t *testing.T) {
+	fin := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	store := &fakeStore{load: []jobs.Job{
+		{ID: "a", Status: jobs.StatusFailed, Message: "boom", FinishedAt: fin},
+		{ID: "b", Status: jobs.StatusPartial, Resumable: true, FinishedAt: fin},
+	}}
+	m := newManager(store)
+	if err := m.Recover(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := m.Get("a")
+	b, _ := m.Get("b")
+	if a.Status != jobs.StatusFailed || a.Message != "boom" || !a.FinishedAt.Equal(fin) || b.Status != jobs.StatusPartial || !b.Resumable {
+		t.Fatalf("a=%+v b=%+v", a, b)
+	}
+	if len(store.saved) != 0 {
+		t.Fatalf("terminal jobs rewritten: %v", store.saved)
+	}
+}
