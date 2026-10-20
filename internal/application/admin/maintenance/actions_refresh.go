@@ -199,7 +199,9 @@ func (a *refreshAction) run(ctx context.Context, r jobs.Reporter, force bool) (j
 		wait = d
 	}
 	r.Count("failed", len(failed))
-	if err != nil && len(report.Errors) == 0 && wait == 0 {
+	// Only a run that finished (possibly with per-artist errors) is partial;
+	// any other error aborted it, and its counts may include unsaved updates.
+	if _, limited := artists.RetryAfterOf(err); err != nil && !limited && !errors.Is(err, artists.ErrRefreshCompletedWithErrors) {
 		return jobs.Outcome{}, Safe(err)
 	}
 

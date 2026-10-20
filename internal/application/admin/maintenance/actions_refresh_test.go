@@ -247,7 +247,7 @@ func TestRefreshRateLimitEndsPartialResumable(t *testing.T) {
 		ArtistsWithIDs: 3, Updated: 1,
 		Errors: []artists.RefreshGenresError{{Slug: "gza", ID: "x", Err: rate}},
 	}
-	fx.runner.err = fmt.Errorf("refresh genres completed with 1 errors")
+	fx.runner.err = fmt.Errorf("refresh genres completed with 1 errors: %w", artists.ErrRefreshCompletedWithErrors)
 
 	_, out, r, err := runAction(t, NewRefreshMetadata(fx.deps), Params{})
 	if err != nil {
@@ -342,5 +342,43 @@ func TestRefreshFingerprintTracksCatalog(t *testing.T) {
 	second, _ := a.Preview(context.Background(), Params{})
 	if first.Fingerprint == second.Fingerprint {
 		t.Fatal("a changed catalog must change the fingerprint")
+	}
+}
+
+func TestRefreshFatalErrorAfterArtistErrorsFails(t *testing.T) {
+	fx := newRefreshFixture(true)
+	fx.runner.report = artists.RefreshGenresReport{
+		ArtistsWithIDs: 3, Updated: 1,
+		Errors: []artists.RefreshGenresError{{Slug: "gza", ID: "x", Err: errors.New("spotify timeout")}},
+	}
+	fx.runner.err = errors.New("save artist catalog: rename /secret/artists.yaml: no space left")
+
+	_, out, _, err := runAction(t, NewRefreshMetadata(fx.deps), Params{})
+	var se *SafeError
+	if !errors.As(err, &se) || strings.Contains(se.Error(), "secret") {
+		t.Fatalf("a fatal error must fail the job safely, got out=%+v err=%v", out, err)
+	}
+	if out.Status == jobs.StatusPartial {
+		t.Fatalf("fatal error reported as partial: %+v", out)
+	}
+	if got := fx.log.get(); got[len(got)-1] != "release" {
+		t.Fatalf("lock must be released: %v", got)
+	}
+}
+
+func TestRefreshArtistErrorsEndPartial(t *testing.T) {
+	fx := newRefreshFixture(true)
+	fx.runner.report = artists.RefreshGenresReport{
+		ArtistsWithIDs: 2, Updated: 1,
+		Errors: []artists.RefreshGenresError{{Slug: "gza", ID: "x", Err: errors.New("spotify timeout")}},
+	}
+	fx.runner.err = fmt.Errorf("refresh genres completed with 1 errors: %w", artists.ErrRefreshCompletedWithErrors)
+
+	_, out, r, err := runAction(t, NewRefreshMetadata(fx.deps), Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Status != jobs.StatusPartial || out.Resumable || r.counts["failed"] != 1 {
+		t.Fatalf("outcome %+v counts %v", out, r.counts)
 	}
 }
