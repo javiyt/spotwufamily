@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -76,4 +77,44 @@ func (c *countingLog) Append(context.Context, OperationEntry) error { return nil
 func (c *countingLog) Recent(_ context.Context, n int) ([]OperationEntry, error) {
 	c.asked = n
 	return nil, nil
+}
+
+func TestActionComputesOnlyTheNamedAction(t *testing.T) {
+	a, b := newFake("a"), newFake("b")
+	b.available, b.reason = false, "b is broken"
+	counting := &countingAvail{fakeAction: newFake("c")}
+	s, _, _ := newTestService(t, a, b, counting)
+
+	info, ok := s.Action("b")
+	if !ok || info.Available || info.UnavailableReason != "b is broken" || info.Title != "Fake b" {
+		t.Fatalf("Action(b) = %+v, %v", info, ok)
+	}
+	if _, ok := s.Action("a"); !ok {
+		t.Fatal("Action(a) must be found")
+	}
+	if counting.calls.Load() != 0 {
+		t.Fatal("Action must not compute other actions' availability")
+	}
+	for _, name := range []string{"missing", ""} {
+		if info, ok := s.Action(name); ok || info != (ActionInfo{}) {
+			t.Fatalf("Action(%q) = %+v, %v; want not found", name, info, ok)
+		}
+	}
+}
+
+type countingAvail struct {
+	*fakeAction
+	calls atomic.Int32
+}
+
+func (c *countingAvail) Available() (bool, string) {
+	c.calls.Add(1)
+	return true, ""
+}
+
+func TestUnknownActionErrorIsExported(t *testing.T) {
+	s, _, _ := newTestService(t, newFake("a"))
+	if _, _, err := s.Preview(context.Background(), "nope", Params{}); !errors.Is(err, ErrUnknownAction) {
+		t.Fatalf("want ErrUnknownAction, got %v", err)
+	}
 }

@@ -41,6 +41,14 @@ type Action interface {
 	Available() (bool, string)
 }
 
+// QuickAvailability is optionally implemented by actions whose Available is
+// costly. AvailableNow must return promptly (a cached or "checking" answer);
+// Service.Actions uses it, while Service.Action and the preview/run path
+// keep calling Available.
+type QuickAvailability interface {
+	AvailableNow() (bool, string)
+}
+
 // Description is static metadata an action may expose for listings.
 type Description struct {
 	Title       string

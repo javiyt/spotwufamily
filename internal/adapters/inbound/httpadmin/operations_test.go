@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -23,6 +24,8 @@ import (
 )
 
 const syncCaveat = "Spotify request counts are an estimate"
+
+var regexpToken = regexp.MustCompile(`name="token" value="([^"]+)"`)
 
 // fakeOp is a Service that implements both Maintenance and Operator.
 type fakeOp struct {
@@ -46,17 +49,23 @@ type fakeOp struct {
 
 	recent    []maintenance.OperationEntry
 	recentErr error
+	listCalls int
 	eligible  map[string]string // job ID -> action
 }
 
 func (f *fakeOp) Actions() []maintenance.ActionInfo {
 	f.opMu.Lock()
 	defer f.opMu.Unlock()
+	f.listCalls++
 	return append([]maintenance.ActionInfo(nil), f.actions...)
 }
 
+func (f *fakeOp) Action(name string) (maintenance.ActionInfo, bool) { return f.info(name) }
+
 func (f *fakeOp) info(name string) (maintenance.ActionInfo, bool) {
-	for _, a := range f.Actions() {
+	f.opMu.Lock()
+	defer f.opMu.Unlock()
+	for _, a := range f.actions {
 		if a.Name == name {
 			return a, true
 		}
@@ -73,10 +82,13 @@ func (f *fakeOp) PreviewAction(_ context.Context, name string, p maintenance.Par
 	}
 	a, ok := f.info(name)
 	if !ok {
-		return maintenance.Preview{}, "", &maintenance.SafeError{Code: "not_found", Message: "The requested action was not found."}
+		return maintenance.Preview{}, "", maintenance.ErrUnknownAction
 	}
 	if !a.Available {
 		return maintenance.Preview{}, "", maintenance.ErrUnavailable
+	}
+	if p["artist"] == "ghost" {
+		return maintenance.Preview{}, "", &maintenance.SafeError{Code: "not_found", Message: "The requested item was not found."}
 	}
 	if _, bad := p["bogus"]; bad {
 		return maintenance.Preview{}, "", &maintenance.SafeError{Code: "validation", Message: `Unknown parameter: "bogus".`}
@@ -656,4 +668,153 @@ func TestOperationRoutesAbsentWithoutOperator(t *testing.T) {
 	for _, target := range []string{"/operations/freshness", "/operations/sync/preview", "/operations/sync/run"} {
 		require.Equal(t, http.StatusNotFound, e.post(target, e.form(), "http://"+host).Code, target)
 	}
+}
+
+func TestFormPreviewRunNeverListAllActions(t *testing.T) {
+	e := newOpsEnv(t)
+	e.svc.listCalls = 0
+	e.get(t, "/operations/sync-dry-run")
+	e.send("/operations/sync-dry-run/preview", e.form("scope", "all"))
+	e.send("/operations/sync-dry-run/run", e.form("scope", "all", "token", "tok-secret-sync-dry-run"))
+	e.get(t, "/operations/nope")
+	require.Zero(t, e.svc.listCalls, "per-action pages look up only their own action")
+}
+
+func TestPreviewNotFoundOtherThanUnknownActionReRendersForm(t *testing.T) {
+	e := newOpsEnv(t, func(f *fakeOp) {
+		f.actions = append(f.actions, maintenance.ActionInfo{Name: "reconcile-dry-run", Title: "Reconcile (dry run)", Available: true})
+	})
+	rec := e.send("/operations/reconcile-dry-run/preview", e.form("artist", "ghost"))
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	body := rec.Body.String()
+	require.Contains(t, body, "The requested item was not found.")
+	require.Contains(t, body, `action="/operations/reconcile-dry-run/preview"`)
+	require.Contains(t, body, `value="ghost"`)
+}
+
+func TestRunUnavailableShowsTheActionsOwnReason(t *testing.T) {
+	e := newOpsEnv(t)
+	// The action becomes unavailable between the page load and the run.
+	e.svc.runErr = maintenance.ErrUnavailable
+	e.svc.opMu.Lock()
+	for i := range e.svc.actions {
+		if e.svc.actions[i].Name == "sync-dry-run" {
+			e.svc.actions[i].UnavailableReason = "The catalog is being edited elsewhere"
+		}
+	}
+	e.svc.opMu.Unlock()
+	rec := e.send("/operations/sync-dry-run/run", e.form("scope", "all", "token", "tok-secret-sync-dry-run"))
+	require.Equal(t, http.StatusConflict, rec.Code)
+	require.Contains(t, rec.Body.String(), "The catalog is being edited elsewhere")
+}
+
+func TestTypedConfirmationHelpOnlyForRealSync(t *testing.T) {
+	e := newOpsEnv(t)
+	require.Contains(t, e.get(t, "/operations/sync").Body.String(), "typed confirmation")
+	require.NotContains(t, e.get(t, "/operations/sync-dry-run").Body.String(), "typed confirmation")
+}
+
+// --- real maintenance.Service: the release preflight stays off other paths ---
+
+type memJobStore struct{}
+
+func (memJobStore) Save(context.Context, jobs.Job) error     { return nil }
+func (memJobStore) Load(context.Context) ([]jobs.Job, error) { return nil, nil }
+
+// plainAction is a cheap action named "sync" for the real service.
+type plainAction struct{}
+
+func (plainAction) Name() string                      { return "sync" }
+func (plainAction) Validate(maintenance.Params) error { return nil }
+func (plainAction) Available() (bool, string)         { return true, "" }
+func (plainAction) Preview(context.Context, maintenance.Params) (maintenance.Preview, error) {
+	return maintenance.Preview{Title: "Sync", Fingerprint: "fp"}, nil
+}
+func (plainAction) Spec(context.Context, maintenance.Params) (jobs.Spec, error) {
+	return jobs.Spec{Kind: "sync", Resources: []string{"database"}, Run: func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
+		return jobs.Outcome{Status: jobs.StatusSucceeded}, nil
+	}}, nil
+}
+
+// hangingReleaser blocks every Preflight until release is closed.
+type hangingReleaser struct {
+	calls   atomic.Int32
+	release chan struct{}
+}
+
+func (h *hangingReleaser) Preflight(ctx context.Context) (maintenance.Prereq, error) {
+	h.calls.Add(1)
+	select {
+	case <-h.release:
+	case <-ctx.Done():
+	}
+	return maintenance.Prereq{}, errors.New("preflight aborted")
+}
+func (h *hangingReleaser) Prepare(context.Context) (maintenance.PackageInfo, error) {
+	return maintenance.PackageInfo{}, errors.New("not used")
+}
+func (h *hangingReleaser) Publish(context.Context) (maintenance.PublishInfo, error) {
+	return maintenance.PublishInfo{}, errors.New("not used")
+}
+
+type noPrepared struct{}
+
+func (noPrepared) LastPrepared() (string, bool) { return "", false }
+
+type realOps struct {
+	*fakeService
+	*maintenance.Service
+}
+
+func newRealOpsEnv(t *testing.T) (*opsEnv, *hangingReleaser) {
+	t.Helper()
+	rel := &hangingReleaser{release: make(chan struct{})}
+	t.Cleanup(func() { close(rel.release) })
+	var n atomic.Int32
+	m := jobs.NewManager(memJobStore{}, time.Now, func() string {
+		return "c0ffee00-0000-4000-8000-00000000000" + string(rune('0'+n.Add(1)))
+	})
+	deps := maintenance.ReleaseDeps{Releaser: rel, Prepared: noPrepared{}, PackageName: "pkg", Repo: "r", ManifestName: "m"}
+	svc := maintenance.NewService(m, []maintenance.Action{plainAction{}, maintenance.NewReleasePrepare(deps), maintenance.NewReleasePublish(deps)},
+		[]byte("secret"), time.Now)
+	composed := realOps{fakeService: &fakeService{dashboard: admin.Dashboard{DatabaseAvailable: true, SpotifyCredentialsPresent: true}}, Service: svc}
+	var logs bytes.Buffer
+	srv, err := httpadmin.New(composed, httpadmin.Options{Addr: host, Token: token, Log: &logs})
+	require.NoError(t, err)
+	h := srv.Handler()
+	cookie := login(t, h)
+	return &opsEnv{h: h, cookie: cookie, csrf: csrfFor(t, h, cookie), log: &logs}, rel
+}
+
+func TestSyncPagesNeverRunTheReleasePreflight(t *testing.T) {
+	e, rel := newRealOpsEnv(t)
+	require.Equal(t, http.StatusOK, e.get(t, "/operations/sync").Code)
+	rec := e.send("/operations/sync/preview", e.form())
+	require.Equal(t, http.StatusOK, rec.Code)
+	m := regexpToken.FindStringSubmatch(rec.Body.String())
+	require.Len(t, m, 2)
+	rec = e.send("/operations/sync/run", e.form("token", m[1]))
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+	require.Zero(t, rel.calls.Load(), "the sync form, preview and run never check release prerequisites")
+}
+
+func TestDashboardReturnsWhileReleasePreflightHangs(t *testing.T) {
+	e, rel := newRealOpsEnv(t)
+	done := make(chan *httptest.ResponseRecorder, 1)
+	go func() { done <- e.get(t, "/operations") }()
+	select {
+	case rec := <-done:
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Contains(t, rec.Body.String(), "Checking release prerequisites")
+	case <-time.After(3 * time.Second):
+		t.Fatal("GET /operations blocked on the release preflight")
+	}
+	// A second load while the check still hangs is prompt too.
+	go func() { done <- e.get(t, "/operations") }()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("second GET /operations blocked")
+	}
+	require.LessOrEqual(t, rel.calls.Load(), int32(2), "one background check per release action at most")
 }

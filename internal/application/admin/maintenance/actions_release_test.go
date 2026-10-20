@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -582,4 +583,118 @@ func TestReleasePublishCancelBeforePublishStartsCancels(t *testing.T) {
 
 func TestPublishInterruptedSafeMessageNamesNoTagWithoutContext(t *testing.T) {
 	assertSafe(t, ErrPublishInterrupted, "interrupted")
+}
+
+// blockingReleaser blocks every Preflight until release is closed.
+type blockingReleaser struct {
+	*fakeReleaser
+	entered chan struct{}
+	release chan struct{}
+	calls   atomic.Int32
+}
+
+func (b *blockingReleaser) Preflight(ctx context.Context) (Prereq, error) {
+	b.calls.Add(1)
+	select {
+	case b.entered <- struct{}{}:
+	default:
+	}
+	<-b.release
+	return b.fakeReleaser.Preflight(ctx)
+}
+
+func TestServiceActionsNeverWaitForReleasePreflight(t *testing.T) {
+	fx := newReleaseFixture()
+	br := &blockingReleaser{fakeReleaser: fx.releaser, entered: make(chan struct{}, 1), release: make(chan struct{})}
+	fx.deps.Releaser = br
+	pub := NewReleasePublish(fx.deps)
+	s, _, _ := newTestService(t, newFake("a"), pub)
+	defer close(br.release)
+
+	done := make(chan []ActionInfo, 1)
+	go func() { done <- s.Actions() }()
+	var got []ActionInfo
+	select {
+	case got = <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Actions() blocked on the release preflight")
+	}
+	if got[1].Available || got[1].UnavailableReason != releaseCheckingReason {
+		t.Fatalf("unchecked release action: %+v", got[1])
+	}
+	<-br.entered // a background check was started
+	// A second listing while the check runs neither blocks nor starts another.
+	go func() { done <- s.Actions() }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Actions() blocked while a check is running")
+	}
+	if n := br.calls.Load(); n != 1 {
+		t.Fatalf("checks must be single-flight, got %d", n)
+	}
+}
+
+func TestReleaseQuickAvailabilityUsesTheBackgroundResult(t *testing.T) {
+	fx := newReleaseFixture()
+	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	var mu sync.Mutex
+	fx.deps.Now = func() time.Time { mu.Lock(); defer mu.Unlock(); return now }
+	fx.releaser.set(func(p *Prereq) { p.GhAuthenticated = false })
+	a := NewReleasePublish(fx.deps).(*releaseAction)
+	if ok, reason := a.AvailableNow(); ok || reason != releaseCheckingReason {
+		t.Fatalf("first listing: %v %q", ok, reason)
+	}
+	a.waitRefresh()
+	if ok, reason := a.AvailableNow(); ok || reason != ghNotAuthenticatedReason {
+		t.Fatalf("after the check: %v %q", ok, reason)
+	}
+	// An expired result is still shown while a new check runs.
+	mu.Lock()
+	now = now.Add(time.Minute)
+	mu.Unlock()
+	if ok, reason := a.AvailableNow(); ok || reason != ghNotAuthenticatedReason {
+		t.Fatalf("stale result: %v %q", ok, reason)
+	}
+	a.waitRefresh()
+	if n := len(fx.log.get()); n != 2 {
+		t.Fatalf("an expired result is refreshed once in the background: %v", fx.log.get())
+	}
+}
+
+func TestReleasePublishRunStillPreflightsFreshly(t *testing.T) {
+	fx := newReleaseFixture()
+	fx.prepared()
+	pub := NewReleasePublish(fx.deps)
+	s, m, _ := newTestService(t, pub)
+	s.Actions()
+	pub.(*releaseAction).waitRefresh()
+	if ok, _ := pub.Available(); !ok {
+		t.Fatal("setup: publish must be available")
+	}
+	before := len(fx.log.get())
+	_, tok, err := s.Preview(context.Background(), "release-publish", Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterPreview := len(fx.log.get())
+	if afterPreview == before {
+		t.Fatal("preview must run a fresh preflight, not the cached listing result")
+	}
+	j, err := s.Run(context.Background(), "release-publish", Params{}, tok, publishTypedPhrase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Wait(j.ID)
+	calls := fx.log.get()[afterPreview:]
+	n := 0
+	for _, c := range calls {
+		if c == "preflight" {
+			n++
+		}
+	}
+	// Run re-previews (fresh), and the job re-checks inside the lock.
+	if n < 2 {
+		t.Fatalf("run must preflight freshly before and inside the lock: %v", calls)
+	}
 }

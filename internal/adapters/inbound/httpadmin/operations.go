@@ -17,8 +17,12 @@ import (
 // Service that also implements it gets the operations dashboard, the
 // preview/confirm pages and their API.
 type Operator interface {
-	// Actions lists every registered action and whether it can run now.
+	// Actions lists every registered action and whether it can run now. It
+	// must return promptly: costly checks report a cached or "checking" state.
 	Actions() []maintenance.ActionInfo
+	// Action describes one action, computing that action's availability
+	// only; unknown names report false.
+	Action(name string) (maintenance.ActionInfo, bool)
 	// PreviewAction validates params and returns what a run would do, plus
 	// the opaque token that authorises running exactly that preview.
 	PreviewAction(ctx context.Context, name string, p maintenance.Params) (maintenance.Preview, maintenance.Token, error)
@@ -77,13 +81,16 @@ type actionSpec struct {
 var actionGroups = []string{"Discover", "Audit", "Sync", "Refresh/Export", "Reconcile", "Release", "Other"}
 
 var (
-	syncFields = []fieldSpec{
-		{Name: "scope", Label: "Scope", Type: "select", Required: true, Options: []option{
-			{"", "Choose…"}, {"artist", "One artist"}, {"selected", "Selected artists"}, {"all", "All enabled artists"},
-		}, Help: "Syncing every artist, or more than five, needs a typed confirmation."},
+	syncScopeOptions = []option{
+		{"", "Choose…"}, {"artist", "One artist"}, {"selected", "Selected artists"}, {"all", "All enabled artists"},
+	}
+	syncDryRunFields = []fieldSpec{
+		{Name: "scope", Label: "Scope", Type: "select", Required: true, Options: syncScopeOptions},
 		{Name: "artists", Label: "Artist slugs", Type: "text", Help: "Comma-separated catalog slugs; leave empty for all."},
 		{Name: "resume", Label: "Resume the last partial run", Type: "checkbox", Help: "Skips artists the interrupted run already completed."},
 	}
+	syncFields = append([]fieldSpec{{Name: "scope", Label: "Scope", Type: "select", Required: true, Options: syncScopeOptions,
+		Help: "Syncing every artist, or more than five, needs a typed confirmation."}}, syncDryRunFields[1:]...)
 	reconcileFields = []fieldSpec{
 		{Name: "artist", Label: "Artist slug", Type: "text", Required: true, Help: "The catalog slug of the artist to reconcile."},
 	}
@@ -100,7 +107,7 @@ var actionSpecs = map[string]actionSpec{
 		{Name: "offline", Label: "Offline (no Spotify calls)", Type: "checkbox", Help: "Uses cached data only."},
 	}},
 	"audit":                    {Group: "Audit", Description: "Check the snapshot and the generated export for consistency."},
-	"sync-dry-run":             {Group: "Sync", Description: "Plan a sync from the catalog without contacting Spotify or writing anything.", Fields: syncFields},
+	"sync-dry-run":             {Group: "Sync", Description: "Plan a sync from the catalog without contacting Spotify or writing anything.", Fields: syncDryRunFields},
 	"sync":                     {Group: "Sync", Description: "Sync artists from Spotify into the database. Backs up the database first.", Fields: syncFields},
 	"refresh-metadata-preview": {Group: "Refresh/Export", Description: "Show which artists' metadata a refresh would fetch. Writes nothing.", Fields: refreshFields},
 	"refresh-metadata":         {Group: "Refresh/Export", Description: "Fetch artist metadata from Spotify into the catalog.", Fields: refreshFields},
@@ -122,14 +129,12 @@ func specFor(name string) actionSpec {
 }
 
 // lookupAction validates the path name and finds the action, answering 404
-// otherwise.
+// otherwise. It never computes another action's availability.
 func (s *Server) lookupAction(w http.ResponseWriter, r *http.Request) (maintenance.ActionInfo, bool) {
 	name := r.PathValue("action")
 	if actionPattern.MatchString(name) {
-		for _, a := range s.op.Actions() {
-			if a.Name == name {
-				return a, true
-			}
+		if a, ok := s.op.Action(name); ok && a.Name == name {
+			return a, true
 		}
 	}
 	s.fail(w, r, http.StatusNotFound, "not_found", "action not found")
@@ -526,8 +531,15 @@ func (s *Server) actionFailed(w http.ResponseWriter, r *http.Request, a maintena
 			operationPreviewPage{Action: a, Stale: true, Params: echoParams(p)})
 		return
 	case errors.Is(err, maintenance.ErrUnavailable):
+		// Re-read this action so its own reason is shown, not a stale one.
+		if fresh, ok := s.op.Action(a.Name); ok {
+			a = fresh
+		}
 		a.Available = false
 		s.renderForm(w, r, http.StatusConflict, a, p, "")
+		return
+	case errors.Is(err, maintenance.ErrUnknownAction):
+		s.fail(w, r, http.StatusNotFound, "not_found", "action not found")
 		return
 	}
 	var se *maintenance.SafeError
@@ -537,9 +549,6 @@ func (s *Server) actionFailed(w http.ResponseWriter, r *http.Request, a maintena
 	}
 	status := http.StatusUnprocessableEntity
 	switch se.Code {
-	case "not_found":
-		s.fail(w, r, http.StatusNotFound, "not_found", "action not found")
-		return
 	case "conflict":
 		status = http.StatusConflict
 	case "unavailable", "rate_limited", "credentials_missing":

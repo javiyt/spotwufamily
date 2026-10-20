@@ -10,8 +10,8 @@ import (
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
 )
 
-// errUnknownAction is returned when no action has the requested name.
-var errUnknownAction = &SafeError{Code: "not_found", Message: "The requested action was not found."}
+// ErrUnknownAction is returned when no action has the requested name.
+var ErrUnknownAction = &SafeError{Code: "not_found", Message: "The requested action was not found."}
 
 // Service previews maintenance actions, issues preview tokens and runs
 // confirmed actions as jobs.
@@ -52,25 +52,46 @@ func NewService(m *jobs.Manager, actions []Action, secret []byte, now func() tim
 	return s
 }
 
-// Actions lists registered actions in registration order.
+// Actions lists registered actions in registration order. It never waits
+// for a costly availability check: actions implementing QuickAvailability
+// report their cached (or "checking") state.
 func (s *Service) Actions() []ActionInfo {
 	out := make([]ActionInfo, 0, len(s.actions))
 	for _, a := range s.actions {
-		ok, reason := a.Available()
-		info := ActionInfo{Name: a.Name(), Title: a.Name(), Available: ok}
-		if !ok {
-			info.UnavailableReason = reason
+		if q, ok := a.(QuickAvailability); ok {
+			out = append(out, describe(a, q.AvailableNow))
+		} else {
+			out = append(out, describe(a, a.Available))
 		}
-		if d, isD := a.(Describer); isD {
-			desc := d.Describe()
-			if desc.Title != "" {
-				info.Title = desc.Title
-			}
-			info.UsesNetwork, info.Destructive = desc.UsesNetwork, desc.Destructive
-		}
-		out = append(out, info)
 	}
 	return out
+}
+
+// Action describes one action, computing the availability of that action
+// only (synchronously, as the preview and run will). Unknown names are
+// reported as not found.
+func (s *Service) Action(name string) (ActionInfo, bool) {
+	a, ok := s.byName[name]
+	if !ok {
+		return ActionInfo{}, false
+	}
+	return describe(a, a.Available), true
+}
+
+func describe(a Action, available func() (bool, string)) ActionInfo {
+	ok, reason := available()
+	info := ActionInfo{Name: a.Name(), Title: a.Name(), Available: ok}
+	if !ok {
+		info.UnavailableReason = reason
+	}
+	if d, isD := a.(Describer); isD {
+		desc := d.Describe()
+		if desc.Title != "" {
+			info.Title = desc.Title
+		}
+		info.UsesNetwork, info.Destructive = desc.UsesNetwork, desc.Destructive
+	}
+	return info
 }
 
 // Preview validates p, computes the action's preview and returns a token
@@ -127,7 +148,7 @@ func (s *Service) Run(ctx context.Context, name string, p Params, tok Token, typ
 func (s *Service) preview(ctx context.Context, name string, p Params) (Action, Preview, error) {
 	a, ok := s.byName[name]
 	if !ok {
-		return nil, Preview{}, errUnknownAction
+		return nil, Preview{}, ErrUnknownAction
 	}
 	if err := a.Validate(p); err != nil {
 		return nil, Preview{}, validationErr(err)

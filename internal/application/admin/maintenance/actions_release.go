@@ -20,6 +20,10 @@ const (
 	// availabilityTTL bounds how long Available reuses a preflight; previews,
 	// specs and the in-lock re-check always run a fresh one.
 	availabilityTTL = 30 * time.Second
+	// availabilityTimeout bounds one availability preflight.
+	availabilityTimeout = 2 * time.Minute
+	// releaseCheckingReason is listed until the first background check ends.
+	releaseCheckingReason = "Checking release prerequisites; reload the page in a moment"
 )
 
 // ReleaseDeps are the ports of release-prepare and release-publish.
@@ -43,10 +47,15 @@ type releaseAction struct {
 	deps    ReleaseDeps
 	publish bool
 
-	mu       sync.Mutex
-	cachedAt time.Time
-	cached   Prereq
-	cacheErr error
+	// flight serialises availability preflights; mu guards only the cached
+	// result, so AvailableNow never waits for a running preflight.
+	flight     sync.Mutex
+	mu         sync.Mutex
+	cachedAt   time.Time
+	cached     Prereq
+	cacheErr   error
+	refreshing bool
+	refreshed  chan struct{} // closed when the running background check ends
 }
 
 // NewReleasePrepare returns release-prepare: under the database lock it
@@ -85,17 +94,81 @@ func (a *releaseAction) now() time.Time {
 	return time.Now()
 }
 
-// Available uses a preflight at most availabilityTTL old.
+// Available uses a preflight at most availabilityTTL old, running one
+// synchronously when needed. Service.preview gates this action with it; the
+// preview, the spec and the in-lock re-check then run their own fresh
+// preflights regardless.
 func (a *releaseAction) Available() (bool, string) {
+	a.refresh()
+	p, err, _ := a.cachedResult()
+	return a.availability(p, err)
+}
+
+// AvailableNow never runs a preflight on the caller's goroutine: it returns
+// the last result (even if expired) and, when that result is missing or
+// expired, starts one background check (single-flight). Until the first
+// check ends it reports the action as unavailable while checking. Listings
+// use it so a slow or hung GitHub CLI or release script never blocks a page.
+func (a *releaseAction) AvailableNow() (bool, string) {
 	a.mu.Lock()
-	if a.cachedAt.IsZero() || a.now().Sub(a.cachedAt) >= availabilityTTL {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		a.cached, a.cacheErr = a.deps.Releaser.Preflight(ctx)
-		cancel()
-		a.cachedAt = a.now()
+	expired := a.cachedAt.IsZero() || a.now().Sub(a.cachedAt) >= availabilityTTL
+	if expired && !a.refreshing {
+		a.refreshing = true
+		a.refreshed = make(chan struct{})
+		go func(done chan struct{}) {
+			defer func() {
+				a.mu.Lock()
+				a.refreshing = false
+				a.mu.Unlock()
+				close(done)
+			}()
+			a.refresh()
+		}(a.refreshed)
 	}
-	p, err := a.cached, a.cacheErr
 	a.mu.Unlock()
+	p, err, ok := a.cachedResult()
+	if !ok {
+		return false, releaseCheckingReason
+	}
+	return a.availability(p, err)
+}
+
+// waitRefresh waits for a running background check (tests).
+func (a *releaseAction) waitRefresh() {
+	a.mu.Lock()
+	done := a.refreshed
+	a.mu.Unlock()
+	if done != nil {
+		<-done
+	}
+}
+
+// refresh runs a preflight unless the cached one is younger than
+// availabilityTTL; concurrent callers share one preflight.
+func (a *releaseAction) refresh() {
+	a.flight.Lock()
+	defer a.flight.Unlock()
+	a.mu.Lock()
+	fresh := !a.cachedAt.IsZero() && a.now().Sub(a.cachedAt) < availabilityTTL
+	a.mu.Unlock()
+	if fresh {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), availabilityTimeout)
+	p, err := a.deps.Releaser.Preflight(ctx)
+	cancel()
+	a.mu.Lock()
+	a.cached, a.cacheErr, a.cachedAt = p, err, a.now()
+	a.mu.Unlock()
+}
+
+func (a *releaseAction) cachedResult() (Prereq, error, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.cached, a.cacheErr, !a.cachedAt.IsZero()
+}
+
+func (a *releaseAction) availability(p Prereq, err error) (bool, string) {
 	if err != nil {
 		return false, releaseScriptReason
 	}
