@@ -548,3 +548,62 @@ func TestSnapshotRowReportsPreviousVersion(t *testing.T) {
 		t.Fatalf("row %v", row)
 	}
 }
+
+// failingStager publishes the first staged file and then fails, like a disk
+// error part way through Commit.
+type failingStager struct{ dirStager }
+
+func (s *failingStager) Stage() (StagedExport, error) {
+	staged, err := s.dirStager.Stage()
+	if err != nil {
+		return nil, err
+	}
+	return &failingStaged{dirStaged: staged.(*dirStaged)}, nil
+}
+
+type failingStaged struct{ *dirStaged }
+
+func (s *failingStaged) Commit() error {
+	s.log.add("commit")
+	for staged, target := range s.targets {
+		if err := os.Rename(staged, target); err != nil {
+			return err
+		}
+		break
+	}
+	return errors.New("no space left on device: /abs/site")
+}
+
+func TestExportCommitFailureIsReportedHonestly(t *testing.T) {
+	for _, name := range []string{"export", "refresh-export"} {
+		fx := newPrepFixture(t)
+		fx.deps.Stager = &failingStager{dirStager{log: fx.log, root: fx.root}}
+		_, _, _, err := runAction(t, prepActions(fx.deps)[name], Params{})
+		se := assertSafeCode(t, err, "write_failed")
+		if !strings.Contains(se.Message, "run export again") || strings.Contains(se.Message, "/abs") {
+			t.Fatalf("%s: message %q", name, se.Message)
+		}
+		if name == "refresh-export" && !strings.Contains(se.Message, "Export failed after verify, snapshot completed.") {
+			t.Fatalf("composite message %q", se.Message)
+		}
+		got := fx.log.get()
+		if slices.Contains(got, "audit") || got[len(got)-1] != "release" || !slices.Contains(got, "commit") {
+			t.Fatalf("%s: calls %v", name, got)
+		}
+
+		// The job manager reports the outcome as failed with the safe message.
+		s, m, _ := newTestService(t, prepActions(fx.deps)[name])
+		_, tok, err := s.Preview(context.Background(), name, Params{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		j, err := s.Run(context.Background(), name, Params{}, tok, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		m.Wait(j.ID)
+		if got, _ := m.Get(j.ID); got.Status != jobs.StatusFailed || !strings.Contains(got.Message, "run export again") {
+			t.Fatalf("%s: job %+v", name, got)
+		}
+	}
+}

@@ -77,7 +77,8 @@ func TestPublishPrepActionsUnavailableWithoutDatabase(t *testing.T) {
 func TestSnapshotActionKeepsPreviousVersion(t *testing.T) {
 	cfg, dir := newPrepConfig(t)
 	migrateDB(t, cfg.DBPath)
-	require.NoError(t, os.WriteFile(cfg.SnapshotPath, []byte("previous snapshot bytes"), 0o644))
+	require.NoError(t, os.WriteFile(cfg.SnapshotPath, []byte("previous snapshot bytes"), 0o600))
+	require.NoError(t, os.Chmod(cfg.SnapshotPath, 0o600))
 	snapshot := prepActionsByName(cfg)["db-snapshot"]
 
 	out, err := runSpec(t, snapshot, maintenance.Params{})
@@ -86,6 +87,11 @@ func TestSnapshotActionKeepsPreviousVersion(t *testing.T) {
 	prev, err := os.ReadFile(cfg.SnapshotPath + ".prev")
 	require.NoError(t, err)
 	require.Equal(t, "previous snapshot bytes", string(prev))
+	for _, path := range []string{cfg.SnapshotPath, cfg.SnapshotPath + ".prev"} {
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		require.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "%s keeps the snapshot's mode", filepath.Base(path))
+	}
 
 	database, err := sqliteadapter.Open(cfg.DBPath)
 	require.NoError(t, err)
@@ -234,4 +240,11 @@ func TestVerifyActionFailsOnUnmigratedDatabase(t *testing.T) {
 	require.True(t, errors.As(err, &se), "got %v", err)
 	require.Equal(t, "check_failed", se.Code)
 	require.NotContains(t, se.Message, cfg.DBPath)
+}
+
+func TestGitignoreCoversSnapshotPrevAndStaging(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", ".gitignore"))
+	require.NoError(t, err)
+	require.Contains(t, string(data), "*.snapshot.sql.gz.prev")
+	require.Contains(t, string(data), ".export-staging-*/")
 }

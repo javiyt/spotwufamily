@@ -225,10 +225,20 @@ func (p snapshotPort) Write(ctx context.Context) (maintenance.SnapshotWrite, err
 	case err != nil:
 		return maintenance.SnapshotWrite{}, err
 	default:
-		if err := writeAtomic(path+".prev", previous); err != nil {
+		// The snapshot is a database dump: .prev and the replacement keep the
+		// current file's mode (e.g. 0600) rather than widening it.
+		info, err := os.Stat(path)
+		if err != nil {
+			return maintenance.SnapshotWrite{}, err
+		}
+		mode := info.Mode().Perm()
+		if err := writeAtomic(path+".prev", previous, mode); err != nil {
 			return maintenance.SnapshotWrite{}, fmt.Errorf("keep previous snapshot: %w", err)
 		}
 		result.PreviousKept = true
+		if err := os.Chmod(tmp, mode); err != nil {
+			return maintenance.SnapshotWrite{}, err
+		}
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		return maintenance.SnapshotWrite{}, fmt.Errorf("replace snapshot: %w", err)
@@ -252,8 +262,9 @@ func reserveTemp(path string) (string, error) {
 	return name, nil
 }
 
-// writeAtomic writes data to path through a temporary file and a rename.
-func writeAtomic(path string, data []byte) error {
+// writeAtomic writes data with mode to path through a temporary file and a
+// rename.
+func writeAtomic(path string, data []byte, mode fs.FileMode) error {
 	f, err := os.CreateTemp(filepath.Dir(path), ".tmp-*-"+filepath.Base(path))
 	if err != nil {
 		return err
@@ -264,7 +275,7 @@ func writeAtomic(path string, data []byte) error {
 		err = cerr
 	}
 	if err == nil {
-		err = os.Chmod(name, 0o644)
+		err = os.Chmod(name, mode)
 	}
 	if err == nil {
 		err = os.Rename(name, path)
