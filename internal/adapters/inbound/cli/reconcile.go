@@ -195,7 +195,12 @@ func printPendingReconciliations(w io.Writer, pending []artists.PendingReconcili
 	}
 }
 
-func warnPendingReconciliations(ctx context.Context, w io.Writer, database *sqliteadapter.Database) {
+// pendingReconciliationReader is the database, or a runner that owns one.
+type pendingReconciliationReader interface {
+	PendingReconciliations(context.Context) ([]artists.PendingReconciliation, error)
+}
+
+func warnPendingReconciliations(ctx context.Context, w io.Writer, database pendingReconciliationReader) {
 	pending, err := database.PendingReconciliations(ctx)
 	if err != nil {
 		_, _ = fmt.Fprintf(w, "warning: cannot read pending reconciliations: %v\n", err)

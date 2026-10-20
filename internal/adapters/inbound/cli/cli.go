@@ -19,11 +19,11 @@ import (
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/musicbrainz"
 	spotifyadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/spotify"
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
-	"github.com/javiyt/spotwufamily/internal/adapters/outbound/wikipedia"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/catalogexport"
 	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
+	"github.com/javiyt/spotwufamily/internal/bootstrap"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
@@ -166,28 +166,16 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 		return 2
 	}
 
-	var repository *sqliteadapter.Database
-	if !options.dryRun {
-		repository, err = sqliteadapter.Open(options.dbPath)
-		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
-			return 1
-		}
-		defer func() { _ = repository.Close() }()
-		if err := repository.Migrate(ctx); err != nil {
-			_, _ = fmt.Fprintf(stderr, "sync: migrate database: %v\n", err)
-			return 1
-		}
+	runner, closeRunner, err := bootstrap.NewSyncRunner(options.catalogPath, options.dbPath, options.snapshotPath, os.Getenv,
+		bootstrap.WithDryRun(options.dryRun),
+		bootstrap.WithMarket(options.market),
+		bootstrap.WithSpotifyProgress(spotifyProgress(stderr, options.quiet)),
+	)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
+		return 1
 	}
-
-	var fetcher catalogsync.Fetcher
-	if !options.dryRun {
-		fetcher, err = syncFetcher(options, repository, spotifyProgress(stderr, options.quiet))
-		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "sync: %v\n", err)
-			return 1
-		}
-	}
+	defer closeRunner()
 
 	var progress func(catalogsync.ProgressEvent)
 	if !options.dryRun && !options.quiet {
@@ -196,7 +184,9 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 		}
 	}
 
-	report, err := catalogsync.NewSyncCatalog(store, fetcher, repository, catalogsync.SystemClock{}).Run(ctx, catalogsync.Options{
+	// The runner records reconciliation errors and writes the (partial)
+	// snapshot; the CLI only prints and maps the outcome to an exit code.
+	result, err := runner.Run(ctx, catalogsync.Options{
 		CatalogPath: options.catalogPath,
 		ArtistSlug:  options.artistSlug,
 		Market:      options.market,
@@ -205,23 +195,17 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 		Resume:      options.resume,
 		Progress:    progress,
 	})
+	report := result.Report
 
 	printSyncReport(stdout, report)
 	if !options.dryRun {
-		// A failed or rate-limited sync keeps the reconciliation pending and says why.
-		for _, item := range report.Errors {
-			_ = repository.RecordReconciliationError(ctx, item.Slug, item.Err.Error())
-		}
-		defer warnPendingReconciliations(ctx, stderr, repository)
+		defer warnPendingReconciliations(ctx, stderr, runner)
 	}
 	if err != nil {
-		exitCode := syncErrorExitCode(err, nil)
-		if !options.dryRun && report.RunID > 0 {
-			if snapshotErr := repository.WriteSnapshot(ctx, options.snapshotPath); snapshotErr != nil {
-				_, _ = fmt.Fprintf(stderr, "sync: write partial snapshot: %v\n", snapshotErr)
-				exitCode = syncErrorExitCode(err, snapshotErr)
-			}
+		if result.PartialSnapshot && result.SnapshotErr != nil {
+			_, _ = fmt.Fprintf(stderr, "sync: write partial snapshot: %v\n", result.SnapshotErr)
 		}
+		exitCode := syncErrorExitCode(err, result.SnapshotErr)
 		if exitCode == 0 {
 			_, _ = fmt.Fprintf(stderr, "sync: warning: Spotify quota exceeded or rate limit reached; progress saved as partial run and the next sync can resume from this checkpoint: %v\n", err)
 			for _, item := range report.Errors {
@@ -236,11 +220,9 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 		return exitCode
 	}
 
-	if !options.dryRun {
-		if err := repository.WriteSnapshot(ctx, options.snapshotPath); err != nil {
-			_, _ = fmt.Fprintf(stderr, "sync: write snapshot: %v\n", err)
-			return 1
-		}
+	if result.SnapshotErr != nil {
+		_, _ = fmt.Fprintf(stderr, "sync: write snapshot: %v\n", result.SnapshotErr)
+		return 1
 	}
 
 	return 0
@@ -303,56 +285,6 @@ func parseSyncOptions(args []string) (syncOptions, error) {
 	}
 
 	return options, nil
-}
-
-func syncFetcher(options syncOptions, cache artists.SpotifyAlbumCache, progress func(spotifyadapter.ProgressEvent)) (catalogsync.Fetcher, error) {
-	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
-	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
-	if clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required")
-	}
-
-	market := options.market
-	if market == "" {
-		market = os.Getenv("SPOTIFY_MARKET")
-	}
-
-	spotifyClient, err := spotifyadapter.NewClient(spotifyadapter.Config{
-		ClientID:      clientID,
-		ClientSecret:  clientSecret,
-		Market:        market,
-		MaxRetryAfter: spotifyMaxRetryAfter(),
-		Progress:      progress,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return cachedSyncFetcher{
-		remote:       spotifyClient,
-		cachedAlbums: artists.NewCachedSpotifyAlbumFetcher(cache, spotifyClient),
-	}, nil
-}
-
-type cachedSyncFetcher struct {
-	remote       catalogsync.Fetcher
-	cachedAlbums artists.CachedSpotifyAlbumFetcher
-}
-
-func (f cachedSyncFetcher) GetArtist(ctx context.Context, spotifyID string) (catalog.ArtistCandidate, error) {
-	return f.remote.GetArtist(ctx, spotifyID)
-}
-
-func (f cachedSyncFetcher) GetArtistAlbums(ctx context.Context, spotifyID string, groups []string) ([]catalog.Release, error) {
-	return f.cachedAlbums.GetArtistAlbums(ctx, spotifyID, groups)
-}
-
-func (f cachedSyncFetcher) GetAlbum(ctx context.Context, spotifyID string) (catalog.Release, error) {
-	return f.cachedAlbums.GetAlbum(ctx, spotifyID)
-}
-
-func (f cachedSyncFetcher) GetAlbumTracks(ctx context.Context, spotifyID string) ([]catalog.Track, error) {
-	return f.cachedAlbums.GetAlbumTracks(ctx, spotifyID)
 }
 
 func printSyncReport(stdout io.Writer, report catalogsync.Report) {
@@ -430,20 +362,9 @@ func printSpotifyProgress(stderr io.Writer, event spotifyadapter.ProgressEvent) 
 	}
 }
 
+// spotifyMaxRetryAfter reads SPOTIFY_MAX_RETRY_AFTER with the shared parser.
 func spotifyMaxRetryAfter() time.Duration {
-	value := strings.TrimSpace(os.Getenv("SPOTIFY_MAX_RETRY_AFTER"))
-	if value == "" {
-		return 0
-	}
-	duration, err := time.ParseDuration(value)
-	if err == nil {
-		return duration
-	}
-	seconds, err := strconv.Atoi(value)
-	if err != nil {
-		return 0
-	}
-	return time.Duration(seconds) * time.Second
+	return bootstrap.SpotifyMaxRetryAfter(os.Getenv)
 }
 
 type auditOptions struct {
@@ -1124,8 +1045,13 @@ func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr
 			printDiscoverWuFamilyProgress(stderr, event)
 		}
 	}
-	source := wikipedia.NewClient(wikipedia.Config{APIURL: options.wikipediaAPIURL, Page: options.wikipediaPage})
-	report, err := artists.NewDiscoverWuFamily(store, source).WithLedger(yamlcatalog.NewLedgerStore()).Run(ctx, artists.DiscoverWuFamilyOptions{
+	runner, closeRunner, err := bootstrap.NewDiscoverRunner(options.catalogPath, bootstrap.WithWikipedia(options.wikipediaAPIURL, options.wikipediaPage))
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists discover-wu: %v\n", err)
+		return 1
+	}
+	defer closeRunner()
+	report, err := runner.Run(ctx, artists.DiscoverWuFamilyOptions{
 		CatalogPath: options.catalogPath,
 		LedgerPath:  options.ledgerPath,
 		Apply:       options.apply,
@@ -1237,26 +1163,16 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 		return 2
 	}
 
-	fetcher, err := spotifyArtistFetcher(options.market, spotifyProgress(stderr, options.quiet))
+	runner, closeRunner, err := bootstrap.NewRefreshRunner(options.catalogPath, options.dbPath, os.Getenv,
+		bootstrap.WithDryRun(options.dryRun),
+		bootstrap.WithMarket(options.market),
+		bootstrap.WithSpotifyProgress(spotifyProgress(stderr, options.quiet)),
+	)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: %v\n", err)
 		return 1
 	}
-
-	var checkpointStore artists.MetadataRefreshCheckpointStore
-	if !options.dryRun && options.dbPath != "" {
-		database, err := sqliteadapter.Open(options.dbPath)
-		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "artists refresh-genres: %v\n", err)
-			return 1
-		}
-		defer func() { _ = database.Close() }()
-		if err := database.Migrate(ctx); err != nil {
-			_, _ = fmt.Fprintf(stderr, "artists refresh-genres: migrate database: %v\n", err)
-			return 1
-		}
-		checkpointStore = database
-	}
+	defer closeRunner()
 
 	var progress func(artists.RefreshGenresProgress)
 	if !options.quiet {
@@ -1264,13 +1180,12 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 			printRefreshGenresProgress(stderr, event)
 		}
 	}
-	report, err := artists.NewRefreshGenres(store, fetcher).Run(ctx, artists.RefreshGenresOptions{
-		CatalogPath:     options.catalogPath,
-		DryRun:          options.dryRun,
-		Force:           options.force,
-		RefreshTTL:      options.refreshTTL,
-		CheckpointStore: checkpointStore,
-		Progress:        progress,
+	report, err := runner.Run(ctx, artists.RefreshGenresOptions{
+		CatalogPath: options.catalogPath,
+		DryRun:      options.dryRun,
+		Force:       options.force,
+		RefreshTTL:  options.refreshTTL,
+		Progress:    progress,
 	})
 	mode := "updated"
 	if options.dryRun {
@@ -1355,24 +1270,6 @@ func printRefreshGenresProgress(stderr io.Writer, event artists.RefreshGenresPro
 	case "artist_started":
 		_, _ = fmt.Fprintf(stderr, "artists refresh-genres: artist %d/%d %s (%s): start\n", event.ArtistIndex, event.ArtistTotal, event.ArtistName, event.ArtistSlug)
 	}
-}
-
-func spotifyArtistFetcher(market string, progress func(spotifyadapter.ProgressEvent)) (artists.SpotifyArtistFetcher, error) {
-	clientID := os.Getenv("SPOTIFY_CLIENT_ID")
-	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
-	if clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required")
-	}
-	if market == "" {
-		market = os.Getenv("SPOTIFY_MARKET")
-	}
-	return spotifyadapter.NewClient(spotifyadapter.Config{
-		ClientID:      clientID,
-		ClientSecret:  clientSecret,
-		Market:        market,
-		MaxRetryAfter: spotifyMaxRetryAfter(),
-		Progress:      progress,
-	})
 }
 
 type artistsSeedDBOptions struct {
