@@ -46,6 +46,7 @@ type Server struct {
 	static    http.Handler
 	routes    map[string]route
 	editor    Editor
+	resolver  Resolver
 	dynamic   *http.ServeMux
 	http      *http.Server
 
@@ -113,6 +114,10 @@ func New(svc Service, opts Options) (*Server, error) {
 	if e, ok := svc.(Editor); ok {
 		s.editor = e
 		s.registerEditor()
+	}
+	if rs, ok := svc.(Resolver); ok && rs.Resolvable() {
+		s.resolver = rs
+		s.registerResolver()
 	}
 	s.http = &http.Server{
 		Handler:           s.Handler(),

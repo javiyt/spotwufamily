@@ -3,6 +3,7 @@ package spotify_test
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	spotifyadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/spotify"
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 	"github.com/stretchr/testify/require"
 )
@@ -175,6 +177,35 @@ func TestRateLimitAboveMaxRetryAfterReturnsError(t *testing.T) {
 	require.Contains(t, err.Error(), "above max wait")
 	require.Equal(t, int32(1), calls.Load())
 	require.Empty(t, slept)
+
+	// The admin UI shows how long Spotify asked to wait, through the mapped error.
+	wait, ok := artists.RetryAfterOf(spotifyadapter.MapSourceError(err))
+	require.True(t, ok)
+	require.Equal(t, 72000*time.Second, wait)
+	require.ErrorIs(t, spotifyadapter.MapSourceError(err), artists.ErrSourceRateLimited)
+}
+
+func TestExhaustedRateLimitRetriesStillReportRetryAfterWithoutAbortingSync(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/token":
+			_, _ = fmt.Fprint(w, `{"access_token":"token-1","token_type":"Bearer","expires_in":3600}`)
+		default:
+			w.Header().Set("Retry-After", "3")
+			http.Error(w, "rate limited", http.StatusTooManyRequests)
+		}
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL, func(context.Context, time.Duration) error { return nil })
+
+	_, err := client.SearchArtists(context.Background(), "Wu-Tang Clan", 20)
+	require.ErrorIs(t, err, spotifyadapter.ErrRateLimited)
+	wait, ok := artists.RetryAfterOf(spotifyadapter.MapSourceError(err))
+	require.True(t, ok)
+	require.Equal(t, 3*time.Second, wait)
+
+	var aborter interface{ AbortSync() bool }
+	require.False(t, errors.As(err, &aborter), "exhausted retries keep the existing behaviour: sync is not told to stop")
 }
 
 func TestDoesNotRetryPermanentErrors(t *testing.T) {

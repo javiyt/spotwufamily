@@ -3,6 +3,7 @@ package artists
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
@@ -63,4 +64,16 @@ func (s CacheFirstProfileSource) GetAlbumTracks(ctx context.Context, id string) 
 		return nil, ErrCacheMiss
 	}
 	return remote.GetAlbumTracks(ctx, id)
+}
+
+// RetryAfterOf extracts the wait a rate-limited source asked for, when its
+// error carries one.
+func RetryAfterOf(err error) (time.Duration, bool) {
+	var withWait interface{ RetryAfter() time.Duration }
+	if errors.As(err, &withWait) {
+		if wait := withWait.RetryAfter(); wait > 0 {
+			return wait, true
+		}
+	}
+	return 0, false
 }

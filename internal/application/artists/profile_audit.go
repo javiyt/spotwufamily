@@ -273,6 +273,50 @@ func (a AuditProfiles) Run(ctx context.Context, options AuditProfilesOptions) (P
 	return report, nil
 }
 
+// EvaluateProfile audits one Spotify ID for an artist as if it were linked,
+// without reading or writing the store. It lets a reviewer see the same
+// evidence for a candidate they are about to accept as for an attached ID.
+func (a AuditProfiles) EvaluateProfile(ctx context.Context, c catalog.EditorialCatalog, slug, id string, role ProfileRole, options AuditProfilesOptions) (ProfileAuditResult, error) {
+	index := c.FindArtist(slug)
+	if index < 0 {
+		return ProfileAuditResult{}, fmt.Errorf("artist %q not found", slug)
+	}
+	now := options.Now
+	if now == nil {
+		now = time.Now
+	}
+	owners := profileOwners(c)
+	if !contains(owners[id], slug) {
+		owners[id] = append(owners[id], slug)
+	}
+	run := &profileAuditRun{
+		ctx:       ctx,
+		audit:     a,
+		catalog:   c,
+		options:   options,
+		checked:   now().UTC(),
+		owners:    owners,
+		verified:  verifiedProfileOwners(c),
+		spotify:   map[string]*spotifyProfileEntry{},
+		mb:        map[string]*musicBrainzEntry{},
+		totalJobs: 1,
+	}
+	result := run.evaluate(profileJob{artist: c.Artists[index], id: id, role: role})
+	if err := ctx.Err(); err != nil {
+		return ProfileAuditResult{}, err
+	}
+	return result, nil
+}
+
+func contains(values []string, want string) bool {
+	for _, v := range values {
+		if v == want {
+			return true
+		}
+	}
+	return false
+}
+
 // rejectedProfiles lists the rejected, unlinked profiles in editorial order.
 func rejectedProfiles(c catalog.EditorialCatalog, slug string) []RejectedProfileRecord {
 	var out []RejectedProfileRecord

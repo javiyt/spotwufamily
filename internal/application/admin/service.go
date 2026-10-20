@@ -54,6 +54,7 @@ type Service struct {
 	ops         OperationsReader
 	credentials func() bool
 	catalogPath string
+	res         *resolution
 }
 
 // NewService builds the service. credentials reports only whether Spotify

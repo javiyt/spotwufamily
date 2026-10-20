@@ -66,7 +66,7 @@ Name, alias, Spotify genre and popularity are warnings/ranking hints only. Music
 
 Reports list positive evidence, negative evidence and warnings with source URLs, release names/years and the evaluated Spotify ID. Use `--report resolve.json` for the machine-readable form. Offline fixtures can carry `identity_evidence` (fields: `kind`, `polarity`, `strong`, `source`, `url`, `subject_id`, `release_name`, `release_year`, `detail`).
 
-For human-in-the-loop resolution, omit `--non-interactive`. The CLI prompts per unresolved artist:
+The same review is available in the local admin UI (`/resolve`, see [admin](admin.md#spotify-profile-review)): it shows these candidates side by side with the evidence of every attached ID, and records the same reviewer/date/evidence. For human-in-the-loop resolution on the command line, omit `--non-interactive`. The CLI prompts per unresolved artist:
 
 ```bash
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \

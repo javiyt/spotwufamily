@@ -21,7 +21,7 @@ const (
 	loginWindow    = time.Minute
 )
 
-const contentSecurityPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
+const contentSecurityPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com; " +
 	"connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
 
 // sessions are held in memory only: nothing is written to disk or the repo.
@@ -166,6 +166,13 @@ func isSafeMethod(m string) bool {
 // sameOrigin vets browser-supplied origin signals for state-changing requests.
 func sameOrigin(r *http.Request, hosts map[string]struct{}) bool {
 	if origin := r.Header.Get("Origin"); origin != "" {
+		// With Referrer-Policy: no-referrer some browsers send "Origin: null" on
+		// same-origin form posts. That alone proves nothing, so trust it only
+		// when the browser also says the request is same-origin (a header page
+		// script cannot forge).
+		if origin == "null" {
+			return r.Header.Get("Sec-Fetch-Site") == "same-origin"
+		}
 		u, err := url.Parse(origin)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
 			return false

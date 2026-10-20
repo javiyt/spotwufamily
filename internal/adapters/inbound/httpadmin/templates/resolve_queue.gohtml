@@ -1,0 +1,25 @@
+{{define "content"}}{{with .Data}}
+<p class="notice">Decide which Spotify profile belongs to each artist. Nothing is changed until you confirm a decision, and a profile is only synced once it is <strong>verified</strong> with independent evidence.</p>
+{{if not .SuspectKnown}}<p class="notice" role="status">No local cache is available, so profiles cannot be flagged as suspect from cached releases. That is missing information, not a clean bill of health.</p>{{end}}
+{{if not .Live}}<p class="notice" role="status">Spotify is not configured: online search is disabled and cards use the local cache only.</p>{{end}}
+<nav class="badges" aria-label="Queue filters">
+{{range .Filters}}<a class="badge{{if .Active}} ok{{end}}" href="{{.URL}}"{{if .Active}} aria-current="true"{{end}}>{{.Label}} <strong>{{.Count}}</strong></a>
+{{end}}</nav>
+<form method="get" action="/resolve" class="search" role="search">
+<label for="q">Find any artist</label>
+<input id="q" type="search" name="q" value="{{.Search}}" maxlength="100" autocomplete="off" data-hotkey="/">
+{{if .Filter}}<input type="hidden" name="filter" value="{{.Filter}}">{{end}}
+<button type="submit">Search</button>
+</form>
+<div class="table-wrap"><table>
+<caption class="sr">Artists waiting for a Spotify profile decision</caption>
+<thead><tr><th scope="col">Artist</th><th scope="col">Why it is here</th><th scope="col">Spotify IDs</th><th scope="col">Enabled</th><th scope="col">Order</th></tr></thead>
+<tbody>
+{{range .Page.Items}}<tr>
+<th scope="row"><a href="/resolve/{{.Slug}}">{{.Name}}</a> <code>{{.Slug}}</code></th>
+<td>{{range .Flags}}<span class="badge {{if or (eq (printf "%s" .) "suspect") (eq (printf "%s" .) "unresolved")}}bad{{end}}">{{label (printf "%s" .)}}</span> {{else}}<span class="muted">not flagged</span>{{end}}
+{{if .Reasons}}<ul class="evidence">{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>{{end}}</td>
+<td>{{.IDs}}</td><td>{{if .Enabled}}yes{{else}}no{{end}}</td><td>{{if .Order}}{{.Order}}{{else}}—{{end}}</td></tr>
+{{else}}<tr><td colspan="5">Nothing is waiting for a decision here.</td></tr>
+{{end}}</tbody></table></div>
+{{template "pager" .Pager}}{{end}}{{end}}

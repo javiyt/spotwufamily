@@ -332,6 +332,7 @@ type artistPage struct {
 	Other           []relRow
 	IsGroup         bool
 	AddRel          relFields
+	Resolver        bool
 }
 
 func kindLabel(kind string) string {
@@ -351,7 +352,7 @@ func (s *Server) loadPage(ctx context.Context, kind string, detail admin.ArtistD
 		Kind: kind, KindLabel: kindLabel(kind), BasePath: base, Editable: detail.Editable, Detail: detail,
 		Form: formFromArtist(detail.Artist, detail.Revision), Categories: categoryOptions, Choices: choices,
 		RelTypes: relationshipTypes, RelStatuses: relationshipStatuses, Confidences: confidences, EvidenceTypes: evidenceOptions(),
-		Rels: relRows(detail.Relationships, base), IsGroup: detail.IsGroup,
+		Rels: relRows(detail.Relationships, base), IsGroup: detail.IsGroup, Resolver: s.resolver != nil,
 		RelForm: map[string]string{"direction": "outbound", "status": "proposed"},
 	}
 	for _, r := range p.Rels {

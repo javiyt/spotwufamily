@@ -26,6 +26,7 @@ The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?to
 | `/groups` | `/api/v1/groups` | groups with verified/proposed member counts |
 | `/groups/new`, `/groups/{slug}` | | create / edit a group and its members |
 | `/review` | `/api/v1/review` | unverified Spotify profiles and proposed relationships |
+| `/resolve`, `/resolve/{slug}` | `/api/v1/resolve`, `/api/v1/resolve/{slug}` | Spotify profile review queue and side-by-side workbench (see below) |
 | `/operations` | | database/credential status and the CLI commands to run |
 
 List endpoints take `q`, `page` and `page_size` (default 25, max 100; out-of-range values are clamped). `/artists` and `/api/v1/artists` also take `category`, `enabled` (`yes`/`no`), `ids` (`verified`/`pending`/`unresolved`), `rel` (a relationship type, matches both endpoints), `archived=1`, `sort` (`name`, `slug`, `category`, `ids`, `order`) and `dir=desc`; unknown values are ignored. The API response adds `facets` with whole-catalog totals. Errors are always `{"error":{"code":"...","message":"..."}}` for `/api/*` and for clients sending `Accept: application/json`, and an HTML error page otherwise. Messages never include paths, stack traces or Go error text; details are logged server-side.
@@ -54,9 +55,40 @@ One backend record serves two pages: `/artists/{slug}` for individuals and `/gro
 
 Recovery: `cp data/artists.yaml.bak data/artists.yaml` restores the last version before the previous save. The Release backups of the catalog (`make catalog-release-prepare`) are never touched.
 
+## Spotify profile review
+
+`/resolve` answers "which Spotify profile is this artist?" without the CLI. It is the same decision as `artists resolve --interactive --review-all`, built on the same code: candidates come from the evidence-aware searcher and are ranked with `catalog.RankCandidates`; each candidate gets the verdict of `catalog.EvaluateEligibility` (the evidence gate `artists resolve --apply` uses); evidence for both new and already attached IDs comes from `AuditProfiles.EvaluateProfile`, the engine behind `artists audit-profiles`; and the mapping rules live in `artists.ApplyMapping`, the one place that links, unlinks, reorders, verifies or rejects an ID. The page only renders.
+
+**Queue** (`/resolve`, `/api/v1/resolve`): artists that are *unresolved*, *suspect* (cached releases contradict a linked profile), *needs_review*, *unverified* (linked but not verified, so sync ignores them), *previously rejected* or have *multiple IDs*. The badges carry whole-queue counts; `filter=` and `q=` narrow the list, and a search also finds unflagged artists so any artist can be reviewed. Order is editorial order, then slug, so it never reshuffles. Without a SQLite cache the queue says it cannot flag suspects instead of implying nothing is wrong.
+
+**Workbench** (`/resolve/{slug}`): the editorial artist on the left; on the right one card per linked ID (primary first, so every secondary ID is reviewed on its own card), then search results, then rejected and quarantined profiles. A card shows the image (Spotify CDN only), name, exact `spotify:artist:` URI and link, genres, followers, albums, singles, representative tracks with their credits, the MusicBrainz comparison, evidence (positive, negative, missing), contradictions, score, confidence, the gate verdict and its reasons, and the stored reviewer/date/evidence. Track and release data comes from the SQLite cache first; the "assessment" is advice and never sets a status.
+
+**Search** takes a name or alias, a `https://open.spotify.com/artist/…` link, a `spotify:artist:…` URI or a bare 22-character ID. Links are only *parsed* (`catalog.ParseSpotifyArtistRef`: https, host `open.spotify.com`, one `artist/<id>` path, optional `intl-xx/`); the server never fetches a user-supplied URL. A pasted ID is looked up by ID, never name-searched.
+
+**Decisions** (each shows a confirmation page first: the catalog diff and the predicted downstream impact: linked IDs, what sync will ingest, artist enabled, pending reconciliation):
+
+| Action | Effect |
+| --- | --- |
+| Accept as primary / Add as secondary | Links the ID as a **candidate** (sync ignores it). The former primary stays as a secondary. |
+| Verify (or tick *Verify* on accept) | `verified` needs at least one **independent** evidence item you supply (MusicBrainz, Wikidata, Wikipedia, official site, label, press, social, Spotify profile). A name match, a credit or a group membership never counts. |
+| Reject | Needs a note. Records `rejected` with reviewer and date and unlinks it. A rejection is lifted only with new independent evidence. |
+| Mark inconclusive | `needs_review` plus your note; the link, if any, stays but is not synced. |
+| Quarantine / Remove | Unlink; quarantine keeps the profile tracked as `needs_review`, remove forgets its non-rejected metadata. |
+| Make primary | Reorders the linked IDs. |
+
+Rules the workbench enforces: an ID linked to or tracked by another artist is never taken over (a shared name is not identity); nothing is auto-verified or auto-enabled (*Also enable the artist* works only for a verified profile); if the evidence audit finds a contradiction, verifying needs an **override reason** that is stored as evidence next to your name (it never replaces the independent evidence); a stale record (changed elsewhere since the page loaded) gives a `409` and nothing is written; a lost last ID disables the artist, as in the CLI.
+
+**Provenance and audit**: reviewer and review time are stored per profile in the catalog (`spotify_profiles`), and every decision is also appended to `<catalog>.reviews.jsonl` (time, actor, action, before/after status, linked IDs before and after, note, override reason, evidence URLs). The file is append-only; if it cannot be written the decision is still saved and the page says so.
+
+**Reconciliation**: a decision edits the YAML only. It never touches the database. A changed mapping appears in *Pending reconciliation* on the dashboard (the same dry-run rule as `artists reconcile`), and the confirmation page prints the exact `artists reconcile --artist <slug> --dry-run` command. Rejected, quarantined and unreviewed IDs stay out of sync through the existing `ProfileSyncPolicy` gate.
+
+**When a source fails** the page still renders and says what is missing. Spotify `429` shows the `Retry-After` it sent (the admin client gives up after 5 s instead of blocking the request, so reload later); MusicBrainz `503` or offline, a profile with no catalog albums and cache-only mode are all reported as *missing evidence*, never as a contradiction and never as support. Nothing is ever concluded from the absence of contradicting evidence.
+
+**Credentials** (`SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET`) are read once by the server process to build the Spotify client and are never placed in a template, JSON response, log line or error. Without them the workbench runs cache-only and disables name search. Tests use fake Spotify and MusicBrainz sources and need no network.
+
 ## Offline mode
 
-The YAML catalog is read on every request, so edits show up on reload. If the database file is missing or unreadable the UI says so and keeps serving the catalog; the file is never created. The admin never calls Spotify.
+The YAML catalog is read on every request, so edits show up on reload. If the database file is missing or unreadable the UI says so and keeps serving the catalog; the file is never created. The profile review workbench is the only part that can call Spotify or MusicBrainz, and only to answer a search or fill a card the cache cannot.
 
 ## Security model
 
@@ -67,11 +99,11 @@ The YAML catalog is read on every request, so edits show up on reload. If the da
 - Headers on every response: strict CSP (no inline script/style, `frame-ancestors 'none'`), `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: no-referrer`, COOP/CORP, `Cache-Control: no-store`.
 - Request bodies are capped at 64 KiB, headers at 16 KiB, with read/write/idle timeouts.
 - Templates are `html/template` with contextual escaping, so artist names and notes cannot inject script.
-- `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` are only checked for presence in the server process; values are not read into any response, template or log. The launch token is not logged (only request paths, never queries). The server proxies no URLs.
+- `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` are used only inside the server process to talk to Spotify; values are not read into any response, template or log. The launch token is not logged (only request paths, never queries). The server proxies no URLs. The CSP allows images only from `'self'`, `data:` and the Spotify image CDNs (`*.scdn.co`, `*.spotifycdn.com`); a profile image from any other host is dropped before rendering.
 
 ## Layout
 
-- `internal/application/admin`: queries, the editing use cases (`ApplyChange`, `ApplyRelationship`), ports (`OperationsReader`, `CatalogUpdater`) and pagination.
+- `internal/application/admin`: queries, the editing use cases (`ApplyChange`, `ApplyRelationship`), the profile review use cases (`ResolveQueue`, `ResolveWorkbench`, `PreviewResolution`, `ApplyResolution`), ports (`OperationsReader`, `CatalogUpdater`) and pagination.
 - `internal/adapters/inbound/httpadmin`: server, security middleware, handlers, embedded templates and CSS/JS (no Node build).
 - `internal/bootstrap`: shared composition root wiring YAML + SQLite into the admin service.
 - `internal/adapters/inbound/cli/admin.go`: the `admin serve` command.

@@ -1,0 +1,110 @@
+{{define "card"}}{{$c := .Card}}{{$p := .Page}}
+<article class="pcard{{if $c.Owner}} owned{{end}}" aria-labelledby="c-{{$c.SpotifyID}}-{{.Zone}}">
+<header>
+{{if $c.ImageURL}}<img src="{{$c.ImageURL}}" alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer">{{else}}<span class="noimg" aria-hidden="true">?</span>{{end}}
+<div>
+<h3 id="c-{{$c.SpotifyID}}-{{.Zone}}">{{if $c.Name}}{{$c.Name}}{{else}}<span class="muted">name unknown</span>{{end}}</h3>
+<p class="badges">
+{{if $c.Linked}}<span class="badge">{{if eq (printf "%s" $c.Role) "primary"}}primary{{else}}secondary{{end}}</span>{{else}}<span class="badge">not linked</span>{{end}}
+<span class="state {{$c.Status}}">{{$c.Status}}</span>
+{{if $c.Manual}}<span class="badge">entered by hand</span>{{end}}
+{{if $c.Ranked}}<span class="badge">score {{$c.Score}} · {{$c.Confidence}}</span>{{end}}
+</p>
+<p><a href="{{$c.URL}}" rel="noopener noreferrer" target="_blank">open.spotify.com/artist/{{$c.SpotifyID}}</a><br><code>{{$c.URI}}</code></p>
+</div>
+</header>
+{{if $c.Owner}}<p class="notice" role="alert">Already belongs to <a href="/resolve/{{$c.Owner}}"><code>{{$c.Owner}}</code></a>. One Spotify profile can never be shared by two artists.</p>{{end}}
+{{range $c.Warnings}}<p class="notice" role="alert">{{.}}</p>{{end}}
+{{range $c.Notices}}<p class="notice" role="status">{{.Message}}{{if .RetryAfter}} Retry after about {{seconds .RetryAfter}} s.{{end}}</p>{{end}}
+<dl class="facts">
+<dt>Genres</dt><dd>{{if $c.Genres}}{{join $c.Genres ", "}}{{else}}<span class="muted">none known</span>{{end}}</dd>
+{{if $c.Followers}}<dt>Followers</dt><dd>{{$c.Followers}}</dd>{{end}}
+{{if $c.Reason}}<dt>Ranking</dt><dd>{{$c.Reason}}</dd>{{end}}
+</dl>
+{{with $c.Gate}}<div class="gate"><p><strong>Evidence gate (same as <code>artists resolve</code>):</strong> {{label (printf "%s" .Status)}}</p><ul class="evidence">{{range .Reasons}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+
+<section aria-label="Evidence">
+<h4>Evidence <span class="muted">(advice only; you decide)</span></h4>
+<p>Assessment: <strong>{{assess $c.Audit.Classification}}</strong>.{{if $c.Audit.Explanation}} {{$c.Audit.Explanation}}{{end}}</p>
+<p class="muted">Spotify: {{if $c.Audit.SpotifyStatus}}{{$c.Audit.SpotifyStatus}}{{else}}not checked{{end}} · MusicBrainz: {{if $c.Audit.MusicBrainz.Status}}{{$c.Audit.MusicBrainz.Status}}{{else}}not checked{{end}}{{if $c.Audit.CheckedOn}} · checked {{$c.Audit.CheckedOn}}{{end}}</p>
+{{if $c.Audit.Contradictions}}<p><strong>Contradictions</strong></p><ul class="evidence">{{range $c.Audit.Contradictions}}<li>{{.}}</li>{{end}}</ul>{{end}}
+{{if $c.Audit.Evidence}}<ul class="evidence">{{range $c.Audit.Evidence}}<li><span class="badge {{if eq (printf "%s" .Polarity) "negative"}}bad{{end}}">{{.Polarity}}</span> {{identity .}}{{if .URL}} <a href="{{.URL}}" rel="noopener noreferrer" target="_blank">source</a>{{end}}</li>{{end}}</ul>{{end}}
+{{if $c.Audit.MissingEvidence}}<p class="muted">Missing (not a contradiction): {{join $c.Audit.MissingEvidence "; "}}</p>{{end}}
+{{if $c.Audit.MusicBrainz.ReleaseGroups}}<p>MusicBrainz: {{$c.Audit.MusicBrainz.Matched}} of {{$c.Audit.ReleaseCount}} Spotify albums match one of {{$c.Audit.MusicBrainz.ReleaseGroups}} release groups.</p>{{end}}
+</section>
+
+<section aria-label="Releases">
+<h4>Albums <span class="muted">({{$c.Audit.ReleaseCount}})</span></h4>
+{{if $c.Albums}}<ul class="evidence">{{range $c.Albums}}<li>{{.Name}}{{if .Date}} <span class="muted">{{.Date}}</span>{{end}}{{if .URL}} <a href="{{.URL}}" rel="noopener noreferrer" target="_blank">open</a>{{end}}</li>{{end}}</ul>{{else}}<p class="muted">No albums in the catalog for this profile.</p>{{end}}
+{{if $c.Singles}}<h4>Singles</h4><ul class="evidence">{{range $c.Singles}}<li>{{.Name}}{{if .Date}} <span class="muted">{{.Date}}</span>{{end}}</li>{{end}}</ul>{{end}}
+{{if $c.Tracks}}<h4>Representative tracks and credits</h4><ul class="evidence">{{range $c.Tracks}}<li>{{.Name}} <span class="muted">on {{.Release}}</span>{{if .Credits}} — {{join .Credits ", "}}{{end}}</li>{{end}}</ul>{{end}}
+</section>
+
+{{if $c.Reviewer}}<p class="muted">Last decision by <strong>{{$c.Reviewer}}</strong>{{if $c.ReviewedAt}} on {{$c.ReviewedAt}}{{end}}.</p>{{end}}
+{{if $c.Evidence}}<details><summary>Stored evidence ({{len $c.Evidence}})</summary><ul class="evidence">{{range $c.Evidence}}<li><span class="badge">{{label (printf "%s" .Type)}}</span> {{.Rationale}}{{if .URL}} <a href="{{.URL}}" rel="noopener noreferrer" target="_blank">source</a>{{end}}</li>{{end}}</ul></details>{{end}}
+
+{{if and $c.Actions $p.WB.Editable}}
+<details class="decide"><summary>Decide</summary>
+<form method="post" action="/resolve/{{$p.WB.Artist.Slug}}/preview" class="stack">
+<input type="hidden" name="csrf_token" value="{{$p.CSRF}}">
+<input type="hidden" name="spotify_id" value="{{$c.SpotifyID}}">
+<input type="hidden" name="revision" value="{{$p.WB.Revision}}">
+<input type="hidden" name="q" value="{{$p.Query}}">
+<div class="field"><label for="rv-{{$c.SpotifyID}}-{{.Zone}}">Your name (recorded with the decision)</label>
+<input id="rv-{{$c.SpotifyID}}-{{.Zone}}" name="reviewer" required maxlength="100" autocomplete="off" data-reviewer value="{{$p.Reviewer}}"></div>
+<div class="field"><label for="nt-{{$c.SpotifyID}}-{{.Zone}}">Note (required to reject, quarantine or mark inconclusive)</label>
+<textarea id="nt-{{$c.SpotifyID}}-{{.Zone}}" name="note" rows="2" maxlength="1000"></textarea></div>
+<fieldset><legend>Independent evidence (required to verify)</legend>
+{{if $c.Suggestions}}<p class="muted">Found by the audit:
+{{range $c.Suggestions}}<button type="button" class="link" data-fill-type="{{.Type}}" data-fill-url="{{.URL}}" data-fill-rationale="{{.Rationale}}">use {{label (printf "%s" .Type)}}</button> {{end}}</p>{{end}}
+<div class="grid">
+<div class="field"><label>Source type</label><select name="evidence_type">{{range $p.EvidenceTypes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label>Source URL (https)</label><input name="evidence_url" type="url" maxlength="2048" autocomplete="off"></div>
+</div>
+<div class="field"><label>What the source shows</label><textarea name="evidence_rationale" rows="2" maxlength="1000"></textarea></div>
+<p class="muted">A shared name, a track credit or a group membership is not independent evidence.</p>
+</fieldset>
+{{if or (eq (index $c.Actions 0).Name "accept_primary") (eq (index $c.Actions 0).Name "verify")}}
+<p class="check"><input id="vf-{{$c.SpotifyID}}-{{.Zone}}" type="checkbox" name="verify" value="1"><label for="vf-{{$c.SpotifyID}}-{{.Zone}}">Verify with the evidence above (otherwise it is only linked as a candidate and not synced)</label></p>
+<p class="check"><input id="en-{{$c.SpotifyID}}-{{.Zone}}" type="checkbox" name="enable" value="1"><label for="en-{{$c.SpotifyID}}-{{.Zone}}">Also enable the artist (only works when verified)</label></p>
+{{end}}
+<div class="actions">{{range $c.Actions}}<button type="submit" name="action" value="{{.Name}}">{{.Label}}</button>
+{{end}}</div>
+<p class="muted">You will see exactly what changes before anything is saved.</p>
+</form></details>
+{{end}}
+</article>{{end}}
+
+{{define "content"}}{{with .Data}}{{$page := .}}
+<p><a href="/resolve">← Profile review queue</a> · <a href="/artists/{{.WB.Artist.Slug}}">Edit artist record</a></p>
+{{range .WB.Notices}}<p class="notice" role="status">{{.Message}}{{if .RetryAfter}} Spotify asked to wait about {{seconds .RetryAfter}} s before retrying.{{end}}</p>{{end}}
+{{if .Error}}<p class="notice" role="alert">{{.Error}}</p>{{end}}
+<div class="workbench">
+<aside class="editorial" aria-label="Editorial artist">
+<h2>{{.WB.Artist.Name}}</h2>
+<dl class="facts">
+<dt>Slug</dt><dd><code>{{.WB.Artist.Slug}}</code></dd>
+<dt>Category</dt><dd>{{.WB.Artist.Category}}</dd>
+<dt>Enabled</dt><dd>{{if .WB.Artist.Enabled}}yes{{else}}no{{end}}</dd>
+{{if .WB.Artist.Aliases}}<dt>Aliases</dt><dd>{{join .WB.Artist.Aliases ", "}}</dd>{{end}}
+{{if .WB.Artist.Genres}}<dt>Genres</dt><dd>{{join .WB.Artist.Genres ", "}}</dd>{{end}}
+{{if .WB.Artist.Notes}}<dt>Notes</dt><dd>{{.WB.Artist.Notes}}</dd>{{end}}
+</dl>
+<form method="get" action="/resolve/{{.WB.Artist.Slug}}" class="stack" role="search">
+<div class="field"><label for="q">Search Spotify by name, alias, link or 22-character ID</label>
+<input id="q" type="search" name="q" value="{{.Query}}" maxlength="300" autocomplete="off" data-hotkey="/" placeholder="{{.WB.Artist.Name}}"></div>
+<button type="submit">{{if .WB.SearchAvailable}}Search{{else}}Look up{{end}}</button>
+{{if not .WB.SearchAvailable}}<p class="muted">Name search needs Spotify credentials on the server. A pasted link or ID is looked up in the local cache.</p>{{end}}
+<p class="muted">Links are only read for their ID; the server never fetches them.</p>
+</form>
+</aside>
+<div class="cards">
+<section aria-labelledby="att-h"><h2 id="att-h">Linked profiles ({{len .WB.Attached}})</h2>
+{{range .WB.Attached}}{{template "card" (cardCtx . $page "att")}}{{else}}<p>No Spotify ID is linked yet. Search for one.</p>{{end}}</section>
+{{if .WB.Searched}}<section aria-labelledby="cand-h"><h2 id="cand-h">Search results ({{len .WB.Candidates}})</h2>
+{{range .WB.Candidates}}{{template "card" (cardCtx . $page "cand")}}{{else}}<p>No candidates to show.</p>{{end}}</section>{{end}}
+{{if .WB.History}}<section aria-labelledby="hist-h"><h2 id="hist-h">Rejected and quarantined ({{len .WB.History}})</h2>
+<p class="muted">These stay on record so the same wrong profile is not proposed again. Lifting a rejection needs new independent evidence.</p>
+{{range .WB.History}}{{template "card" (cardCtx . $page "hist")}}{{end}}</section>{{end}}
+</div></div>
+{{end}}{{end}}
