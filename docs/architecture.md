@@ -5,6 +5,7 @@ Spot Wu Family v2 is a hexagonal Go application that collects Spotify catalog da
 ```mermaid
 flowchart LR
   CLI[CLI adapter] --> App[Application use cases]
+  Admin[HTTP admin adapter] --> App
   App --> Domain[Domain]
   App --> Ports[Outbound ports]
   Ports --> YAML[YAML catalog adapter]
@@ -24,7 +25,8 @@ Boundaries:
 - `catalogsync` is the sync use case: it depends on catalog YAML, a Spotify-facing fetcher port and a SQLite-facing repository port.
 - `catalogexport` reads SQLite through an export reader port and writes deterministic JSON through a filesystem writer port.
 - Hugo builds the static site from `site/`, reading generated JSON data and a static search index.
-- CLI composition lives at the inbound edge.
+- CLI composition lives at the inbound edge; `internal/bootstrap` is the shared composition root for the admin.
+- The local HTTP admin (`httpadmin`) is a read-only inbound adapter over `application/admin` use cases; see [Local admin](admin.md).
 
 The domain and application packages do not import Spotify, SQLite, YAML, JSON filesystem code, Hugo or GitHub Actions. Technology-specific wiring stays in the CLI and outbound adapters.
 

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-import-candidates artists-import-candidates-apply artists-stage-candidates artists-revert-candidates artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums artists-audit-profiles sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
+.PHONY: help admin admin-smoke setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-import-candidates artists-import-candidates-apply artists-stage-candidates artists-revert-candidates artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums artists-audit-profiles sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -15,6 +15,8 @@ LEDGER ?= data/wu-candidates.yaml
 INVENTORY ?=
 CANDIDATE_REPORT ?= candidates-report.md
 REPORT ?= resolve.md
+ADMIN_HOST ?= 127.0.0.1
+ADMIN_PORT ?= 8787
 ALBUM_REPORT ?= albums-audit.md
 PROFILE_REPORT ?= profiles-audit.md
 DISCOVERY_REPORT ?= wu-discovery.md
@@ -51,6 +53,8 @@ help:
 	@printf '  make sync-artist ARTIST=slug Sync one enabled artist from Spotify\n'
 	@printf '  make sync-all                 Sync every enabled artist from Spotify\n'
 	@printf '  make refresh-all-from-spotify Refresh metadata, sync all artists, export/build/audit\n'
+	@printf '  make admin                   Start the local read-only admin UI (loopback only)\n'
+	@printf '  make admin-smoke             Smoke-test the admin server (loopback, auth, Host check)\n'
 	@printf '  make ci                      Local CI gate\n'
 	@printf '\nVariables: CATALOG=%s DB=%s SNAPSHOT=%s ARTIST=%s MARKET=%s REPORT=%s ALBUM_REPORT=%s DISCOVERY_REPORT=%s CONTENT_DIR=%s\n' "$(CATALOG)" "$(DB)" "$(SNAPSHOT)" "$(ARTIST)" "$(MARKET)" "$(REPORT)" "$(ALBUM_REPORT)" "$(DISCOVERY_REPORT)" "$(CONTENT_DIR)"
 
@@ -154,6 +158,12 @@ export:
 
 build:
 	go build -o $(BUILD_DIR)/spotwufamily $(CLI)
+
+admin:
+	go run $(CLI) admin serve --host $(ADMIN_HOST) --port $(ADMIN_PORT) --catalog $(CATALOG) --db $(DB)
+
+admin-smoke:
+	CATALOG=$(CATALOG) DB=$(DB) ADMIN_PORT=$$(( $(ADMIN_PORT) + 10000 )) ./scripts/admin/smoke.sh
 
 serve:
 	hugo server --source site --bind 127.0.0.1

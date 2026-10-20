@@ -1,0 +1,25 @@
+{{define "content"}}{{with .Data}}
+{{if not .DatabaseAvailable}}<p class="notice" role="status">Offline mode: the database is not available. Showing the YAML catalog only.</p>{{end}}
+<section aria-labelledby="catalog-h"><h2 id="catalog-h">Catalog</h2>
+<dl class="stats">
+<div><dt>Artists</dt><dd>{{.Artists}}</dd></div>
+<div><dt>Enabled</dt><dd>{{.Enabled}}</dd></div>
+<div><dt>Groups</dt><dd><a href="/groups">{{.Groups}}</a></dd></div>
+<div><dt>People</dt><dd>{{.People}}</dd></div>
+<div><dt>Relationships</dt><dd>{{.Relationships}}</dd></div>
+</dl></section>
+<section aria-labelledby="ids-h"><h2 id="ids-h">Spotify IDs</h2>
+<dl class="stats">
+<div><dt>Verified</dt><dd>{{.VerifiedIDs}}</dd></div>
+<div><dt>Pending</dt><dd>{{.PendingIDs}}</dd></div>
+<div><dt>Unresolved</dt><dd>{{.UnresolvedIDs}}</dd></div>
+</dl></section>
+<section aria-labelledby="ops-h"><h2 id="ops-h">Work and status</h2>
+<dl class="stats">
+<div><dt>Review queue</dt><dd><a href="/review">{{.ReviewQueue}}</a></dd></div>
+<div><dt>Pending reconciliation</dt><dd>{{if .DatabaseAvailable}}{{.PendingReconciliation}}{{else}}n/a{{end}}</dd></div>
+<div><dt>Last sync</dt><dd>{{if .LastSyncAt}}{{.LastSyncStatus}} · <time datetime="{{.LastSyncAt}}">{{.LastSyncAt}}</time>{{else}}never{{end}}</dd></div>
+<div><dt>Spotify credentials</dt><dd>{{if .SpotifyCredentialsPresent}}present{{else}}missing{{end}}</dd></div>
+</dl></section>
+<p><a href="/artists">Artist list</a> · <a href="/groups">Group list</a> · <a href="/review">Review queue</a> · <a href="/operations">Operations</a></p>
+{{end}}{{end}}

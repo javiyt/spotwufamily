@@ -703,6 +703,11 @@ func sortedCopy(in []string) []string {
 	return out
 }
 
+// ClassifyAssociation exposes the reconciliation verdict for read-only reports.
+func ClassifyAssociation(a Association, linked map[string]struct{}) ReconcileClass {
+	return classifyAssociation(a, linked)
+}
+
 func sortedCopyOrEmpty(in []string) []string {
 	out := append([]string{}, in...)
 	sort.Strings(out)

@@ -11,6 +11,7 @@ Start here:
 - [MusicBrainz](musicbrainz.md)
 - [Automation](automation.md)
 - [Operations](operations.md)
+- [Local admin](admin.md)
 - [Security](security.md)
 - [End-to-end verification](e2e.md)
 - [Release readiness](release-readiness.md)

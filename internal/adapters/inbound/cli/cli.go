@@ -39,12 +39,17 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 }
 
 func ExecuteWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	return ExecuteWithContext(context.Background(), args, stdin, stdout, stderr)
+}
+
+// ExecuteWithContext is ExecuteWithInput with a caller-controlled context,
+// which long-running commands such as admin serve honour for shutdown.
+func ExecuteWithContext(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		printRootHelp(stdout)
 		return 0
 	}
 
-	ctx := context.Background()
 	store := yamlcatalog.NewStore()
 
 	switch args[0] {
@@ -63,6 +68,8 @@ func ExecuteWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) 
 		return executeDB(ctx, args[1:], stdout, stderr)
 	case "site":
 		return executeSite(ctx, args[1:], stdout, stderr)
+	case "admin":
+		return executeAdmin(ctx, args[1:], stdout, stderr)
 	case "help", "--help", "-h":
 		printRootHelp(stdout)
 		return 0
@@ -2324,6 +2331,7 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  db migrate|verify|snapshot|rebuild")
 	_, _ = fmt.Fprintln(w, "  export")
 	_, _ = fmt.Fprintln(w, "  site build")
+	_, _ = fmt.Fprintln(w, "  admin serve")
 	_, _ = fmt.Fprintln(w, "  audit")
 }
 
