@@ -204,6 +204,8 @@ type freshView struct {
 	Checked bool
 	At      string
 	Age     string
+	// Stale means the catalog was written after this check.
+	Stale bool
 	maintenance.Freshness
 }
 
@@ -286,6 +288,11 @@ type freshnessCache struct {
 	val maintenance.Freshness
 	at  time.Time
 	ok  bool
+	// stale is set by a catalog write after the check; the next check
+	// recomputes regardless of its age. writes counts catalog writes so a
+	// write during a running check keeps its result stale.
+	stale  bool
+	writes uint64
 }
 
 func (c *freshnessCache) get() (maintenance.Freshness, time.Time, bool) {
@@ -294,10 +301,32 @@ func (c *freshnessCache) get() (maintenance.Freshness, time.Time, bool) {
 	return c.val, c.at, c.ok
 }
 
-func (c *freshnessCache) set(f maintenance.Freshness, at time.Time) {
+func (c *freshnessCache) isStale() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.val, c.at, c.ok = f, at, true
+	return c.ok && c.stale
+}
+
+func (c *freshnessCache) writeCount() uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.writes
+}
+
+// set stores a check that started after writes catalog writes.
+func (c *freshnessCache) set(f maintenance.Freshness, at time.Time, writes uint64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.val, c.at, c.ok, c.stale = f, at, true, c.writes != writes
+}
+
+// markStale records that the catalog changed after the last check. It is
+// cheap and computes nothing.
+func (c *freshnessCache) markStale() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.writes++
+	c.stale = c.ok
 }
 
 // checkFreshness computes freshness unless a check younger than freshnessTTL
@@ -305,14 +334,15 @@ func (c *freshnessCache) set(f maintenance.Freshness, at time.Time) {
 func (s *Server) checkFreshness(ctx context.Context) error {
 	s.fresh.run.Lock()
 	defer s.fresh.run.Unlock()
-	if _, at, ok := s.fresh.get(); ok && s.now().Sub(at) < freshnessTTL {
+	if _, at, ok := s.fresh.get(); ok && !s.fresh.isStale() && s.now().Sub(at) < freshnessTTL {
 		return nil
 	}
+	writes := s.fresh.writeCount()
 	f, err := s.op.Freshness(ctx)
 	if err != nil {
 		return err
 	}
-	s.fresh.set(f, s.now())
+	s.fresh.set(f, s.now(), writes)
 	return nil
 }
 
@@ -325,7 +355,7 @@ func (s *Server) freshView() freshView {
 	if age < 0 {
 		age = 0
 	}
-	return freshView{Checked: true, At: rfc3339(at), Age: age.String(), Freshness: f}
+	return freshView{Checked: true, At: rfc3339(at), Age: age.String(), Stale: s.fresh.isStale(), Freshness: f}
 }
 
 func (s *Server) handleFreshnessCheck(w http.ResponseWriter, r *http.Request) {
@@ -352,7 +382,7 @@ func (s *Server) apiFreshness(w http.ResponseWriter, _ *http.Request) {
 	}
 	age := max(s.now().Sub(at), 0)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"checked": true, "checked_at": rfc3339(at), "age_seconds": int(age.Seconds()),
+		"checked": true, "checked_at": rfc3339(at), "age_seconds": int(age.Seconds()), "stale": s.fresh.isStale(),
 		"seed_needed": f.SeedNeeded, "snapshot_needed": f.SnapshotNeeded, "export_needed": f.ExportNeeded,
 		"rebuild_needed": f.RebuildNeeded, "differs_from_published": f.DiffersFromPublished,
 		"offline": f.Offline, "unreadable": f.Unreadable, "reasons": nonNilStrings(append([]string(nil), f.Reasons...)),

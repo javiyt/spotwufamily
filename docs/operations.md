@@ -169,7 +169,7 @@ The local admin's `/publish` page is the guided way to publish a catalog release
 4. **Step 1 – Prepare package** and **Step 2 – Publish release** (typed phrase `publish release`). Step 2 appears only when a prepared package matches the local content and the prerequisites pass.
 5. **Manual follow-up**: commit `data/catalog.release.json` through a pull request, wait for CI and the Pages deploy, verify the site.
 
-Edits and Spotify profile decisions never publish anything. The CLI route (`make catalog-release-prepare` / `make catalog-release-publish`, above) remains available.
+Edits and Spotify profile decisions never publish anything; after each one the admin only hints that the database, snapshot and exports may need refreshing. The CLI route (`make catalog-release-prepare` / `make catalog-release-publish`, above) remains available.
 
 ## Artist Relationships
 

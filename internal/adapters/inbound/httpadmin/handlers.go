@@ -46,7 +46,7 @@ func (s *Server) nav() []struct{ Path, Label string } {
 }
 
 type view struct {
-	Flash  string
+	Flash  flash
 	Title  string
 	Path   string
 	Nav    []struct{ Path, Label string }

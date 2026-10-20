@@ -472,7 +472,32 @@ func (s *Server) done(w http.ResponseWriter, r *http.Request, message, location 
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": message, "redirect": location})
 		return
 	}
-	s.sessions.setFlash(s.sessionID(r), message)
+	s.sessions.setFlash(s.sessionID(r), flash{Message: message})
+	http.Redirect(w, r, location, http.StatusSeeOther)
+}
+
+// refreshHint is the fixed post-edit hint; the layout renders the same
+// sentence with a link to refreshHintLink.
+const (
+	refreshHint     = "Catalog changed — the database, snapshot and exports may need refreshing. Review in Operations."
+	refreshHintLink = "/operations"
+)
+
+// catalogChanged confirms a successful catalog write (an edit or a Spotify
+// profile decision). It adds the fixed refresh hint and marks the cached
+// freshness check as outdated; it never computes freshness and never starts
+// anything.
+func (s *Server) catalogChanged(w http.ResponseWriter, r *http.Request, message, location string) {
+	s.fresh.markStale()
+	if isFetch(r) {
+		// The script follows the redirect, so the page it lands on keeps the
+		// hint after the toast is gone.
+		s.sessions.setFlash(s.sessionID(r), flash{Refresh: true})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": message, "redirect": location,
+			"hint": refreshHint, "hint_link": refreshHintLink})
+		return
+	}
+	s.sessions.setFlash(s.sessionID(r), flash{Message: message, Refresh: true})
 	http.Redirect(w, r, location, http.StatusSeeOther)
 }
 
@@ -566,7 +591,7 @@ func (s *Server) handleSave(w http.ResponseWriter, r *http.Request, kind string)
 	if creating {
 		verb = "Created"
 	}
-	s.done(w, r, fmt.Sprintf("%s %s.", verb, form.nameOr(result.Slug)), "/"+kind+"/"+result.Slug)
+	s.catalogChanged(w, r, fmt.Sprintf("%s %s.", verb, form.nameOr(result.Slug)), "/"+kind+"/"+result.Slug)
 }
 
 func (f artistFormValues) nameOr(slug string) string {
@@ -655,7 +680,7 @@ func (s *Server) handleLifecycle(w http.ResponseWriter, r *http.Request, kind st
 		return
 	}
 	verb := map[admin.ChangeKind]string{admin.ChangeArchive: "Archived", admin.ChangeRestore: "Restored"}[change]
-	s.done(w, r, fmt.Sprintf("%s %s.", verb, page.Detail.Artist.Name), "/"+kind+"/"+result.Slug)
+	s.catalogChanged(w, r, fmt.Sprintf("%s %s.", verb, page.Detail.Artist.Name), "/"+kind+"/"+result.Slug)
 }
 
 func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request, kind string) {
@@ -675,7 +700,7 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request, kind strin
 	if s.changeFailed(w, r, err, &page, page.Detail.Artist.Name, req) {
 		return
 	}
-	s.done(w, r, fmt.Sprintf("Deleted %s. Synced Spotify data was not touched.", page.Detail.Artist.Name), "/"+kind)
+	s.catalogChanged(w, r, fmt.Sprintf("Deleted %s. Synced Spotify data was not touched.", page.Detail.Artist.Name), "/"+kind)
 }
 
 // pageFor loads the record page model, answering the request itself on error.
@@ -735,7 +760,7 @@ func (s *Server) handleRelationship(w http.ResponseWriter, r *http.Request, kind
 		return
 	}
 	message := map[admin.RelationshipKind]string{admin.RelAdd: "Added", admin.RelUpdate: "Updated", admin.RelRemove: "Removed"}[change]
-	s.done(w, r, fmt.Sprintf("%s relationship %s.", message, result.Key), "/"+kind+"/"+slug)
+	s.catalogChanged(w, r, fmt.Sprintf("%s relationship %s.", message, result.Key), "/"+kind+"/"+slug)
 }
 
 // relationshipInput reads the add/update form. "direction" says which side of

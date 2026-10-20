@@ -5,6 +5,7 @@
 <h2 id="readiness-h">Data readiness</h2>
 {{with .Fresh}}{{if .Checked}}
 <p class="muted">Last checked <time datetime="{{.At}}">{{.At}}</time> (checked {{.Age}} ago).</p>
+{{if .Stale}}<p class="notice warn" role="status">Catalog changed since last check. Check again to see what needs refreshing.</p>{{end}}
 <div class="table-wrap"><table>
 <caption class="sr">Data readiness</caption>
 <tbody>

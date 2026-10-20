@@ -28,13 +28,13 @@ const contentSecurityPolicy = "default-src 'none'; script-src 'self'; style-src 
 type sessions struct {
 	mu      sync.Mutex
 	items   map[string]time.Time
-	flashes map[string]string
+	flashes map[string]flash
 	csrfKey []byte
 	now     func() time.Time
 }
 
 func newSessions() *sessions {
-	return &sessions{items: map[string]time.Time{}, flashes: map[string]string{}, csrfKey: randomBytes(32), now: time.Now}
+	return &sessions{items: map[string]time.Time{}, flashes: map[string]flash{}, csrfKey: randomBytes(32), now: time.Now}
 }
 
 func randomBytes(n int) []byte {
@@ -76,22 +76,30 @@ func (s *sessions) valid(id string) bool {
 	return true
 }
 
+// flash is a one-shot confirmation. Refresh appends the fixed hint that
+// derived data may need refreshing after a catalog change; it carries no
+// computed state.
+type flash struct {
+	Message string
+	Refresh bool
+}
+
 // setFlash stores a one-shot confirmation for the next page of this session.
-func (s *sessions) setFlash(id, message string) {
+func (s *sessions) setFlash(id string, f flash) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.items[id]; ok {
-		s.flashes[id] = message
+		s.flashes[id] = f
 	}
 }
 
 // takeFlash returns and clears the pending confirmation.
-func (s *sessions) takeFlash(id string) string {
+func (s *sessions) takeFlash(id string) flash {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	message := s.flashes[id]
+	f := s.flashes[id]
 	delete(s.flashes, id)
-	return message
+	return f
 }
 
 func (s *sessions) destroy(id string) {

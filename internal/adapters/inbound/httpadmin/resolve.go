@@ -408,7 +408,7 @@ func (s *Server) handleResolveApply(w http.ResponseWriter, r *http.Request) {
 	if result.LogError != "" {
 		message += " Warning: " + result.LogError + "."
 	}
-	s.done(w, r, message, "/resolve/"+url.PathEscape(slug))
+	s.catalogChanged(w, r, message, "/resolve/"+url.PathEscape(slug))
 }
 
 // classifyResolveError maps a use-case error to a status and a message safe to

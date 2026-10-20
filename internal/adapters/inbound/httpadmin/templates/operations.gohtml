@@ -11,6 +11,7 @@
 <h2 id="fresh-h">Data freshness</h2>
 {{with .Fresh}}{{if .Checked}}
 <p class="muted">Last checked <time datetime="{{.At}}">{{.At}}</time> (checked {{.Age}} ago).</p>
+{{if .Stale}}<p class="notice warn" role="status">Catalog changed since last check. Check again to see what needs refreshing.</p>{{end}}
 {{if .Reasons}}<ul>{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>{{else}}<p>Everything derived from the catalog is up to date.</p>{{end}}
 {{else}}<p class="muted">Freshness not checked yet. The check reads the whole database and can take a few seconds.</p>{{end}}{{end}}
 <form method="post" action="/operations/freshness">
