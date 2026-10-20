@@ -22,6 +22,8 @@ type Service struct {
 	now     func() time.Time
 
 	freshness FreshnessSource
+	oplog     OperationLog
+	oplogErr  func(error)
 }
 
 // NewService registers actions in order. It panics if two actions share a
@@ -105,6 +107,11 @@ func (s *Service) Run(ctx context.Context, name string, p Params, tok Token, typ
 		}
 		return jobs.Job{}, safeErr(err)
 	}
+	summary := pv.Title
+	if pv.RequiresTyped != "" {
+		summary += " (typed confirmation required)"
+	}
+	s.record(OperationEntry{At: s.now(), Kind: EntryConfirmed, Action: a.Name(), JobID: j.ID, Outcome: "submitted", Summary: summary})
 	return j, nil
 }
 
