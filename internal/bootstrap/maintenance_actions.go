@@ -32,7 +32,11 @@ type MaintenanceActionsConfig struct {
 	// BackupDir receives the database backup taken before a metadata refresh
 	// or a sync.
 	BackupDir string
-	Env       EnvLookup
+	// Export roots written by the export actions (catalogexport options).
+	ExportOutputDir  string
+	ExportStaticDir  string
+	ExportContentDir string
+	Env              EnvLookup
 	// Options tune the shared runners (e.g. WithWikipedia, test seams).
 	Options []MaintenanceOption
 }

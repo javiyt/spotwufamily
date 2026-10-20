@@ -60,7 +60,7 @@ func (Writer) PruneDir(dir string, keep map[string]struct{}) error {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() || (!strings.HasSuffix(path, ".json") && !strings.HasSuffix(path, ".md")) {
+		if entry.IsDir() || !prunable(path) {
 			return nil
 		}
 		if _, ok := keep[path]; ok {
@@ -72,4 +72,10 @@ func (Writer) PruneDir(dir string, keep map[string]struct{}) error {
 
 		return nil
 	})
+}
+
+// prunable reports whether PruneDir manages path: only generated .json and
+// .md files are removed.
+func prunable(path string) bool {
+	return strings.HasSuffix(path, ".json") || strings.HasSuffix(path, ".md")
 }
