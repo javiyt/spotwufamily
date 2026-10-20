@@ -1,0 +1,22 @@
+{{define "content"}}{{with .Data}}
+<section aria-labelledby="preview-h">
+<h2 id="preview-h">{{.Heading}}</h2>
+<p class="notice" role="status">Nothing has been saved yet. This is exactly what Save will write.</p>
+{{if .Changes}}<div class="table-wrap"><table class="diff"><caption class="sr">Pending changes</caption>
+<thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead><tbody>
+{{range .Changes}}<tr><th scope="row">{{.Field}}</th><td class="before">{{if .Before}}{{.Before}}{{else}}<span class="muted">empty</span>{{end}}</td><td class="after">{{if .After}}{{.After}}{{else}}<span class="muted">empty</span>{{end}}</td></tr>{{end}}
+</tbody></table></div>
+{{else}}<p>No changes: the record already matches what you entered.</p>{{end}}
+{{range .Warnings}}<p class="notice" role="alert">{{.}}</p>{{end}}
+<form method="post" action="{{.Action}}" class="stack">
+<input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+{{range .Fields}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
+{{if .SlugConfirm}}<div class="notice" role="alert"><p><strong>Slug change:</strong> {{len .SlugConfirm.Refs}} relationship(s) will point to <code>{{.SlugConfirm.NewSlug}}</code>.</p>
+<ul>{{range .SlugConfirm.Refs}}<li>{{.Type}} · {{.OtherSlug}}</li>{{end}}</ul>
+<p class="check"><input id="f-confirm" type="checkbox" name="confirm_slug_change" required><label for="f-confirm">I understand and want to change the slug</label></p></div>{{end}}
+<div class="actions"><button type="submit" name="intent" value="save" class="primary">Save changes</button>
+{{if .KeepEditing}}<button type="submit" name="intent" value="edit">Keep editing</button>{{end}}
+<a href="{{.Cancel}}" data-cancel>Cancel</a></div>
+</form>
+</section>
+{{end}}{{end}}

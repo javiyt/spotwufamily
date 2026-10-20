@@ -64,3 +64,11 @@ func TestNewAdminUsesExistingDatabaseAndReportsCredentialsPresence(t *testing.T)
 	require.True(t, d.SpotifyCredentialsPresent)
 	require.Nil(t, d.LastSync)
 }
+
+func TestNewAdminServiceCanEditTheCatalog(t *testing.T) {
+	svc, closeFn, err := bootstrap.NewAdminService(writeCatalog(t), filepath.Join(t.TempDir(), "missing.db"))
+	require.NoError(t, err)
+	defer closeFn()
+
+	require.True(t, svc.Editable(), "the YAML store supports locked updates")
+}

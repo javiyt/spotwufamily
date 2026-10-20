@@ -38,11 +38,14 @@ type Artist struct {
 	Roles           []Category
 	Aliases         []string
 	Enabled         bool
-	EditorialOrder  int
-	Notes           string
-	ExternalURL     string
-	ImageURL        string
-	AddedAt         string
+	// Archived is soft removal: the entry, its relationships and any synced
+	// Spotify media stay, but it can never be enabled for sync.
+	Archived       bool
+	EditorialOrder int
+	Notes          string
+	ExternalURL    string
+	ImageURL       string
+	AddedAt        string
 }
 
 type EditorialCatalog struct {
@@ -256,6 +259,10 @@ func validateArtist(prefix string, artist Artist) []ValidationIssue {
 			continue
 		}
 		genres[key] = genreIndex
+	}
+
+	if artist.Archived && artist.Enabled {
+		issues = append(issues, ValidationIssue{Field: prefix + ".archived", Message: "archived artists must be disabled"})
 	}
 
 	if artist.Enabled && len(artist.AllSpotifyIDs()) == 0 {

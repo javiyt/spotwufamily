@@ -1,5 +1,6 @@
-// Package admin holds the read-only use cases behind the local admin UI. It
-// depends only on the catalog domain and ports, never on HTTP, YAML or SQLite.
+// Package admin holds the use cases behind the local admin UI: catalog queries
+// and safe editing of artist, group and relationship records. It depends only
+// on the catalog domain and ports, never on HTTP, YAML or SQLite.
 package admin
 
 import (
@@ -44,9 +45,12 @@ type OperationsReader interface {
 	PendingReconciliation(ctx context.Context, c catalog.EditorialCatalog) (int, error)
 }
 
-// Service exposes the read-only admin queries.
+// Service exposes the admin queries and, when the store supports locked
+// updates (CatalogUpdater), the editing use cases.
 type Service struct {
 	store       artists.CatalogStore
+	updater     CatalogUpdater
+	snapshots   *snapshotCache
 	ops         OperationsReader
 	credentials func() bool
 	catalogPath string
@@ -58,7 +62,11 @@ func NewService(store artists.CatalogStore, ops OperationsReader, credentials fu
 	if credentials == nil {
 		credentials = func() bool { return false }
 	}
-	return Service{store: store, ops: ops, credentials: credentials, catalogPath: catalogPath}
+	svc := Service{store: store, snapshots: newSnapshotCache(), ops: ops, credentials: credentials, catalogPath: catalogPath}
+	if updater, ok := store.(CatalogUpdater); ok {
+		svc.updater = updater
+	}
+	return svc
 }
 
 type Dashboard struct {
@@ -77,10 +85,45 @@ type Dashboard struct {
 	SpotifyCredentialsPresent bool
 }
 
+// SortKey selects the column an artist list is ordered by.
+type SortKey string
+
+const (
+	SortName     SortKey = "name"
+	SortSlug     SortKey = "slug"
+	SortCategory SortKey = "category"
+	SortOrder    SortKey = "order"
+	SortIDState  SortKey = "ids"
+)
+
 type ListQuery struct {
+	// Search matches name, public name, aliases and slug, case-insensitively.
 	Search   string
 	Page     int
 	PageSize int
+
+	// Artist list filters; zero values match everything.
+	Category catalog.Category
+	Enabled  *bool
+	IDState  IDState
+	// Relation keeps artists that take part in an edge of this type.
+	Relation catalog.RelationshipType
+	// IncludeArchived shows archived entries, which are hidden by default.
+	IncludeArchived bool
+	Sort            SortKey
+	Desc            bool
+}
+
+// Facets are whole-catalog totals that drive list badges. They ignore the
+// active filters so the badges stay comparable while filtering.
+type Facets struct {
+	All        int
+	Enabled    int
+	Disabled   int
+	Archived   int
+	Verified   int
+	Pending    int
+	Unresolved int
 }
 
 type Page[T any] struct {
@@ -90,6 +133,7 @@ type Page[T any] struct {
 	PageSize int
 	Pages    int
 	Search   string
+	Facets   Facets
 }
 
 type ArtistRow struct {
@@ -97,9 +141,12 @@ type ArtistRow struct {
 	Name     string
 	Category catalog.Category
 	Enabled  bool
+	Archived bool
 	IDState  IDState
 	IDs      int
 	Group    bool
+	Order    int
+	Aliases  []string
 }
 
 type GroupRow struct {
@@ -177,21 +224,98 @@ func (s Service) ListArtists(ctx context.Context, q ListQuery) (Page[ArtistRow],
 		return Page[ArtistRow]{}, err
 	}
 	groups := groupSlugs(c)
+	related := map[string]struct{}{}
+	if q.Relation != "" {
+		for _, r := range c.Relationships {
+			if r.Type == q.Relation {
+				related[r.From] = struct{}{}
+				related[r.To] = struct{}{}
+			}
+		}
+	}
 	rows := make([]ArtistRow, 0, len(c.Artists))
 	for _, a := range c.Artists {
-		if !matches(q.Search, a.Slug, a.Name, a.PublicName) {
+		if a.Archived && !q.IncludeArchived {
 			continue
+		}
+		state := idState(a)
+		if !matches(q.Search, append([]string{a.Slug, a.Name, a.PublicName}, a.Aliases...)...) ||
+			(q.Category != "" && !a.HasRole(q.Category)) ||
+			(q.Enabled != nil && a.Enabled != *q.Enabled) ||
+			(q.IDState != "" && state != q.IDState) {
+			continue
+		}
+		if q.Relation != "" {
+			if _, ok := related[a.Slug]; !ok {
+				continue
+			}
 		}
 		_, isGroup := groups[a.Slug]
 		rows = append(rows, ArtistRow{
-			Slug: a.Slug, Name: a.Name, Category: a.Category, Enabled: a.Enabled,
-			IDState: idState(a), IDs: len(a.AllSpotifyIDs()), Group: isGroup,
+			Slug: a.Slug, Name: a.Name, Category: a.Category, Enabled: a.Enabled, Archived: a.Archived,
+			IDState: state, IDs: len(a.AllSpotifyIDs()), Group: isGroup, Order: a.EditorialOrder, Aliases: a.Aliases,
 		})
 	}
+	sortArtistRows(rows, q.Sort, q.Desc)
+	page := paginate(rows, q)
+	page.Facets = facets(c)
+	return page, nil
+}
+
+func facets(c catalog.EditorialCatalog) Facets {
+	var f Facets
+	for _, a := range c.Artists {
+		if a.Archived {
+			f.Archived++
+			continue
+		}
+		f.All++
+		if a.Enabled {
+			f.Enabled++
+		} else {
+			f.Disabled++
+		}
+		switch idState(a) {
+		case IDVerified:
+			f.Verified++
+		case IDPending:
+			f.Pending++
+		default:
+			f.Unresolved++
+		}
+	}
+	return f
+}
+
+// sortArtistRows orders rows by key with name and slug as ascending
+// tie-breakers. Entries without an editorial order always sort last.
+func sortArtistRows(rows []ArtistRow, key SortKey, desc bool) {
+	compare := func(a, b ArtistRow) int {
+		switch key {
+		case SortSlug:
+			return strings.Compare(a.Slug, b.Slug)
+		case SortCategory:
+			return strings.Compare(string(a.Category), string(b.Category))
+		case SortIDState:
+			return strings.Compare(string(a.IDState), string(b.IDState))
+		case SortOrder:
+			return a.Order - b.Order
+		}
+		return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
+	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		return strings.ToLower(rows[i].Name) < strings.ToLower(rows[j].Name)
+		a, b := rows[i], rows[j]
+		if key == SortOrder && (a.Order == 0) != (b.Order == 0) {
+			return a.Order != 0
+		}
+		if c := compare(a, b); c != 0 {
+			return (c < 0) != desc
+		}
+		if c := strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)); c != 0 {
+			return c < 0
+		}
+		return a.Slug < b.Slug
 	})
-	return paginate(rows, q), nil
 }
 
 func (s Service) ListGroups(ctx context.Context, q ListQuery) (Page[GroupRow], error) {
@@ -202,7 +326,7 @@ func (s Service) ListGroups(ctx context.Context, q ListQuery) (Page[GroupRow], e
 	groups := groupSlugs(c)
 	rows := make([]GroupRow, 0, len(groups))
 	for _, a := range c.Artists {
-		if _, ok := groups[a.Slug]; !ok || !matches(q.Search, a.Slug, a.Name, a.PublicName) {
+		if _, ok := groups[a.Slug]; !ok || (a.Archived && !q.IncludeArchived) || !matches(q.Search, append([]string{a.Slug, a.Name, a.PublicName}, a.Aliases...)...) {
 			continue
 		}
 		row := GroupRow{Slug: a.Slug, Name: a.Name, IDState: idState(a)}

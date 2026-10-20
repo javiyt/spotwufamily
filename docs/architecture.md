@@ -26,7 +26,7 @@ Boundaries:
 - `catalogexport` reads SQLite through an export reader port and writes deterministic JSON through a filesystem writer port.
 - Hugo builds the static site from `site/`, reading generated JSON data and a static search index.
 - CLI composition lives at the inbound edge; `internal/bootstrap` is the shared composition root for the admin.
-- The local HTTP admin (`httpadmin`) is a read-only inbound adapter over `application/admin` use cases; see [Local admin](admin.md).
+- The local HTTP admin (`httpadmin`) is an inbound adapter over `application/admin` use cases (queries and safe catalog edits); see [Local admin](admin.md).
 
 The domain and application packages do not import Spotify, SQLite, YAML, JSON filesystem code, Hugo or GitHub Actions. Technology-specific wiring stays in the CLI and outbound adapters.
 

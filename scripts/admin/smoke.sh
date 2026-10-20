@@ -39,6 +39,8 @@ code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 [ "$(code "http://127.0.0.1:${PORT}/")" = 401 ] || { echo "FAIL: unauthenticated access allowed" >&2; exit 1; }
 [ "$(code -c "$work/jar" "$url")" = 303 ] || { echo "FAIL: launch URL did not authenticate" >&2; exit 1; }
 [ "$(code -b "$work/jar" "http://127.0.0.1:${PORT}/")" = 200 ] || { echo "FAIL: dashboard unavailable" >&2; exit 1; }
+[ "$(code -b "$work/jar" "http://127.0.0.1:${PORT}/artists/new")" = 200 ] || { echo "FAIL: editor unavailable" >&2; exit 1; }
+[ "$(code -b "$work/jar" -X POST -H "Origin: http://127.0.0.1:${PORT}" -d 'name=x' "http://127.0.0.1:${PORT}/artists")" = 403 ] || { echo "FAIL: edit without CSRF token accepted" >&2; exit 1; }
 [ "$(code -b "$work/jar" -H 'Host: evil.example' "http://127.0.0.1:${PORT}/")" = 403 ] || { echo "FAIL: foreign Host accepted" >&2; exit 1; }
 [ "$(code -b "$work/jar" -X POST -H 'Origin: https://evil.example' "http://127.0.0.1:${PORT}/logout")" = 403 ] || { echo "FAIL: cross-origin POST accepted" >&2; exit 1; }
 

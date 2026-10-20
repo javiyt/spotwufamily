@@ -120,7 +120,7 @@ func executeAdminServe(ctx context.Context, args []string, stdout, stderr io.Wri
 	defer stop()
 
 	base := "http://" + ln.Addr().String()
-	_, _ = fmt.Fprintf(stdout, "Spot Wu Family admin (read-only) listening on %s\n", base)
+	_, _ = fmt.Fprintf(stdout, "Spot Wu Family admin listening on %s\n", base)
 	if generated {
 		_, _ = fmt.Fprintf(stdout, "Open: %s/auth?token=%s\n", base, token)
 	} else {
