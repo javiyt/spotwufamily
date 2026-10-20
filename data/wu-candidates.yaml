@@ -1,0 +1,3001 @@
+# Wu Family candidate ledger (see docs/catalog-policy.md).
+# Imports only add `pending` candidates and provenance. Every other status is a manual decision.
+# Only `accepted` candidates are staged into data/artists.yaml, always disabled and without a Spotify ID.
+
+version: 1
+candidates:
+  - name: 1Man
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: 2Real
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: 5 Foot Hyper Sniper
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: 5 Star
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-almighty
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: 6 Mil
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: 60 Second Assassin
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: directorio_fans, sunz_of_man
+    relation_claim: Member of Sunz of Man
+    relation: member
+    relation_groups:
+      - sunz-of-man
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    external_ids:
+      musicbrainz: a02ee6d6-9b9b-4ddf-9a24-8f2b093b329c
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/a02ee6d6-9b9b-4ddf-9a24-8f2b093b329c
+        rationale: Member of Sunz of Man
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Sunz_of_Man
+        rationale: Lists 60 Second Assassin as a current member of Sunz of Man
+    reason: Sunz of Man was the first group signed to Wu-Tang Records. The Art of War group claim is undocumented and tracked separately.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: 60-second-assassin
+  - name: 7L
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: czarface
+    relation_claim: group-czarface
+    category: producer
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: 7th Ambassador
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: sunz_of_man
+    relation_claim: group-da-last-future, group-sunz-of-man
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Airwave Justo
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-a-c-g-137
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Allah Sun
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-black-rose-kartel
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Allah Wise
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-a-i-g
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ancient Coins
+    kind: group
+    status: alias_of_existing
+    confidence: low
+    category: affiliate_group
+    alias_of: ancients-coins
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/1eefbd17-66e4-4cbf-bf42-57d8bef1e629
+        rationale: Single MusicBrainz artist spelled Ancient Coins
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: 'Armel entry: Armel is a member of Ancient Coins'
+    reason: 'Same group: Wikipedia and MusicBrainz both use the spelling ''Ancient Coins''. The catalog spelling ''Ancients Coins'' stays as the name and the variant is added as an alias.'
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    alias_applied: true
+  - name: Anthai the Protagonist
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-71raw
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Apocalipps
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ruthless-bastards
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Aristotle
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-black-rose-kartel
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Arkatech Beatz
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-american-cream-team
+    category: producer
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Arsenal
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-homicidal-committee
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Arsonist
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-homicidal-committee
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Asiatic
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-k-g-b
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Atlantis Scrolls
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-american-poets-2099
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Autumn Rae
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-hillside-scramblers
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Babyface Fensta
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Baker Don
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-staten-stars
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Bam-Bam
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-m-m-o
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Baracus
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-black-rose-kartel
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Barracuda
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-most-high-brotherz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Barrakjudah
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-lin-brotherz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Begga Ooh
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-hidden-aspects, group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Beno
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ruthless-bastards
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Big Supa
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-homicidal-committee
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Bigg Cy
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-coney-island-gankstas, group-gunslingaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Black Brigade
+    kind: group
+    status: needs_more_evidence
+    confidence: low
+    evidence_category: directorio_fans
+    category: affiliate_group
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No source found beyond the AI-generated reference (fan directory). The Wikipedia affiliates list and a web search return nothing for this group name.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+  - name: Black Ice
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-hillside-scramblers
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Black Lantern
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Blak Spik
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-soul-kid-klik
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Bless
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ruthless-bastards
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Blizzard
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ruthless-bastards
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Bolo Gah
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-actual-facts, group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Born U Majesty
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Broken Tongue
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-71raw
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Buda Love
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-actual-facts, group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: BxYungGz
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-universal-zu-disciplez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: C-Rayz Walz
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-almighty
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Cappadonna
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: clan, theodore_unit, web_oficial_wutang
+    relation_claim: group-theodore-unit, group-wu-tang-clan
+    category: affiliate_artist
+    alias_of: cappadonna
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry cappadonna by name or alias.
+  - name: Carlos C-12 Bess
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, wu_elements
+    relation_claim: group-wu-elements
+    category: producer
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Carlton Fisk
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-house-gang
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Celo
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Champ MC
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: deadly_venoms
+    relation_claim: Member of Deadly Venoms
+    relation: member
+    relation_groups:
+      - deadly-venoms
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    external_ids:
+      musicbrainz: 5cecfa95-e1bf-4e1a-8748-7bcaf71c1496
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/5cecfa95-e1bf-4e1a-8748-7bcaf71c1496
+        rationale: Member of Deadly Venoms
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Deadly_Venoms
+        rationale: Lists Champ MC as a member of the Wu-Tang Clan-affiliated group
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: champ-mc
+  - name: Chapel
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados, directorio_fans
+    relation_claim: group-1-4-0-productions, group-team-napalm
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Cheesey Rat
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-1-4-0-productions
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Chilli Black
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Chip Banks
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-american-cream-team
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Christ Bearer
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, archivo_afiliados, northstar
+    relation_claim: group-black-knights-of-the-north-star, group-northstar, group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Cigar
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ice-water-inc
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Crisis
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans, northstar
+    relation_claim: group-black-knights, group-black-knights-of-the-north-star, group-homicidal-committee
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Crunch Lo
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-othorized-f-a-m, group-team-napalm
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: D.C.
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-house-gang, group-ice-water-inc, group-staten-stars
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: D.L.
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Daddy Rose
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-maccabeez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Danjah Da Hood
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-universal-zu-disciplez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Dark Denim
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-royal-fam
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Dark Skinned Assassin
+    kind: group
+    status: alias_of_existing
+    confidence: low
+    category: affiliate_group
+    alias_of: dr-ama-aka-dark-skinned-assassin
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry dr-ama-aka-dark-skinned-assassin by name or alias.
+  - name: Decrep Da Omen
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-goldminerz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Desert Eagle
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-hillside-scramblers
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Destroya
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ancient-coins
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Deus
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-universal-zu-disciplez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Dexter Wiggle
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-school-of-the-gifted, group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: DG Kash
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-universal-zu-disciplez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Dionna Nichelle
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Dizzy Dizasta
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: DJ Choco
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-da-groove-stalkers, group-wu-latino
+    category: producer
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: DJ Devastator
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: afiliados
+    category: producer
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: DJ Extremidiz
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-premium-plus
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: DJ Flipcyide
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-purge
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: DJ Kenny Kenn
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-k-g-b
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: DJ Scream
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-crooks-of-da-round-table
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Doc Blake
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-most-high-brotherz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Doc Doom
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, northstar
+    relation_claim: group-black-knights, group-black-knights-of-the-north-star
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Down Low Recka
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: gp_wu
+    relation_claim: group-gp-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Dr. Quick Fingers
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-coney-island-gankstas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Dragonfly
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-black-lotus, group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Dreddy Kruger
+    kind: group
+    status: pending
+    confidence: low
+    category: affiliate_group
+    alias_of: dreddy-krueger
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Variant claim from the source; not verified.
+  - name: Drunken Dragon
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Du-Lilz
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: theodore_unit
+    relation_claim: group-theodore-unit
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Duhnokah
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-goldminerz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Eddi3 Hizpanik
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Elijah Divine
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ellery Chambers
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-staten-stars
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Elohim
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-black-rose-kartel
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ern Dawg
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Esoteric
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: czarface
+    relation_claim: group-czarface
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Espionage
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Eternal
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Eyez-N-Powa
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-goldminerz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Father Lord
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-actual-facts, group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Fes Taylor
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-house-gang, group-staten-stars, group-two-4-war
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Finesse
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: deadly_venoms
+    relation_claim: group-deadly-venoms
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Freemurda
+    kind: group
+    status: pending
+    confidence: low
+    category: affiliate_group
+    alias_of: free-murda
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Variant claim from the source; not verified.
+    possible_duplicate_of: free-murda
+  - name: Fresco P
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-babylon-warchild
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Frukwan
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: gravediggaz
+    relation_claim: Member of Gravediggaz (The Gatekeeper); Gravediggaz also includes RZA
+    relation: member
+    relation_groups:
+      - gravediggaz
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    external_ids:
+      musicbrainz: 6c20758e-b910-4ea0-84da-b20ecc7c7d1e
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/6c20758e-b910-4ea0-84da-b20ecc7c7d1e
+        rationale: Original member of Gravediggaz and member of Wu-Tang Killa Bees
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Gravediggaz
+        rationale: Lists Frukwan as The Gatekeeper, one of four original members, alongside The RZArector
+    reason: MusicBrainz also lists Frukwan in Wu-Tang Killa Bees.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: frukwan
+  - name: G-Clef
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-soul-kid-klik
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: G-Note$
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: G-Twin
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Gab Gotcha
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-wu-latino
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: General Jihad
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ghostface Killah
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: clan, theodore_unit, web_oficial_wutang
+    relation_claim: group-theodore-unit, group-wu-tang-clan
+    category: affiliate_artist
+    alias_of: ghostface-killah
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry ghostface-killah by name or alias.
+  - name: God AGR Harrison
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-harlem-6
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Goldfinghaz
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, wu_elements
+    relation_claim: group-wu-elements
+    category: producer
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Goldie Mack
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-black-rose-kartel
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Goodfella
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-soul-kid-klik
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Got Flow
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ancient-coins
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: GZA
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: clan, web_oficial_wutang
+    relation_claim: group-wu-tang-clan
+    category: affiliate_artist
+    alias_of: gza
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry gza by name or alias.
+  - name: Heidi Flyce
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-staten-stars
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: High Price
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ancient-coins
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Hip Hop
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-k-g-b
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Holy Smokes
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ancient-coins
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Hook Ninja
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ill Knob
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-k-g-b
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Illah Dayz
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: wisemen
+    relation_claim: Member of Wisemen
+    relation: member
+    relation_groups:
+      - wisemen
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    external_ids:
+      musicbrainz: 0d792f19-cbf8-446c-8fbc-e5f83637b906
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/0d792f19-cbf8-446c-8fbc-e5f83637b906
+        rationale: Member of Wisemen
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wisemen_(rap_group)
+        rationale: Lists Illah Dayz among the emcees of the group
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: illah-dayz
+  - name: Impetus
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-wu-latino
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Inf-Black
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-hillside-scramblers
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Infaredda
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-k-g-b
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Infinite Coles
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Inspectah Deck
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: clan, czarface, web_oficial_wutang
+    relation_claim: group-czarface, group-wu-tang-clan
+    category: affiliate_artist
+    alias_of: inspectah-deck
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry inspectah-deck by name or alias.
+  - name: Iron Mic
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ruthless-bastards, group-staten-stars
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Itchy Fingas Sha
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-m-m-o
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Itchy Palmz
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-indovizualz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: J-Boo
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: deadly_venoms
+    relation_claim: group-deadly-venoms
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: J-Corry
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: afiliados
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: J.R. Spoons
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ancient-coins
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Jamel
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Jim Kelly
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-black-lotus, group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Joe Mafia
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: wu_syndicate
+    relation_claim: Member of Wu-Syndicate
+    relation: member
+    relation_groups:
+      - wu-syndicate
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    external_ids:
+      musicbrainz: 84b73dc8-017e-4d13-8ad4-789786e96680
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/84b73dc8-017e-4d13-8ad4-789786e96680
+        rationale: Member of Wu-Syndicate
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Syndicate
+        rationale: Lists Joe Mafia as a member; the group signed to Wu-Tang Records
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: joe-mafia
+  - name: John the Baptist
+    kind: group
+    status: alias_of_existing
+    confidence: low
+    category: affiliate_group
+    alias_of: john-the-baptist-aka-bapgod
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry john-the-baptist-aka-bapgod by name or alias.
+  - name: Jowlsywells
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-sentinels
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: June Luva
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: gp_wu
+    relation_claim: group-gp-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: June Megalodon
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: wisemen
+    relation_claim: group-the-wisemen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Just 1
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-1-4-0-productions
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: K-Blunt
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Kappo
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Karim Justice
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Karnage Ca$hMan
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Kawz
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-hillside-scramblers
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: KDB
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-babylon-warchild
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Kevlaar 7
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: wisemen
+    relation_claim: Member of Wisemen; lyricist and producer; died 2014
+    relation: member
+    relation_groups:
+      - wisemen
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+      - producer
+    external_ids:
+      musicbrainz: 5c30c7b8-920e-4f55-aa84-ef61611260cc
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/5c30c7b8-920e-4f55-aa84-ef61611260cc
+        rationale: Member of Wisemen
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wisemen_(rap_group)
+        rationale: Lists Kevlaar 7 as co-founder and producer of the group
+    reason: Wisemen was formed by Wu-Tang affiliate Bronze Nazareth and his brother Kevlaar 7.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: kevlaar-7
+  - name: Khilly Mo
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-harlem-6
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Killa Mac
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-two-4-war
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: King Just
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-hillside-scramblers
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: King Merdy
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-brooklyn-zu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Kryme Life
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: archivo_afiliados, theodore_unit
+    relation_claim: group-t-m-f, group-theodore-unit
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: L.I.S.
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-two-4-war
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: La Banga
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-house-gang
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Leatha Face
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-hillside-scramblers
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Lee-Major
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Legend
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-indovizualz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Legitimate
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-babylon-warchild
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Lex Bi-Polar
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Lex-Supa
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-universal-zu-disciplez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Lin Que
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: deadly_venoms
+    relation_claim: group-deadly-venoms
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Lon Dini
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-two-4-war
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Long Axe
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-black-lotus, group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Longfist
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Lord Black Jesus Harrison
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-harlem-6
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Lord Jessiah
+    kind: artist
+    status: needs_more_evidence
+    confidence: high
+    evidence_category: wisemen
+    relation_claim: group-the-wisemen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Appears only in the Wikipedia infobox member list of Wisemen, not in the article text; MusicBrainz lists Lord Jessiah (32694249-92d2-4d2d-a0d6-f9dc362eca3f, rapper) with no group relation. Needs a release credit or press source tying him to Wisemen.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+  - name: Lot-A-Nerv
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-two-4-war
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: M-Eighty
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-almighty
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Madam Scheez
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Magpie
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-most-high-brotherz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Majik Sword
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Manny Macgyver
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Martial Art
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-71raw
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Masta Killa
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: clan, web_oficial_wutang
+    relation_claim: group-wu-tang-clan
+    category: affiliate_artist
+    alias_of: masta-killa
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry masta-killa by name or alias.
+  - name: Mega Soul
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Meko the Pharaoh
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, archivo_afiliados, northstar
+    relation_claim: group-black-knights-of-the-north-star, group-northstar, group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Mic Moses
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-sentinels
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Mighty Jarrett
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-royal-fam
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Mike Boston
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-universal-zu-disciplez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Molly Q
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-othorized-f-a-m
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Monk
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-homicidal-committee
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Moongod Allah
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans, wu_elements
+    relation_claim: group-iron-empire, group-lin-brotherz, group-wu-elements
+    category: producer
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Morbid Society
+    kind: group
+    status: needs_more_evidence
+    confidence: low
+    evidence_category: directorio_fans
+    category: affiliate_group
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Only a Last.fm blurb links Dungeon Masta to Morbid Society; no Wikipedia, MusicBrainz or press source. Needs independent documentation of the group itself.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+  - name: Myalansky
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: wu_syndicate
+    relation_claim: Member of Wu-Syndicate
+    relation: member
+    relation_groups:
+      - wu-syndicate
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    external_ids:
+      musicbrainz: 4f5d8b41-e4bb-46a8-adb7-182c673844f7
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/4f5d8b41-e4bb-46a8-adb7-182c673844f7
+        rationale: Member of Wu-Syndicate
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Syndicate
+        rationale: Lists Myalansky as a member; the group signed to Wu-Tang Records
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: myalansky
+  - name: N-Tyce
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: deadly_venoms
+    relation_claim: Member of Deadly Venoms
+    relation: member
+    relation_groups:
+      - deadly-venoms
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    external_ids:
+      musicbrainz: 0315f11a-c3bc-497b-a31c-733ceb3b6293
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/0315f11a-c3bc-497b-a31c-733ceb3b6293
+        rationale: US rapper Amma Brown, member of Deadly Venoms
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Deadly_Venoms
+        rationale: Lists N-Tyce as a member of the Wu-Tang Clan-affiliated group; RZA produced his single Hush Hush Tip
+    reason: 'Homonym warning: MusicBrainz N-Tyce 9bdca25a-0ec7-4bd9-9fb8-b887ef77e97f is an unrelated UK girl group and must not be used.'
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: n-tyce
+  - name: Nahbi Reality
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-universal-zu-disciplez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Naisha
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-m-m-o
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Napoleon
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans, wu_syndicate
+    relation_claim: group-school-of-the-gifted, group-wu-syndicate
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ninja Scroll
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: NLZ
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-team-napalm
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Nova Kane
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-american-poets-2099
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Nuke LeFleur
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ol' Dirty Bastard
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: clan, web_oficial_wutang
+    relation_claim: group-wu-tang-clan
+    category: affiliate_artist
+    alias_of: ol-dirty-bastard
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry ol-dirty-bastard by name or alias.
+  - name: P.C.
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-house-gang, group-ice-water-inc
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: P. Live
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ruthless-bastards
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Pa Bazil
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-two-4-war
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: $paceMane
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Pearl Handles
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-m-m-o
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Pesha
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Phillie
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: wisemen
+    relation_claim: group-the-wisemen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Poison Ivy
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-indovizualz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Polite
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-american-cream-team, group-ice-water-inc
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Pop Da Brown Hornet
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: gp_wu
+    relation_claim: group-gp-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Popa Chief
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Prana Supreme
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Prince Paul
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: gravediggaz
+    relation_claim: Member and producer of Gravediggaz (The Undertaker)
+    relation: collaborator
+    relation_groups:
+      - gravediggaz
+    category: collaborator
+    roles:
+      - collaborator
+      - producer
+    external_ids:
+      musicbrainz: 50840ae7-d000-4858-8aac-bd776a12dafa
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/50840ae7-d000-4858-8aac-bd776a12dafa
+        rationale: Original member of Gravediggaz; hip hop DJ and producer
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Gravediggaz
+        rationale: Lists Prince Paul as The Undertaker, a non-rapping producer member
+    reason: Not a Wu-Tang Clan member. The Wu relation is only through Gravediggaz, which includes RZA. Primarily a hip hop producer.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: prince-paul
+  - name: Pro the Leader
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-american-poets-2099, group-armor-of-god, group-the-sentinels
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Professor King Bean
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Propa
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Raekwon
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: clan, web_oficial_wutang
+    relation_claim: group-wu-tang-clan
+    category: affiliate_artist
+    alias_of: raekwon
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry raekwon by name or alias.
+  - name: Raison the Zu Keeper
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-brooklyn-zu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Rambo
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ramith
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Ramses
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-wu-latino
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Raw
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Raysun
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-k-m-g
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Reverend William Burke
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-achozen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Rhyme Recca
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-american-cream-team
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Rook Da Rukus
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-goldminerz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Rubbabandz
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans, gp_wu
+    relation_claim: group-gp-wu, group-school-of-the-gifted
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Rugged Monk
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, northstar
+    relation_claim: group-black-knights, group-black-knights-of-the-north-star
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Rumplestiltz
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-babylon-warchild
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: RZA
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: afiliados, clan, directorio_fans, gravediggaz, web_oficial_wutang, wu_elements
+    relation_claim: group-achozen, group-gravediggaz, group-wu-elements, group-wu-tang-clan
+    category: producer
+    alias_of: rza
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry rza by name or alias.
+  - name: Sage Badweather
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Salahudin
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-black-rose-kartel, group-maccabeez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Salute the Kid
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: wisemen
+    relation_claim: group-the-wisemen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Samo Heung
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Sandman
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Scorpion
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Seekz Monster
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-premium-plus
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Sha Gotti
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ruthless-bastards
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Sha Stimuli
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: afiliados
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: ShaCronz
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-c-c-f-division
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Shaddow Law
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Shaheed
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-zu-ninjaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Shaka Amazulu
+    kind: group
+    status: pending
+    confidence: low
+    category: affiliate_group
+    alias_of: shaka-amazulu-the-7th
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Variant claim from the source; not verified.
+  - name: Shamel Irief
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Shavo Odadjian
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados, directorio_fans
+    relation_claim: group-achozen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Shawn Wigs
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, theodore_unit
+    relation_claim: group-othorized-f-a-m, group-theodore-unit
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: ShoGun Assasson
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, directorio_fans, killarmy
+    relation_claim: group-a-c-g-137, group-killarmy, group-orphanage
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Shorte
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-1-4-0-productions
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Shorty Shitstain
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-brooklyn-zu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Shotti Screwface
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: afiliados
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Simon Roofless
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-goldminerz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Skarekrow
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-west-coast-killa-beez
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Skratch
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Smuve Massbeatz
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Son One
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-the-almighty
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Spanky Splash
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ancient-coins
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Spinbad
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-soul-kid-klik
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Sponatola
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-goldminerz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Stoneface
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-a-r, group-royal-fam
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Storm
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-soul-kid-klik
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Struxx Denali
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-dirty-clanzmen
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Stumik
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ice-water-inc, group-staten-stars
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Supreme Coles
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Supreme I-Self
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-yellow-jacketz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: T Diddy
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-1-4-0-productions
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Terra Tory
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-c-c-f-division
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: The Art of War
+    kind: group
+    status: needs_more_evidence
+    confidence: low
+    evidence_category: directorio_fans
+    category: affiliate_group
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: The Wikipedia Sunz of Man article does not mention a group by this name; 60 Second Assassin's membership is tracked on the Sunz of Man claim instead.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+  - name: The Purge
+    kind: group
+    status: needs_more_evidence
+    confidence: low
+    evidence_category: directorio_fans
+    category: affiliate_group
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No source found beyond the AI-generated reference (fan directory). DJ Flipcyide's link is unconfirmed.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+  - name: The Wisemen
+    kind: group
+    status: alias_of_existing
+    confidence: low
+    category: affiliate_group
+    alias_of: wisemen
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/e335c7ab-6481-4ec4-8782-0978dcfcb02f
+        rationale: 'Wisemen: US rap group, Wu-Tang Clan associates'
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wisemen_(rap_group)
+        rationale: Detroit group founded by Bronze Nazareth and Kevlaar 7
+    reason: 'Same group: the Wikipedia article is titled Wisemen (rap group) and MusicBrainz names the group Wisemen. MusicBrainz also has an empty ''The Wisemen'' record (ecfa9bcc-3a11-4525-9a1e-e1ca185b598f) with no data, not treated as a separate act.'
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    alias_applied: true
+  - name: Tommy Whispers
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: archivo_afiliados
+    relation_claim: group-t-m-f
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Too Poetic
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: gravediggaz
+    relation_claim: Member of Gravediggaz (The Grym Reaper); deceased 2001
+    relation: member
+    relation_groups:
+      - gravediggaz
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases:
+      - Poetic
+    external_ids:
+      musicbrainz: 22ff0ca3-ad1c-4514-92ed-3df7ad23e496
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/22ff0ca3-ad1c-4514-92ed-3df7ad23e496
+        rationale: Original member of Gravediggaz; life-span ends 2001-07-15
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Gravediggaz
+        rationale: Lists Too Poetic as The Grym Reaper, died July 2001
+    reason: MusicBrainz artist named 'Too Poetic' (21d373a6-c090-4c65-ab8d-9d11fab83b1c) is a different act (Kaos, Woody Wood); the Gravedigga is MusicBrainz 'Poetic'.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: too-poetic
+  - name: Tragedy Khadafi
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-black-market-militia
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Trife Diesel
+    kind: artist
+    status: accepted
+    confidence: high
+    evidence_category: archivo_afiliados, theodore_unit
+    relation_claim: Member of Theodore Unit (Ghostface Killah's group); formerly T.M.F.
+    relation: member
+    relation_groups:
+      - theodore-unit
+      - t-m-f
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases:
+      - Trife Da God
+    external_ids:
+      musicbrainz: 9438f713-4b0c-411e-897e-040d45c928f0
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/9438f713-4b0c-411e-897e-040d45c928f0
+        rationale: Member of Theodore Unit and TMF; described as a Wu-Tang affiliate
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Theodore_Unit
+        rationale: Describes Trife Diesel as a Theodore Unit member first heard on Ghostface Killah Bulletproof Wallets
+    reason: The Wikipedia article carries a needs-citations banner; the independent anchor is the MusicBrainz group relation plus his Bulletproof Wallets and 718 credits.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+    staged_slug: trife-diesel
+  - name: Triflyn
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-american-cream-team
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Trigg-nomm
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-m-m-o
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Trigga
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-coney-island-gankstas, group-gunslingaz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Truck
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-ruthless-bastards
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Twiz
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados, theodore_unit
+    relation_claim: group-american-cream-team, group-theodore-unit
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: U-God
+    kind: artist
+    status: alias_of_existing
+    confidence: high
+    evidence_category: clan, web_oficial_wutang
+    relation_claim: group-wu-tang-clan
+    category: affiliate_artist
+    alias_of: u-god
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: Matches existing catalog entry u-god by name or alias.
+  - name: Uncle Buk
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-goldminerz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: United Kingdom (Population Clik)
+    kind: group
+    status: needs_more_evidence
+    confidence: low
+    category: affiliate_group
+    alias_of: united-kingdom
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No source found for the (Population Clik) qualifier, nor evidence that it differs from or equals the catalog United Kingdom. Not merged and not aliased; the Wikipedia affiliates list only mentions 'United Kingdom' as a publisher location.
+    reviewer: javiyt
+    reviewed_at: "2026-10-20T09:24:57Z"
+  - name: Unknown Mizery
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-babylon-warchild
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: War
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-da-manchuz
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: William Cooper
+    kind: artist
+    status: pending
+    confidence: high
+    evidence_category: afiliados
+    relation_claim: group-black-market-militia
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Young Man
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-harlem-6
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Young Prince
+    kind: artist
+    status: pending
+    confidence: low
+    evidence_category: directorio_fans
+    relation_claim: group-sonz-of-wu
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml
+  - name: Yukon Black
+    kind: artist
+    status: pending
+    confidence: medium
+    evidence_category: afiliados
+    relation_claim: group-hidden-aspects, group-tha-beggas
+    category: affiliate_artist
+    sources:
+      - title: wu_family.json (versión previa generada en esta conversación)
+    reason: No figura por nombre ni variante conocida en data/artists.yaml

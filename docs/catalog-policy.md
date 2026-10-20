@@ -165,3 +165,69 @@ Every core member has exactly one editorial record: `rza`, `gza`, `method-man`, 
 - `category: core` is an editorial label. Group membership must come from relation records once the relationships model exists; this change does not create them.
 - Cappadonna began as an affiliate and is credited as a full member on later group albums. He is kept as `core`, with the nuance recorded in `notes`; the membership period belongs in his relation record.
 - New records get appended `editorial_order` values (196-204). Existing orders are never shifted: `seed-db` upserts row by row against a unique `editorial_order` index, so renumbering breaks seeding of existing databases.
+
+## Candidate inventory and curation
+
+External inventories (including AI-generated or fan-directory references) are **candidates**, never identities. `data/wu-candidates.yaml` is the reviewable ledger of every candidate, its provenance and the human decision about it. The generated summary and per-candidate evidence links live in [`docs/candidate-curation.md`](candidate-curation.md).
+
+### Statuses
+
+| Status | Meaning | Reaches `artists.yaml`? |
+| --- | --- | --- |
+| `pending` | Imported, not reviewed. The only status imports can create (besides the automatic duplicate below). | No |
+| `accepted` | Wu relation corroborated by at least two independent evidence types with permanent URLs. | Yes, staged disabled with no Spotify ID |
+| `needs_more_evidence` | Plausible but not corroborated; `reason` says what is missing. | No |
+| `rejected` | Dismissed with a reason. Re-imports and `discover-wu` never propose it again; leaving this status needs at least one new independent evidence item. | No |
+| `alias_of_existing` | A variant of an entry already in the catalog (`alias_of` slug). Applied as an alias, never as a new group. | Alias only |
+
+An imported name that matches a catalog entry by slug, name, public name, alias or a known external identifier is recorded as `alias_of_existing` automatically ("mechanical duplicate"). A name that only matches after ignoring punctuation (`N-Tyce` vs `NTyce`) is kept `pending` with `possible_duplicate_of`: never merged on a guess. Matching ignores case, accents and apostrophes.
+
+Accepted entries record a classification: `relation` (`creator`, `member`, `producer`, `collaborator`, `association`), `relation_groups` (catalog slugs) and `category`/`roles`. Group membership of a Wu affiliate group is not Wu-Tang Clan membership: Prince Paul is a `collaborator` (and producer) whose only Wu relation is Gravediggaz.
+
+Evidence reuses the profile evidence types. `name_match` and `credit` never count; two items of one type are one source. Same-name MusicBrainz records can be different people (`N-Tyce` is also a UK girl group; MusicBrainz "Too Poetic" is a different act), so record the exact MusicBrainz ID in `external_ids`.
+
+### Commands
+
+```sh
+# Dry run: shows counts and the plan, writes nothing. JSON or CSV (BOMs and the Spanish reference headers are accepted).
+spotwufamily artists import-candidates --input inventory.json --report candidates-report.md
+# Stage pending candidates and provenance in the ledger.
+spotwufamily artists import-candidates --input inventory.json --apply
+# Record one manual decision (--kind only when the name is not in the ledger yet).
+spotwufamily artists review-candidate --name "Frukwan" --status accepted --reviewer javi \
+  --category affiliate_artist --relation member --group gravediggaz --relation-claim "Member of Gravediggaz" \
+  --evidence "musicbrainz|https://musicbrainz.org/artist/<mbid>|why" \
+  --evidence "wikipedia|https://en.wikipedia.org/wiki/Gravediggaz|why" --external-id musicbrainz=<mbid>
+# Write accepted candidates and alias decisions into data/artists.yaml (disabled, no Spotify ID).
+spotwufamily artists import-candidates --apply
+# Undo staging (entries that were enabled or got a Spotify profile since are kept).
+spotwufamily artists import-candidates --revert --apply
+```
+
+`make artists-import-candidates`, `artists-import-candidates-apply`, `artists-stage-candidates` and `artists-revert-candidates` wrap these.
+
+Guarantees: an import never changes the status, classification or evidence of a known candidate (it only adds provenance and aliases); output is sorted and byte-stable, so repeated runs produce no diff; `artists.yaml.bak` and `wu-candidates.yaml.bak` are kept (git-ignored) and GitHub Release backups are never touched. `discover-wu --ledger` only **reads** the ledger: ledger names are reported as "Suppressed By Candidate Ledger" and never added again. Mapping a Spotify profile for a staged entry is a separate step with `review-profile`; nothing here sets a Spotify ID or enables an entry.
+
+### Decisions recorded on 2026-10-20 (issue #265)
+
+Source: the 2026-10-19 comparative inventory (266 artists and 4 groups absent by name, plus 8 variant claims). 278 rows imported: 11 accepted, 13 `alias_of_existing`, 6 `needs_more_evidence`, 0 rejected, 248 left `pending`. Corroboration used MusicBrainz group relations plus the matching Wikipedia article; both are community-edited, so they are independent databases, not authorities. A maintainer should still sign off the `reviewer: claude-code` decisions.
+
+| Candidate | Decision | Classification and note |
+| --- | --- | --- |
+| Frukwan | accepted | Gravediggaz member, `affiliate_artist`; MusicBrainz also lists Wu-Tang Killa Bees |
+| Too Poetic | accepted | Gravediggaz member (d. 2001); the MusicBrainz record is "Poetic", the record named "Too Poetic" is a different act |
+| Prince Paul | accepted | `collaborator` + `producer`; Gravediggaz member, no Wu-Tang Clan membership |
+| 60 Second Assassin | accepted | Sunz of Man member |
+| Joe Mafia, Myalansky | accepted | Wu-Syndicate members |
+| N-Tyce, Champ MC | accepted | Deadly Venoms members; N-Tyce's UK girl-group homonym excluded |
+| Trife Diesel | accepted | Theodore Unit / T.M.F. member; Wikipedia article lacks citations, MusicBrainz relation is the anchor |
+| Kevlaar 7 | accepted | Wisemen co-founder, `affiliate_artist` + `producer` (d. 2014) |
+| Illah Dayz | accepted | Wisemen member |
+| Lord Jessiah | needs_more_evidence | Only in a Wikipedia infobox; no MusicBrainz group relation |
+| Black Brigade, Morbid Society, The Art of War, The Purge | needs_more_evidence | No independent documentation found; not rejected because absence of a source is not disproof |
+| Ancient Coins | alias_of_existing → `ancients-coins` | Wikipedia and MusicBrainz use "Ancient Coins" |
+| The Wisemen | alias_of_existing → `wisemen` | Same group; an empty MusicBrainz "The Wisemen" record is not a separate act |
+| United Kingdom (Population Clik) | needs_more_evidence | No source for the qualifier; not merged and not aliased |
+| Ghostface Killah and the other core members | alias_of_existing | Already catalogued as core records (#264); the inventory predates them |
+
+No Spotify IDs were guessed, and no staged entry is enabled.

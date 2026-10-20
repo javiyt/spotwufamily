@@ -1696,7 +1696,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - Ancient Coins
     enabled: false
     editorial_order: 126
     notes: Candidate from online Wu-Tang affiliate groups audit; review before enabling.
@@ -2424,7 +2425,8 @@ artists:
     category: affiliate_group
     roles:
       - affiliate_group
-    aliases: []
+    aliases:
+      - The Wisemen
     enabled: true
     editorial_order: 189
     notes: Candidate from online Wu-Tang affiliate groups audit; local Spotify credit candidate present; review before enabling.
@@ -2710,3 +2712,139 @@ artists:
     editorial_order: 204
     notes: Core Wu-Tang Clan founding member (1968-2004). Distinct from the Young Dirty Bastard record.
     external_url: https://open.spotify.com/artist/50NoVNy9GU1lCrDV8iGpyu
+  - slug: 60-second-assassin
+    name: 60 Second Assassin
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 205
+    notes: Curated from source-backed candidate inventory (member of sunz-of-man); Spotify profile not mapped. Sunz of Man was the first group signed to Wu-Tang Records. The Art of War group claim is undocumented and tracked separately.
+    external_url: https://musicbrainz.org/artist/a02ee6d6-9b9b-4ddf-9a24-8f2b093b329c
+    added_at: "2026-10-20"
+  - slug: champ-mc
+    name: Champ MC
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 206
+    notes: Curated from source-backed candidate inventory (member of deadly-venoms); Spotify profile not mapped.
+    external_url: https://musicbrainz.org/artist/5cecfa95-e1bf-4e1a-8748-7bcaf71c1496
+    added_at: "2026-10-20"
+  - slug: frukwan
+    name: Frukwan
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 207
+    notes: Curated from source-backed candidate inventory (member of gravediggaz); Spotify profile not mapped. MusicBrainz also lists Frukwan in Wu-Tang Killa Bees.
+    external_url: https://musicbrainz.org/artist/6c20758e-b910-4ea0-84da-b20ecc7c7d1e
+    added_at: "2026-10-20"
+  - slug: illah-dayz
+    name: Illah Dayz
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 208
+    notes: Curated from source-backed candidate inventory (member of wisemen); Spotify profile not mapped.
+    external_url: https://musicbrainz.org/artist/0d792f19-cbf8-446c-8fbc-e5f83637b906
+    added_at: "2026-10-20"
+  - slug: joe-mafia
+    name: Joe Mafia
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 209
+    notes: Curated from source-backed candidate inventory (member of wu-syndicate); Spotify profile not mapped.
+    external_url: https://musicbrainz.org/artist/84b73dc8-017e-4d13-8ad4-789786e96680
+    added_at: "2026-10-20"
+  - slug: kevlaar-7
+    name: Kevlaar 7
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+      - producer
+    aliases: []
+    enabled: false
+    editorial_order: 210
+    notes: Curated from source-backed candidate inventory (member of wisemen); Spotify profile not mapped. Wisemen was formed by Wu-Tang affiliate Bronze Nazareth and his brother Kevlaar 7.
+    external_url: https://musicbrainz.org/artist/5c30c7b8-920e-4f55-aa84-ef61611260cc
+    added_at: "2026-10-20"
+  - slug: myalansky
+    name: Myalansky
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 211
+    notes: Curated from source-backed candidate inventory (member of wu-syndicate); Spotify profile not mapped.
+    external_url: https://musicbrainz.org/artist/4f5d8b41-e4bb-46a8-adb7-182c673844f7
+    added_at: "2026-10-20"
+  - slug: n-tyce
+    name: N-Tyce
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases: []
+    enabled: false
+    editorial_order: 212
+    notes: 'Curated from source-backed candidate inventory (member of deadly-venoms); Spotify profile not mapped. Homonym warning: MusicBrainz N-Tyce 9bdca25a-0ec7-4bd9-9fb8-b887ef77e97f is an unrelated UK girl group and must not be used.'
+    external_url: https://musicbrainz.org/artist/0315f11a-c3bc-497b-a31c-733ceb3b6293
+    added_at: "2026-10-20"
+  - slug: prince-paul
+    name: Prince Paul
+    spotify_id: ""
+    category: collaborator
+    roles:
+      - collaborator
+      - producer
+    aliases: []
+    enabled: false
+    editorial_order: 213
+    notes: Curated from source-backed candidate inventory (collaborator of gravediggaz); Spotify profile not mapped. Not a Wu-Tang Clan member. The Wu relation is only through Gravediggaz, which includes RZA. Primarily a hip hop producer.
+    external_url: https://musicbrainz.org/artist/50840ae7-d000-4858-8aac-bd776a12dafa
+    added_at: "2026-10-20"
+  - slug: too-poetic
+    name: Too Poetic
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases:
+      - Poetic
+    enabled: false
+    editorial_order: 214
+    notes: Curated from source-backed candidate inventory (member of gravediggaz); Spotify profile not mapped. MusicBrainz artist named 'Too Poetic' (21d373a6-c090-4c65-ab8d-9d11fab83b1c) is a different act (Kaos, Woody Wood); the Gravedigga is MusicBrainz 'Poetic'.
+    external_url: https://musicbrainz.org/artist/22ff0ca3-ad1c-4514-92ed-3df7ad23e496
+    added_at: "2026-10-20"
+  - slug: trife-diesel
+    name: Trife Diesel
+    spotify_id: ""
+    category: affiliate_artist
+    roles:
+      - affiliate_artist
+    aliases:
+      - Trife Da God
+    enabled: false
+    editorial_order: 215
+    notes: Curated from source-backed candidate inventory (member of theodore-unit, t-m-f); Spotify profile not mapped. The Wikipedia article carries a needs-citations banner; the independent anchor is the MusicBrainz group relation plus his Bulletproof Wallets and 718 credits.
+    external_url: https://musicbrainz.org/artist/9438f713-4b0c-411e-897e-040d45c928f0
+    added_at: "2026-10-20"

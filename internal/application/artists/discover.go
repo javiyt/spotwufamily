@@ -23,16 +23,26 @@ type DiscoveredArtist struct {
 }
 
 type DiscoverWuFamily struct {
-	store  CatalogStore
-	source DiscoverySource
+	store   CatalogStore
+	source  DiscoverySource
+	ledgers CandidateLedgerStore
 }
 
 func NewDiscoverWuFamily(store CatalogStore, source DiscoverySource) DiscoverWuFamily {
 	return DiscoverWuFamily{store: store, source: source}
 }
 
+// WithLedger makes discovery read the candidate ledger so names that were
+// already imported or decided are reported as suppressed instead of new. The
+// ledger is only read; discovery never changes a manual decision.
+func (d DiscoverWuFamily) WithLedger(ledgers CandidateLedgerStore) DiscoverWuFamily {
+	d.ledgers = ledgers
+	return d
+}
+
 type DiscoverWuFamilyOptions struct {
 	CatalogPath string
+	LedgerPath  string
 	Apply       bool
 	Progress    func(DiscoverWuFamilyProgress)
 }
@@ -42,6 +52,8 @@ type DiscoverWuFamilyReport struct {
 	Existing []DiscoveryCandidate
 	New      []DiscoveryCandidate
 	Added    []DiscoveryCandidate
+	// Suppressed are discovered names already present in the candidate ledger.
+	Suppressed []DiscoveryCandidate
 }
 
 type DiscoveryCandidate struct {
@@ -52,6 +64,8 @@ type DiscoveryCandidate struct {
 	Source    string
 	SourceURL string
 	Reason    string
+	// LedgerStatus is set on suppressed candidates.
+	LedgerStatus catalog.CandidateStatus
 }
 
 type DiscoverWuFamilyProgress struct {
@@ -75,7 +89,14 @@ func (d DiscoverWuFamily) Run(ctx context.Context, options DiscoverWuFamilyOptio
 	}
 	emitDiscoverWuFamilyProgress(options.Progress, DiscoverWuFamilyProgress{Stage: "fetched", Found: len(discovered)})
 
-	report := buildDiscoverWuFamilyReport(c, discovered)
+	var ledger catalog.CandidateLedger
+	if d.ledgers != nil && options.LedgerPath != "" {
+		ledger, err = d.ledgers.LoadLedger(ctx, options.LedgerPath)
+		if err != nil {
+			return DiscoverWuFamilyReport{}, fmt.Errorf("load candidate ledger: %w", err)
+		}
+	}
+	report := buildDiscoverWuFamilyReport(c, discovered, ledger)
 	emitDiscoverWuFamilyProgress(options.Progress, DiscoverWuFamilyProgress{Stage: "compared", Found: report.Found, Existing: len(report.Existing), New: len(report.New)})
 	if options.Apply && len(report.New) > 0 {
 		nextOrder := nextEditorialOrder(c.Artists)
@@ -113,8 +134,9 @@ func emitDiscoverWuFamilyProgress(progress func(DiscoverWuFamilyProgress), event
 	}
 }
 
-func buildDiscoverWuFamilyReport(c catalog.EditorialCatalog, discovered []DiscoveredArtist) DiscoverWuFamilyReport {
+func buildDiscoverWuFamilyReport(c catalog.EditorialCatalog, discovered []DiscoveredArtist, ledger catalog.CandidateLedger) DiscoverWuFamilyReport {
 	existing := catalogIdentityIndex(c.Artists)
+	decided := ledgerIdentityIndex(ledger)
 	seenDiscovered := map[string]struct{}{}
 	report := DiscoverWuFamilyReport{Found: len(discovered)}
 
@@ -151,6 +173,11 @@ func buildDiscoverWuFamilyReport(c catalog.EditorialCatalog, discovered []Discov
 			report.Existing = append(report.Existing, candidate)
 			continue
 		}
+		if status, ok := firstLedgerStatus(decided, append([]string{primaryName}, aliases...)); ok {
+			candidate.LedgerStatus = status
+			report.Suppressed = append(report.Suppressed, candidate)
+			continue
+		}
 		report.New = append(report.New, candidate)
 		existing[candidate.Slug] = candidate.Slug
 		for _, alias := range candidate.Aliases {
@@ -162,7 +189,27 @@ func buildDiscoverWuFamilyReport(c catalog.EditorialCatalog, discovered []Discov
 
 	sortDiscoveryCandidates(report.Existing)
 	sortDiscoveryCandidates(report.New)
+	sortDiscoveryCandidates(report.Suppressed)
 	return report
+}
+
+func ledgerIdentityIndex(ledger catalog.CandidateLedger) map[string]catalog.CandidateStatus {
+	index := map[string]catalog.CandidateStatus{}
+	for _, candidate := range ledger.Candidates {
+		for _, key := range candidate.Keys() {
+			index[key] = candidate.Status
+		}
+	}
+	return index
+}
+
+func firstLedgerStatus(index map[string]catalog.CandidateStatus, names []string) (catalog.CandidateStatus, bool) {
+	for _, name := range names {
+		if status, ok := index[catalog.CandidateKey(name)]; ok {
+			return status, true
+		}
+	}
+	return "", false
 }
 
 func discoveryNames(name string) (string, []string) {
@@ -269,6 +316,9 @@ func FormatDiscoverWuFamilyMarkdown(report DiscoverWuFamilyReport) []byte {
 	writeDiscoverySection(&buf, "Already In Catalog", report.Existing)
 	if len(report.Added) > 0 {
 		writeDiscoverySection(&buf, "Added To Catalog", report.Added)
+	}
+	if len(report.Suppressed) > 0 {
+		writeDiscoverySection(&buf, "Suppressed By Candidate Ledger", report.Suppressed)
 	}
 	return buf.Bytes()
 }

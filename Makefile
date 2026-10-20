@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums artists-audit-profiles sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-import-candidates artists-import-candidates-apply artists-stage-candidates artists-revert-candidates artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums artists-audit-profiles sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -11,6 +11,9 @@ EXPORT_DIR ?= site/data/generated
 STATIC_DIR ?= site/static
 CONTENT_DIR ?= site/content/generated
 CANDIDATES ?= data/artist-candidates.example.json
+LEDGER ?= data/wu-candidates.yaml
+INVENTORY ?=
+CANDIDATE_REPORT ?= candidates-report.md
 REPORT ?= resolve.md
 ALBUM_REPORT ?= albums-audit.md
 PROFILE_REPORT ?= profiles-audit.md
@@ -34,6 +37,10 @@ help:
 	@printf '  make artists-enable-with-ids Enable YAML artists that have Spotify IDs\n'
 	@printf '  make artists-discover-wu    Discover possible Wu Family artists from Wikipedia\n'
 	@printf '  make artists-discover-wu-apply Add discovered artists to YAML disabled\n'
+	@printf '  make artists-import-candidates INVENTORY=file  Dry-run a JSON/CSV candidate import\n'
+	@printf '  make artists-import-candidates-apply INVENTORY=file  Stage the import in the ledger\n'
+	@printf '  make artists-stage-candidates   Stage accepted ledger candidates into YAML (disabled)\n'
+	@printf '  make artists-revert-candidates  Undo staging of untouched entries\n'
 	@printf '  make artists-refresh-metadata Refresh YAML Spotify genres, links and images\n'
 	@printf '  make artists-seed-db         Seed configured artists from YAML into SQLite\n'
 	@printf '  make artists-resolve-interactive  Pick Spotify IDs interactively\n'
@@ -78,10 +85,22 @@ artists-enable-with-ids-dry-run:
 	go run $(CLI) artists enable-with-ids --catalog $(CATALOG) --dry-run
 
 artists-discover-wu:
-	go run $(CLI) artists discover-wu --catalog $(CATALOG) --report $(DISCOVERY_REPORT)
+	go run $(CLI) artists discover-wu --catalog $(CATALOG) --ledger $(LEDGER) --report $(DISCOVERY_REPORT)
 
 artists-discover-wu-apply:
-	go run $(CLI) artists discover-wu --catalog $(CATALOG) --report $(DISCOVERY_REPORT) --apply
+	go run $(CLI) artists discover-wu --catalog $(CATALOG) --ledger $(LEDGER) --report $(DISCOVERY_REPORT) --apply
+
+artists-import-candidates:
+	go run $(CLI) artists import-candidates $(if $(INVENTORY),--input $(INVENTORY)) --catalog $(CATALOG) --ledger $(LEDGER) --report $(CANDIDATE_REPORT)
+
+artists-import-candidates-apply:
+	go run $(CLI) artists import-candidates $(if $(INVENTORY),--input $(INVENTORY)) --catalog $(CATALOG) --ledger $(LEDGER) --report $(CANDIDATE_REPORT) --apply
+
+artists-stage-candidates:
+	go run $(CLI) artists import-candidates --catalog $(CATALOG) --ledger $(LEDGER) --report $(CANDIDATE_REPORT) --apply
+
+artists-revert-candidates:
+	go run $(CLI) artists import-candidates --catalog $(CATALOG) --ledger $(LEDGER) --report $(CANDIDATE_REPORT) --revert --apply
 
 artists-refresh-metadata:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists refresh-genres --catalog $(CATALOG) --db $(DB) --market $(MARKET)
