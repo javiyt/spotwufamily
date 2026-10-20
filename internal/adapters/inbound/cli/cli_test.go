@@ -94,7 +94,7 @@ artists:
 `), 0o644))
 	require.NoError(t, os.WriteFile(candidatesPath, []byte(`{
   "gravediggaz": [
-    {"name": "Gravediggaz", "spotify_id": "0CH4f9m2L3TRaA5oErU2p0"}
+    {"name": "Gravediggaz", "spotify_id": "0CH4f9m2L3TRaA5oErU2p0", "identity_evidence": [{"kind": "musicbrainz_release", "polarity": "positive", "strong": true, "release_name": "6 Feet Deep", "release_year": "1994", "url": "https://musicbrainz.org/release-group/x"}]}
   ]
 }`), 0o644))
 
@@ -382,4 +382,38 @@ func TestExecuteUnknownCommand(t *testing.T) {
 	require.Equal(t, 2, code)
 	require.Contains(t, stderr.String(), "unknown command")
 	require.Empty(t, stdout.String())
+}
+
+func TestExecuteArtistsResolveApplyNeverWritesNameOnlyCandidate(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	candidatesPath := filepath.Join(dir, "candidates.json")
+	reportPath := filepath.Join(dir, "report.json")
+	original := `version: 1
+artists:
+  - slug: streetlife
+    name: Streetlife
+    spotify_id: ""
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+`
+	require.NoError(t, os.WriteFile(catalogPath, []byte(original), 0o644))
+	require.NoError(t, os.WriteFile(candidatesPath, []byte(`{"streetlife": [{"name": "Streetlife", "spotify_id": "1111111111111111111111", "genres": ["hip hop"], "popularity": 80}]}`), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	code := cli.Execute([]string{"artists", "resolve", "--non-interactive", "--apply", "--enable-applied", "--catalog", catalogPath, "--candidates", candidatesPath, "--report", reportPath}, &stdout, &stderr)
+
+	require.Equal(t, 0, code, stderr.String())
+	require.Contains(t, stdout.String(), "applied resolved Spotify IDs: 0; skipped: 1")
+	after, err := os.ReadFile(catalogPath)
+	require.NoError(t, err)
+	require.Equal(t, original, string(after))
+	report, err := os.ReadFile(reportPath)
+	require.NoError(t, err)
+	require.Contains(t, string(report), `"status": "needs_review"`)
+	require.Contains(t, string(report), "no independent strong evidence")
 }

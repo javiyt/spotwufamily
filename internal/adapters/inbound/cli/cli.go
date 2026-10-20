@@ -1572,6 +1572,14 @@ func executeArtistsResolve(ctx context.Context, args []string, stdin io.Reader, 
 	}
 
 	markdown := artists.FormatResolveReportMarkdown(report)
+	if strings.HasSuffix(strings.ToLower(options.reportPath), ".json") {
+		encoded, err := artists.FormatResolveReportJSON(report)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "artists resolve: encode report: %v\n", err)
+			return 1
+		}
+		markdown = encoded
+	}
 	if options.reportPath == "" || options.reportPath == "-" {
 		_, _ = stdout.Write(markdown)
 	} else if err := os.WriteFile(options.reportPath, markdown, 0o644); err != nil {
@@ -1803,6 +1811,11 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 			limit = 10
 		}
 		printInteractiveMatches(stdout, matches, limit)
+		printEligibilityDecision(stdout, catalog.EvaluateEligibility(*artist, matches, catalog.EligibilityPolicy{
+			MinScore:    options.minScore,
+			MinScoreGap: options.minScoreGap,
+			IsRejected:  c.IsRejectedSpotifyID,
+		}))
 
 		for {
 			matches = filterCurrentArtistMatches(matches, *artist)
@@ -2044,6 +2057,18 @@ func printInteractiveMatches(stdout io.Writer, matches []catalog.CandidateMatch,
 			genres,
 			evidence,
 		)
+		for _, item := range candidate.IdentityEvidence {
+			_, _ = fmt.Fprintf(stdout, "       %s: %s\n", item.Polarity, artists.FormatIdentityEvidence(item))
+		}
+	}
+}
+
+// printEligibilityDecision shows the shared evidence-gate verdict. Interactive
+// selection stays a human decision; the verdict explains what --apply would do.
+func printEligibilityDecision(stdout io.Writer, decision catalog.EligibilityDecision) {
+	_, _ = fmt.Fprintf(stdout, "  evidence gate (--apply): %s\n", decision.Status)
+	for _, reason := range decision.Reasons {
+		_, _ = fmt.Fprintf(stdout, "    - %s\n", reason)
 	}
 }
 

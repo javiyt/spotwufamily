@@ -97,7 +97,7 @@ func TestResolveApplyRecordsCandidateAndSkipsRejected(t *testing.T) {
 		}}},
 	}}}
 	searcher := candidateSearcher{candidates: map[string][]catalog.ArtistCandidate{
-		"gravediggaz": {{Name: "Gravediggaz", SpotifyID: "0CH4f9m2L3TRaA5oErU2p0"}},
+		"gravediggaz": {{Name: "Gravediggaz", SpotifyID: "0CH4f9m2L3TRaA5oErU2p0", RelatedArtistEvidence: []string{`credited on Wu-Tang Clan track "Triumph"`}}},
 	}}
 
 	report, err := artists.NewResolveArtists(store, searcher).Apply(context.Background(), "x", artists.ApplyResolveOptions{EnableResolved: true})

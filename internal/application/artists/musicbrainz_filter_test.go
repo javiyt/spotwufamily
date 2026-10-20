@@ -47,17 +47,19 @@ func (f *trackCreditSpotifyFetcher) GetAlbumTracks(_ context.Context, spotifyID 
 	return f.tracksByAlbum[spotifyID], nil
 }
 
-func TestAlbumEvidenceCandidateSearcherDiscardsCandidatesWithoutMusicBrainzAlbumMatches(t *testing.T) {
+func TestAlbumEvidenceCandidateSearcherKeepsUnmatchedCandidatesWithWarning(t *testing.T) {
 	spotify := &albumAuditSpotifyFetcher{albumsByArtist: map[string][]catalog.Release{
 		"good-artist": {
 			{SpotifyID: "album-1", Name: "Enter the Wu-Tang (36 Chambers)", ReleaseDate: "1993-11-09"},
+			{SpotifyID: "album-3", Name: "Wu-Tang Forever", ReleaseDate: "1997-06-03"},
 		},
 		"noise-artist": {
 			{SpotifyID: "album-2", Name: "Unrelated Album", ReleaseDate: "2020-01-01"},
 		},
 	}}
 	musicBrainz := albumAuditMusicBrainzSearcher{releaseGroups: []artists.MusicBrainzReleaseGroup{
-		{ID: "mb-1", Title: "Enter the Wu-Tang (36 Chambers)", FirstReleaseDate: "1993-11-09"},
+		{ID: "mb-1", Title: "Enter the Wu-Tang (36 Chambers)", FirstReleaseDate: "1993-11-09", URL: "https://musicbrainz.org/release-group/mb-1"},
+		{ID: "mb-2", Title: "Wu-Tang Forever", FirstReleaseDate: "1997-06-03", URL: "https://musicbrainz.org/release-group/mb-2"},
 	}}
 	searcher := artists.NewAlbumEvidenceCandidateSearcher(
 		fixedCandidateSearcher{candidates: []catalog.ArtistCandidate{
@@ -71,8 +73,45 @@ func TestAlbumEvidenceCandidateSearcherDiscardsCandidatesWithoutMusicBrainzAlbum
 	candidates, err := searcher.SearchArtistCandidates(context.Background(), catalog.Artist{Name: "Wu-Tang Clan"})
 
 	require.NoError(t, err)
-	require.Equal(t, []catalog.ArtistCandidate{{Name: "Wu-Tang Clan", SpotifyID: "good-artist"}}, candidates)
+	require.Len(t, candidates, 2)
+	good := candidates[0].IdentityEvidence
+	require.Len(t, good, 2)
+	for _, item := range good {
+		require.Equal(t, catalog.EvidenceMusicBrainzRelease, item.Kind)
+		require.True(t, item.Strong, "two matching releases are definitive")
+		require.Equal(t, "good-artist", item.SubjectID)
+		require.NotEmpty(t, item.URL)
+		require.NotEmpty(t, item.ReleaseName)
+		require.NotEmpty(t, item.ReleaseYear)
+	}
+	noise := candidates[1].IdentityEvidence
+	require.Len(t, noise, 1)
+	require.Equal(t, catalog.EvidenceReleaseMismatch, noise[0].Kind)
+	require.Equal(t, catalog.EvidenceWarning, noise[0].Polarity)
+	require.False(t, noise[0].IsIndependentProof())
 	require.Equal(t, []string{"good-artist", "noise-artist"}, spotify.requestedIDs)
+}
+
+func TestAlbumEvidenceCandidateSearcherTreatsSingleSharedTitleAsWeak(t *testing.T) {
+	spotify := &albumAuditSpotifyFetcher{albumsByArtist: map[string][]catalog.Release{
+		"homonym": {{SpotifyID: "album-1", Name: "Intro", ReleaseDate: "2010-01-01"}},
+	}}
+	searcher := artists.NewAlbumEvidenceCandidateSearcher(
+		fixedCandidateSearcher{candidates: []catalog.ArtistCandidate{{Name: "Streetlife", SpotifyID: "homonym"}}},
+		spotify,
+		albumAuditMusicBrainzSearcher{releaseGroups: []artists.MusicBrainzReleaseGroup{
+			{ID: "mb-1", Title: "Intro", FirstReleaseDate: "2010-01-01"},
+			{ID: "mb-2", Title: "Other", FirstReleaseDate: "2012-01-01"},
+		}},
+	)
+
+	candidates, err := searcher.SearchArtistCandidates(context.Background(), catalog.Artist{Name: "Streetlife"})
+
+	require.NoError(t, err)
+	require.Len(t, candidates[0].IdentityEvidence, 1)
+	require.False(t, candidates[0].IdentityEvidence[0].Strong)
+	decision := catalog.EvaluateEligibility(catalog.Artist{Name: "Streetlife"}, catalog.RankCandidates(catalog.Artist{Name: "Streetlife"}, candidates), catalog.EligibilityPolicy{})
+	require.Equal(t, catalog.EligibilityNeedsReview, decision.Status)
 }
 
 func TestAlbumEvidenceCandidateSearcherAddsTrackCreditEvidenceFromConfiguredGroups(t *testing.T) {
@@ -122,7 +161,7 @@ func TestAlbumEvidenceCandidateSearcherAddsTrackCreditEvidenceFromConfiguredGrou
 	}}})
 
 	require.NoError(t, err)
-	require.Len(t, candidates, 1)
+	require.Len(t, candidates, 2)
 	require.Equal(t, "credited-artist", candidates[0].SpotifyID)
 	require.Contains(t, candidates[0].RelatedArtistEvidence[0], "credited on Configured Group track")
 	require.Contains(t, spotify.requestedIDs, "group-artist")
@@ -162,10 +201,14 @@ func TestAlbumEvidenceCandidateSearcherKeepsCandidatesWhenMusicBrainzFails(t *te
 	candidates, err := searcher.SearchArtistCandidates(context.Background(), catalog.Artist{Name: "A.I.G."})
 
 	require.NoError(t, err)
-	require.Equal(t, []catalog.ArtistCandidate{{Name: "A.I.G.", SpotifyID: "artist-1"}}, candidates)
+	require.Len(t, candidates, 1)
+	require.Equal(t, "artist-1", candidates[0].SpotifyID)
+	require.Len(t, candidates[0].IdentityEvidence, 1)
+	require.Equal(t, catalog.EvidenceMusicBrainzUnavailable, candidates[0].IdentityEvidence[0].Kind)
+	require.Contains(t, candidates[0].IdentityEvidence[0].Detail, "musicbrainz timeout")
 }
 
-func TestAlbumEvidenceCandidateSearcherSkipsCandidatesWhenSpotifyAlbumFetchFails(t *testing.T) {
+func TestAlbumEvidenceCandidateSearcherKeepsCandidatesForReviewWhenSpotifyAlbumFetchFails(t *testing.T) {
 	searcher := artists.NewAlbumEvidenceCandidateSearcher(
 		fixedCandidateSearcher{candidates: []catalog.ArtistCandidate{{Name: "A.I.G.", SpotifyID: "artist-1"}}},
 		failingAlbumFetcher{},
@@ -175,7 +218,9 @@ func TestAlbumEvidenceCandidateSearcherSkipsCandidatesWhenSpotifyAlbumFetchFails
 	candidates, err := searcher.SearchArtistCandidates(context.Background(), catalog.Artist{Name: "A.I.G."})
 
 	require.NoError(t, err)
-	require.Empty(t, candidates)
+	require.Len(t, candidates, 1)
+	require.Equal(t, catalog.EvidenceMusicBrainzUnavailable, candidates[0].IdentityEvidence[0].Kind)
+	require.Contains(t, candidates[0].IdentityEvidence[0].Detail, "spotify albums timeout")
 }
 
 func TestAlbumEvidenceCandidateSearcherKeepsCandidatesWhenMusicBrainzHasNoAlbums(t *testing.T) {
@@ -189,7 +234,8 @@ func TestAlbumEvidenceCandidateSearcherKeepsCandidatesWhenMusicBrainzHasNoAlbums
 	candidates, err := searcher.SearchArtistCandidates(context.Background(), catalog.Artist{Name: "Unknown"})
 
 	require.NoError(t, err)
-	require.Equal(t, []catalog.ArtistCandidate{{Name: "Unknown", SpotifyID: "artist-1"}}, candidates)
+	require.Len(t, candidates, 1)
+	require.Equal(t, catalog.EvidenceMusicBrainzUnavailable, candidates[0].IdentityEvidence[0].Kind)
 	require.Empty(t, spotify.requestedIDs)
 }
 

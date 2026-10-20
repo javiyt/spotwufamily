@@ -77,35 +77,98 @@ func (s *AlbumEvidenceCandidateSearcher) searchArtistCandidates(ctx context.Cont
 		return candidates, nil
 	}
 
+	// MusicBrainz is advisory: outages, missing artists or missing releases
+	// leave candidates in place with a warning so a human can review them
+	// instead of silently turning into false negatives.
 	releaseGroups, err := s.musicBrainz.SearchArtistAlbumReleaseGroups(ctx, artist)
 	if err != nil {
-		return candidates, nil
+		return withEvidence(candidates, unavailableEvidence(fmt.Sprintf("MusicBrainz lookup failed: %v", err))), nil
 	}
 	musicBrainzAlbums := auditedMusicBrainzAlbums(releaseGroups)
 	if len(musicBrainzAlbums) == 0 {
-		return candidates, nil
+		return withEvidence(candidates, unavailableEvidence("MusicBrainz returned no album release groups for this artist name")), nil
 	}
 
-	filtered := make([]catalog.ArtistCandidate, 0, len(candidates))
+	enriched := make([]catalog.ArtistCandidate, 0, len(candidates))
 	for _, candidate := range candidates {
 		if candidate.SpotifyID == "" {
 			continue
 		}
 		spotifyAlbums, err := s.candidateAlbums(ctx, candidate.SpotifyID)
 		if err != nil {
-			if len(trackEvidence[candidate.SpotifyID]) > 0 {
-				filtered = append(filtered, candidate)
-			}
+			enriched = append(enriched, withEvidence([]catalog.ArtistCandidate{candidate}, unavailableEvidence(fmt.Sprintf("could not fetch Spotify albums: %v", err)))...)
 			continue
 		}
 		matched, _, _ := compareAlbums(spotifyAlbums, musicBrainzAlbums)
-		if len(matched) == 0 && len(trackEvidence[candidate.SpotifyID]) == 0 {
-			continue
-		}
-		filtered = append(filtered, candidate)
+		enriched = append(enriched, withEvidence([]catalog.ArtistCandidate{candidate}, releaseEvidence(candidate.SpotifyID, matched, len(spotifyAlbums), len(musicBrainzAlbums))...)...)
 	}
 
-	return filtered, nil
+	return enriched, nil
+}
+
+// minStrongReleaseMatches is the number of distinct Spotify albums that must
+// match MusicBrainz release groups before release overlap counts as proof. A
+// single shared title can be a homonym.
+const minStrongReleaseMatches = 2
+
+func releaseEvidence(spotifyID string, matched []AlbumMatch, spotifyAlbumCount, musicBrainzAlbumCount int) []catalog.IdentityEvidence {
+	if len(matched) == 0 {
+		return []catalog.IdentityEvidence{{
+			Kind:      catalog.EvidenceReleaseMismatch,
+			Polarity:  catalog.EvidenceWarning,
+			Source:    "musicbrainz",
+			SubjectID: spotifyID,
+			Detail:    fmt.Sprintf("none of %d Spotify albums matched %d MusicBrainz release groups", spotifyAlbumCount, musicBrainzAlbumCount),
+		}}
+	}
+	strong := len(matched) >= minStrongReleaseMatches
+	detail := fmt.Sprintf("%d of %d MusicBrainz release groups also on this Spotify profile", len(matched), musicBrainzAlbumCount)
+	if !strong {
+		detail += "; a single shared title is not definitive"
+	}
+	evidence := make([]catalog.IdentityEvidence, 0, len(matched))
+	for _, match := range matched {
+		evidence = append(evidence, catalog.IdentityEvidence{
+			Kind:        catalog.EvidenceMusicBrainzRelease,
+			Polarity:    catalog.EvidencePositive,
+			Strong:      strong,
+			Source:      "musicbrainz",
+			URL:         match.MusicBrainz.URL,
+			SubjectID:   spotifyID,
+			ReleaseName: match.MusicBrainz.Title,
+			ReleaseYear: match.MusicBrainz.Year,
+			Detail:      detail,
+		})
+	}
+	if len(evidence) > 3 {
+		evidence = evidence[:3]
+	}
+	return evidence
+}
+
+func unavailableEvidence(detail string) catalog.IdentityEvidence {
+	return catalog.IdentityEvidence{
+		Kind:     catalog.EvidenceMusicBrainzUnavailable,
+		Polarity: catalog.EvidenceWarning,
+		Source:   "musicbrainz",
+		Detail:   detail,
+	}
+}
+
+func withEvidence(candidates []catalog.ArtistCandidate, evidence ...catalog.IdentityEvidence) []catalog.ArtistCandidate {
+	out := make([]catalog.ArtistCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		items := append([]catalog.IdentityEvidence(nil), candidate.IdentityEvidence...)
+		for _, item := range evidence {
+			if item.SubjectID == "" {
+				item.SubjectID = candidate.SpotifyID
+			}
+			items = append(items, item)
+		}
+		candidate.IdentityEvidence = items
+		out = append(out, candidate)
+	}
+	return out
 }
 
 func (s *AlbumEvidenceCandidateSearcher) configuredArtistTrackEvidence(ctx context.Context, target catalog.Artist, candidates []catalog.ArtistCandidate, editorialCatalog catalog.EditorialCatalog) map[string][]string {
