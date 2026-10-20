@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
+
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
 	"github.com/javiyt/spotwufamily/internal/application/admin/maintenance"
 )
@@ -55,9 +57,10 @@ func TestFreshnessSourceAgainstRealDatabase(t *testing.T) {
 	database, err := sqliteadapter.Open(cfg.DBPath)
 	require.NoError(t, err)
 	require.NoError(t, database.WriteSnapshot(ctx, cfg.SnapshotPath))
-	_, err = database.DB().ExecContext(ctx, `INSERT INTO sync_runs(started_at, finished_at, status, market) VALUES (?, ?, 'completed', 'ES')`,
-		time.Now().Add(time.Hour).UTC().Format(time.RFC3339), time.Now().Add(2*time.Hour).UTC().Format(time.RFC3339))
+	// A real sync run, started after the catalog's last modification.
+	runID, err := database.BeginSyncRun(ctx, catalogsync.SyncRun{StartedAt: time.Now().Add(time.Hour), Market: "ES"})
 	require.NoError(t, err)
+	require.NoError(t, database.FinishSyncRun(ctx, runID, "success", catalogsync.SyncStats{}))
 	require.NoError(t, database.Close())
 	// The sync row changed the DB; refresh the snapshot too.
 	database, err = sqliteadapter.Open(cfg.DBPath)
@@ -98,4 +101,17 @@ func TestFreshnessSourceAgainstRealDatabase(t *testing.T) {
 	exp, ok := src.ExportDigest()
 	require.True(t, ok)
 	require.NotEqual(t, newDB, exp)
+}
+
+func TestFreshnessSourceCorruptDatabaseIsUnreadableNotOffline(t *testing.T) {
+	cfg := freshnessCfg(t)
+	src := NewFreshnessSource(cfg)
+	require.Equal(t, maintenance.DatabaseAbsent, src.DatabaseState())
+	require.NoError(t, os.WriteFile(cfg.DBPath, []byte("not a sqlite database, just garbage bytes"), 0o600))
+	require.Equal(t, maintenance.DatabaseUnreadable, src.DatabaseState())
+	f, err := maintenance.NewService(nil, nil, nil, time.Now, maintenance.WithFreshness(src)).Freshness(context.Background())
+	require.NoError(t, err)
+	require.True(t, f.Unreadable)
+	require.False(t, f.Offline)
+	require.Contains(t, f.Reasons, "Database could not be read")
 }

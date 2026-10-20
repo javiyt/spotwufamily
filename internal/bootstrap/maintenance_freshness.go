@@ -61,10 +61,12 @@ func (s freshnessSource) CatalogDigest() string {
 }
 
 // SeededDigest: the database records no catalog digest, so the rule is
-// timestamp based. The latest completed sync run read the catalog when it
+// timestamp based. The latest successful or partial sync run read the catalog when it
 // started; if the catalog file was not modified after that start, the seeded
 // digest is the current catalog digest, otherwise a marker that never equals
-// it. ok=false when no sync run has completed.
+// it. The heuristic can read fresh while stale in two narrow cases: an
+// mtime-preserving restore of the catalog, and an edit between the sync
+// reading the catalog and BeginSyncRun. ok=false when no sync run has completed.
 func (s freshnessSource) SeededDigest() (string, bool) {
 	database, err := openExisting(s.cfg.DBPath)
 	if err != nil {
@@ -73,7 +75,7 @@ func (s freshnessSource) SeededDigest() (string, bool) {
 	defer func() { _ = database.Close() }()
 	var started string
 	err = database.DB().QueryRowContext(context.Background(),
-		`SELECT started_at FROM sync_runs WHERE status = 'completed' ORDER BY id DESC LIMIT 1`).Scan(&started)
+		`SELECT started_at FROM sync_runs WHERE status IN ('success','partial') ORDER BY id DESC LIMIT 1`).Scan(&started)
 	if errors.Is(err, sql.ErrNoRows) || err != nil {
 		return "", false
 	}
@@ -95,6 +97,18 @@ func (s freshnessSource) SnapshotDigest() (string, bool) {
 		return "", false
 	}
 	return sum(data), true
+}
+
+// DatabaseState is Absent when there is no database file, Unreadable when the
+// file exists but cannot be opened and dumped.
+func (s freshnessSource) DatabaseState() maintenance.DatabaseState {
+	if !databaseExists(s.cfg.DBPath) {
+		return maintenance.DatabaseAbsent
+	}
+	if _, ok := s.DatabaseDigest(); !ok {
+		return maintenance.DatabaseUnreadable
+	}
+	return maintenance.DatabaseReadable
 }
 
 // DatabaseDigest hashes the deterministic snapshot a fresh dump would produce.

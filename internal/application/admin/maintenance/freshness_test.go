@@ -13,12 +13,22 @@ type fakeFreshness struct {
 	seeded, snapshot, db, export     string
 	seededOK, snapOK, dbOK, exportOK bool
 	pinned, local                    string
+	state                            *DatabaseState
 	pinnedOK, localOK                bool
 }
 
 func (f fakeFreshness) CatalogDigest() string          { return f.catalog }
 func (f fakeFreshness) SeededDigest() (string, bool)   { return f.seeded, f.seededOK }
 func (f fakeFreshness) SnapshotDigest() (string, bool) { return f.snapshot, f.snapOK }
+func (f fakeFreshness) DatabaseState() DatabaseState {
+	if f.state != nil {
+		return *f.state
+	}
+	if f.dbOK {
+		return DatabaseReadable
+	}
+	return DatabaseAbsent
+}
 func (f fakeFreshness) DatabaseDigest() (string, bool) { return f.db, f.dbOK }
 func (f fakeFreshness) ExportDigest() (string, bool)   { return f.export, f.exportOK }
 func (f fakeFreshness) PinnedContentSHA() (string, bool) {
@@ -178,5 +188,18 @@ func TestFreshnessUnavailableWithoutSource(t *testing.T) {
 	_, err := NewService(nil, nil, nil, time.Now).Freshness(context.Background())
 	if !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestUnreadableDatabaseIsNotOfflineOrFresh(t *testing.T) {
+	src := freshSource()
+	st := DatabaseUnreadable
+	src.state, src.dbOK = &st, false
+	f := freshnessOf(t, src)
+	if !f.Unreadable || f.Offline || f.RebuildNeeded {
+		t.Fatalf("got %+v", f)
+	}
+	if len(f.Reasons) != 1 || f.Reasons[0] != "Database could not be read" {
+		t.Fatalf("reasons %v", f.Reasons)
 	}
 }

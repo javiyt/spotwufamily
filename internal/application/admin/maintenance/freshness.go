@@ -14,6 +14,9 @@ type FreshnessSource interface {
 	// SnapshotDigest is the digest of the database content the snapshot file
 	// reflects; ok=false when there is no (readable) snapshot.
 	SnapshotDigest() (string, bool)
+	// DatabaseState tells a missing database file (Absent) from one that
+	// exists but cannot be read (Unreadable); only Absent means offline.
+	DatabaseState() DatabaseState
 	// DatabaseDigest is the digest of the current database content; ok=false
 	// when there is no database.
 	DatabaseDigest() (string, bool)
@@ -27,6 +30,15 @@ type FreshnessSource interface {
 	LocalContentSHA() (string, bool)
 }
 
+// DatabaseState is the presence of the database file.
+type DatabaseState int
+
+const (
+	DatabaseAbsent DatabaseState = iota
+	DatabaseReadable
+	DatabaseUnreadable
+)
+
 // Freshness reports which derived data is out of date. Reasons are fixed
 // strings in a fixed order and never contain paths.
 type Freshness struct {
@@ -37,7 +49,10 @@ type Freshness struct {
 	DiffersFromPublished bool
 	// Offline means there is no database; that is not staleness.
 	Offline bool
-	Reasons []string
+	// Unreadable means a database file exists but could not be read; no
+	// database comparison is made and nothing is reported as fresh.
+	Unreadable bool
+	Reasons    []string
 }
 
 // Option configures a Service.
@@ -70,16 +85,21 @@ func (s *Service) Freshness(ctx context.Context) (Freshness, error) {
 	var f Freshness
 	add := func(r string) { f.Reasons = append(f.Reasons, r) }
 
+	state := src.DatabaseState()
 	db, haveDB := src.DatabaseDigest()
 	snap, haveSnap := src.SnapshotDigest()
-	if !haveDB {
+	switch {
+	case state == DatabaseUnreadable || (state == DatabaseReadable && !haveDB):
+		f.Unreadable = true
+		add("Database could not be read")
+	case state == DatabaseAbsent || !haveDB:
 		f.Offline = true
 		add("No database found")
 		if haveSnap {
 			f.RebuildNeeded = true
 			add("Database can be rebuilt from the snapshot")
 		}
-	} else {
+	default:
 		if seeded, ok := src.SeededDigest(); !ok {
 			f.SeedNeeded = true
 			add("Database has not been seeded from the catalog")
