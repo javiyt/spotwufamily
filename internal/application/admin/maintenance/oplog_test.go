@@ -137,3 +137,28 @@ func TestLogFailureDoesNotFailRun(t *testing.T) {
 	s2 := NewService(nil, nil, nil, time.Now)
 	s2.FinishHook()(jobs.Job{ID: "x", Status: jobs.StatusFailed})
 }
+
+func TestSanitizeSummaryBearerAndBareFilenames(t *testing.T) {
+	out := SanitizeSummary("auth Bearer abc123 failed; token: xyz789 in catalog.db and a.yaml")
+	for _, bad := range []string{"abc123", "xyz789", "catalog.db", "a.yaml"} {
+		if strings.Contains(out, bad) {
+			t.Fatalf("%q leaked in %q", bad, out)
+		}
+	}
+	if !strings.Contains(out, "auth") || !strings.Contains(out, "failed;") {
+		t.Fatalf("over-redacted: %q", out)
+	}
+}
+
+func TestFinishedNeverPrecedesConfirmed(t *testing.T) {
+	for i := 0; i < 200; i++ {
+		l := &memLog{}
+		s, m := logService(t, l, nil, newFake("fake"))
+		j := runFake(t, s, m, Params{"scope": "all"})
+		got := l.snapshot()
+		if len(got) != 2 || got[0].Kind != EntryConfirmed || got[1].Kind != EntryFinished ||
+			got[0].JobID != j.ID || got[1].JobID != j.ID || got[0].At.After(got[1].At) {
+			t.Fatalf("iteration %d: %+v", i, got)
+		}
+	}
+}

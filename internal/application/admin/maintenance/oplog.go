@@ -50,9 +50,12 @@ func WithOperationLogErrorHandler(f func(error)) Option {
 	return func(s *Service) { s.oplogErr = f }
 }
 
+var secretFile = regexp.MustCompile(`(?i)\.(db|yaml|yml|gz|sql|json|jsonl)[.,;:)]*$`)
+
 var goFrame = regexp.MustCompile(`\.go:\d+`)
 
-// SanitizeSummary makes free text safe for the operation log: tokens that
+// SanitizeSummary is a safety net, not a guarantee: callers should still pass
+// only already-sanitized text. It makes free text safe for the operation log: tokens that
 // look like paths, stack frames or key=value secrets are replaced by
 // "[redacted]", control characters become spaces and the result is truncated
 // to 200 characters.
@@ -65,8 +68,14 @@ func SanitizeSummary(in string) string {
 	}, in)
 	fields := strings.Fields(in)
 	for i, f := range fields {
-		if strings.ContainsAny(f, `/\=`) || goFrame.MatchString(f) {
+		if strings.ContainsAny(f, `/\=`) || goFrame.MatchString(f) || secretFile.MatchString(f) {
 			fields[i] = "[redacted]"
+		}
+	}
+	// The value after "Bearer"/"token" is a credential, whatever its shape.
+	for i := 0; i+1 < len(fields); i++ {
+		if w := strings.ToLower(strings.TrimRight(fields[i], ":")); w == "bearer" || w == "token" {
+			fields[i+1] = "[redacted]"
 		}
 	}
 	out := strings.Join(fields, " ")
@@ -104,6 +113,11 @@ func (s *Service) reportLogErr(err error) {
 // entry. It is safe to call on a Service without an operation log.
 func (s *Service) FinishHook() func(jobs.Job) {
 	return func(j jobs.Job) {
+		// Wait for Run to log the matching confirmed entry first. The hook
+		// runs on the job goroutine, never inside Submit, so this cannot
+		// deadlock.
+		s.confirmMu.Lock()
+		defer s.confirmMu.Unlock()
 		summary := j.Message
 		if j.Result != nil && j.Result.Summary != "" {
 			summary = j.Result.Summary

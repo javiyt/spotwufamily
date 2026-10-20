@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"maps"
+	"sync"
 	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
@@ -24,6 +25,9 @@ type Service struct {
 	freshness FreshnessSource
 	oplog     OperationLog
 	oplogErr  func(error)
+	// confirmMu orders a job's confirmed entry before its finished entry; it
+	// guards ordering only, never job execution.
+	confirmMu sync.Mutex
 }
 
 // NewService registers actions in order. It panics if two actions share a
@@ -99,6 +103,9 @@ func (s *Service) Run(ctx context.Context, name string, p Params, tok Token, typ
 	if err != nil {
 		return jobs.Job{}, safeErr(err)
 	}
+	at := s.now()
+	s.confirmMu.Lock()
+	defer s.confirmMu.Unlock()
 	j, err := s.jobs.Submit(ctx, spec)
 	if err != nil {
 		var ce *jobs.ConflictError
@@ -111,7 +118,7 @@ func (s *Service) Run(ctx context.Context, name string, p Params, tok Token, typ
 	if pv.RequiresTyped != "" {
 		summary += " (typed confirmation required)"
 	}
-	s.record(OperationEntry{At: s.now(), Kind: EntryConfirmed, Action: a.Name(), JobID: j.ID, Outcome: "submitted", Summary: summary})
+	s.record(OperationEntry{At: at, Kind: EntryConfirmed, Action: a.Name(), JobID: j.ID, Outcome: "submitted", Summary: summary})
 	return j, nil
 }
 
