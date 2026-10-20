@@ -26,16 +26,20 @@ var navItems = []struct{ Path, Label string }{
 	{"/operations", "Operations"},
 }
 
-// nav lists the pages, adding the profile review workbench when it is enabled.
+// nav lists the pages, adding the profile review workbench and the jobs page
+// when they are enabled.
 func (s *Server) nav() []struct{ Path, Label string } {
-	if s.resolver == nil {
+	if s.resolver == nil && s.maint == nil {
 		return navItems
 	}
-	out := make([]struct{ Path, Label string }, 0, len(navItems)+1)
+	out := make([]struct{ Path, Label string }, 0, len(navItems)+2)
 	for _, item := range navItems {
 		out = append(out, item)
-		if item.Path == "/review" {
+		if item.Path == "/review" && s.resolver != nil {
 			out = append(out, struct{ Path, Label string }{"/resolve", "Spotify profiles"})
+		}
+		if item.Path == "/operations" && s.maint != nil {
+			out = append(out, struct{ Path, Label string }{"/jobs", "Jobs"})
 		}
 	}
 	return out
@@ -49,6 +53,8 @@ type view struct {
 	Authed bool
 	CSRF   string
 	Data   any
+	// Refresh adds a no-JS auto refresh while a page shows live progress.
+	Refresh bool
 }
 
 type pager struct {
@@ -409,7 +415,7 @@ type relRowView struct {
 
 func parseTemplates() (map[string]*template.Template, error) {
 	out := map[string]*template.Template{}
-	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm"} {
+	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm", "jobs", "job"} {
 		t, err := template.New("").Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.gohtml", "templates/"+name+".gohtml")
 		if err != nil {
 			return nil, err
@@ -425,6 +431,9 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title stri
 
 func (s *Server) renderStatus(w http.ResponseWriter, r *http.Request, status int, name, title string, data any) {
 	v := view{Title: title, Path: r.URL.Path, Nav: s.nav(), Data: data}
+	if rf, ok := data.(interface{ autoRefresh() bool }); ok {
+		v.Refresh = rf.autoRefresh()
+	}
 	if id := s.sessionID(r); s.sessions.valid(id) {
 		v.Authed, v.CSRF = true, s.sessions.csrf(id)
 		v.Flash = s.sessions.takeFlash(id)

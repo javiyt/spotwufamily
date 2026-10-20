@@ -1,0 +1,58 @@
+{{define "content"}}{{$csrf := .CSRF}}{{with .Data.Job}}
+<section class="job" data-job-id="{{.ID}}" data-job-status="{{.Status}}">
+<p class="badges"><span class="badge {{.StatusClass}}" data-job-badge data-job-field="status">{{.StatusLabel}}</span> <span>Action: <strong>{{.Kind}}</strong></span> <code>{{.ID}}</code></p>
+
+{{if .Interrupted}}<p class="notice bad" role="alert"><strong>Interrupted.</strong> The admin restarted while this job was running; it did not complete. Resumable: {{if .Resumable}}yes{{else}}no{{end}}.{{if .Total}} Completed {{.Done}} of {{.Total}} before the restart.{{end}}{{if .Message}} {{.Message}}{{end}}</p>
+{{else if .Partial}}<p class="notice warn" role="alert"><strong>This job only partly completed.</strong>{{if .Total}} Completed {{.Done}} of {{.Total}}; {{.Left}} left.{{else}} Some items were not processed.{{end}}{{if .Message}} {{.Message}}{{end}}</p>
+{{else if .Failed}}<p class="notice bad" role="alert"><strong>This job failed.</strong>{{if .Message}} {{.Message}}{{end}}</p>
+{{else if .Cancelled}}<p class="notice warn" role="status"><strong>This job was cancelled before it finished.</strong>{{if .Total}} Completed {{.Done}} of {{.Total}}.{{end}}{{if .Message}} {{.Message}}{{end}}</p>
+{{else if .Active}}<p class="notice" role="status">This job is in progress. This page updates automatically.</p>{{end}}
+
+<section>
+<h2>Progress</h2>
+<p>Step: <span data-job-field="step">{{if .Step}}{{.Step}}{{else}}—{{end}}</span></p>
+{{if .Total}}<progress data-job-progress max="{{.Total}}" value="{{.Done}}" aria-label="Progress"></progress>{{else}}<progress data-job-progress aria-label="Progress"></progress>{{end}}
+<p><span data-job-field="done">{{.Done}}</span> of <span data-job-field="total">{{.Total}}</span></p>
+<table class="counts">
+<caption class="sr">Counts</caption>
+<thead><tr><th scope="col">Count</th><th scope="col">Value</th></tr></thead>
+<tbody data-job-counts>
+{{range .Counts}}<tr><th scope="row">{{.Key}}</th>
+<td>{{.Value}}</td></tr>
+{{else}}<tr><td colspan="2">No counts reported.</td></tr>
+{{end}}</tbody></table>
+{{if and .Message (not .Partial) (not .Failed) (not .Cancelled)}}<p>Message: <span data-job-field="message">{{.Message}}</span></p>{{end}}
+</section>
+
+{{if or .Summary .ReportAvailable}}<section>
+<h2>Result</h2>
+{{if .Summary}}<p>{{.Summary}}</p>{{end}}
+{{if .ReportAvailable}}<p class="actions">Download the report: <a class="button" href="{{.CSVURL}}" download>CSV</a> <a class="button" href="{{.JSONURL}}" download>JSON</a></p>{{end}}
+</section>{{end}}
+
+<section>
+<h2>Details</h2>
+<dl class="facts">
+<dt>Resources</dt><dd>{{if .Resources}}{{join .Resources ", "}}{{else}}none{{end}}</dd>
+{{if .ResumeOf}}<dt>Resumes</dt><dd><a href="/jobs/{{.ResumeOf}}"><code>{{.ResumeOf}}</code></a></dd>{{end}}
+<dt>Created</dt><dd>{{if .Created}}<time datetime="{{.Created}}">{{.Created}}</time>{{else}}—{{end}}</dd>
+<dt>Started</dt><dd>{{if .Started}}<time datetime="{{.Started}}">{{.Started}}</time>{{else}}not started{{end}}</dd>
+<dt>Finished</dt><dd>{{if .Finished}}<time datetime="{{.Finished}}">{{.Finished}}</time>{{else}}—{{end}}</dd>
+<dt>Duration</dt><dd>{{if .Duration}}{{.Duration}}{{else}}—{{end}}</dd>
+</dl>
+</section>
+
+{{if or .CanCancel .CanRetry}}<div class="actions">
+{{if .CanCancel}}<form method="post" action="/jobs/{{.ID}}/cancel" data-confirm="Cancel this job? Work already done is kept.">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<button type="submit" class="danger">Cancel job</button>
+</form>{{end}}
+{{if .CanRetry}}<form method="post" action="/jobs/{{.ID}}/retry">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<button type="submit" class="primary">Resume/retry…</button>
+</form>
+<p class="hint">Opens the operation's preview; nothing runs until you confirm it there.</p>{{end}}
+</div>{{end}}
+</section>
+<p><a href="/jobs">All jobs</a></p>
+{{end}}{{end}}

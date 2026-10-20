@@ -87,3 +87,10 @@ th a{color:inherit}th[aria-sort=ascending] a::after{content:" ▲"}th[aria-sort=
 .state.needs_review,.state.candidate,.state.unreviewed,.state.verified,.state.rejected,.state.unresolved,.state.pending{display:inline-block;padding:.05rem .5rem;border:1px solid var(--line);border-radius:999px;font-size:.8125rem}
 button.link{border:0;background:none;color:inherit;text-decoration:underline;cursor:pointer;padding:0;font:inherit}
 @media (max-width:50rem){.workbench{grid-template-columns:1fr}.workbench .editorial{position:static}}
+/* jobs */
+.badge.warn{border-color:var(--accent)}.badge.active{border-color:#1565c0}
+@media (prefers-color-scheme:dark){.badge.active{border-color:#90caf9}}
+.notice.bad{border-left-color:#b00020}.notice.warn{border-left-color:var(--accent)}
+.job progress{width:100%;max-width:32rem;height:1rem}
+.job .counts{max-width:32rem}
+.job .actions form{margin:0}

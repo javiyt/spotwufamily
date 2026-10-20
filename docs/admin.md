@@ -28,6 +28,7 @@ The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?to
 | `/review` | `/api/v1/review` | unverified Spotify profiles and proposed relationships |
 | `/resolve`, `/resolve/{slug}` | `/api/v1/resolve`, `/api/v1/resolve/{slug}` | Spotify profile review queue and side-by-side workbench (see below) |
 | `/operations` | | database/credential status and the CLI commands to run |
+| `/jobs`, `/jobs/{id}` | `/api/v1/jobs`, `/api/v1/jobs/{id}` | background maintenance jobs: status, step, progress, counts, result and report downloads (see below) |
 
 List endpoints take `q`, `page` and `page_size` (default 25, max 100; out-of-range values are clamped). `/artists` and `/api/v1/artists` also take `category`, `enabled` (`yes`/`no`), `ids` (`verified`/`pending`/`unresolved`), `rel` (a relationship type, matches both endpoints), `archived=1`, `sort` (`name`, `slug`, `category`, `ids`, `order`) and `dir=desc`; unknown values are ignored. The API response adds `facets` with whole-catalog totals. Errors are always `{"error":{"code":"...","message":"..."}}` for `/api/*` and for clients sending `Accept: application/json`, and an HTML error page otherwise. Messages never include paths, stack traces or Go error text; details are logged server-side.
 
@@ -85,6 +86,17 @@ Rules the workbench enforces: an ID linked to or tracked by another artist is ne
 **When a source fails** the page still renders and says what is missing. Spotify `429` shows the `Retry-After` it sent (the admin client gives up after 5 s instead of blocking the request, so reload later); MusicBrainz `503` or offline, a profile with no catalog albums and cache-only mode are all reported as *missing evidence*, never as a contradiction and never as support. Nothing is ever concluded from the absence of contradicting evidence.
 
 **Credentials** (`SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET`) are read once by the server process to build the Spotify client and are never placed in a template, JSON response, log line or error. Without them the workbench runs cache-only and disables name search. Tests use fake Spotify and MusicBrainz sources and need no network.
+
+## Jobs
+
+Maintenance operations run as background jobs. `/jobs` lists them newest first; `/jobs/{id}` shows the status, current step, progress (`done` of `total`), counts, resources, timestamps and the result summary. While a job is queued, running or cancelling the page refreshes itself every 3 seconds without JavaScript (`<noscript>` meta refresh); with JavaScript it polls `/api/v1/jobs/{id}` every 2 seconds instead, updates in place and reloads once when the job finishes. If polling fails the offline banner is shown until it succeeds again.
+
+- **Cancel** (`POST /jobs/{id}/cancel`, queued or running jobs) asks the job to stop at its next safe point. Cancelling a finished job changes nothing and says so.
+- **Resume/retry…** (`POST /jobs/{id}/retry`) is offered for failed jobs and for partial, interrupted or cancelled jobs that are resumable. It starts nothing: it redirects to the operation's preview, `/operations/{action}?resume_of={id}`, where the run must be confirmed.
+- An **interrupted** job is one the admin was running when it restarted. It never counts as a success; the page says whether it can be resumed. A **partial** job shows what completed, what is left and any retry-after hint.
+- Reports download from `/jobs/{id}/report.csv` and `/jobs/{id}/report.json` as `<action>-<first 8 characters of the id>.<ext>` attachments, byte-identical to the deterministic CSV/JSON report writers. The JSON API never inlines report rows; it reports `report_available` and links. Times are RFC 3339 UTC.
+
+Job IDs in paths must be hexadecimal with dashes; anything else is a 404 before any lookup.
 
 ## Offline mode
 

@@ -334,8 +334,9 @@ func backURL(slug, q string) string {
 	return u
 }
 
-// postResolve parses a mutating request and checks its CSRF token.
-func (s *Server) postResolve(w http.ResponseWriter, r *http.Request) bool {
+// postChecked parses a mutating request and checks its CSRF token (no
+// editability check; see postForm for catalog writes).
+func (s *Server) postChecked(w http.ResponseWriter, r *http.Request) bool {
 	if err := r.ParseForm(); err != nil {
 		s.formError(w, r, err)
 		return false
@@ -348,7 +349,7 @@ func (s *Server) postResolve(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (s *Server) handleResolvePreview(w http.ResponseWriter, r *http.Request) {
-	if !s.postResolve(w, r) {
+	if !s.postChecked(w, r) {
 		return
 	}
 	slug := r.PathValue("slug")
@@ -377,7 +378,7 @@ func (s *Server) handleResolvePreview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleResolveApply(w http.ResponseWriter, r *http.Request) {
-	if !s.postResolve(w, r) {
+	if !s.postChecked(w, r) {
 		return
 	}
 	slug := r.PathValue("slug")
