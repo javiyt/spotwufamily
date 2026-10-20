@@ -88,6 +88,31 @@ make export
 make audit
 ```
 
+## Reconcile A Corrected Spotify Mapping
+
+When a reviewed decision rejects or replaces a Spotify ID (`artists review-profile`), rows already synced for that configured artist stay in SQLite: sync only adds or reactivates `artist_albums` / `artist_tracks` rows, it never retires them. `artists reconcile` closes that gap for one configured artist at a time.
+
+```bash
+# 1. Re-seed the corrected IDs, then (optional) sync the replacement profile
+spotwufamily artists seed-db
+spotwufamily sync --artist streetlife
+
+# 2. Dry run: classify every active association (default, changes nothing)
+spotwufamily artists reconcile --slug streetlife [--format json]
+
+# 3. Apply after review
+spotwufamily artists reconcile --slug streetlife --apply
+
+# 4. Verify, snapshot, export
+make db-verify db-snapshot export audit-fast
+```
+
+Each active association is `supported` (an album/track credit points at a currently linked profile), `orphan` (credits exist but none points at a linked profile, or the artist has no linked profile) or `unverifiable` (no stored credits; reported and kept). `--apply` only soft-retires orphans of the named artist: `active = 0`, `missing_since = <retired_at>`. Nothing is deleted. Spotify artists, albums and tracks are shared rows, so the report lists which orphans other configured artists still reference (`shared_with`) and which become unreferenced; those unreferenced rows are left in place for a separate, reviewed pruning.
+
+Rollback: `--apply` prints a `retired_at` token. `spotwufamily artists reconcile --slug SLUG --restore <retired_at>` reactivates exactly those rows. No schema change is involved.
+
+Release backups: the local database is not tracked by Git. A cleanup changes `data/catalog.db` / `data/catalog.snapshot.sql.gz` only, and `data/catalog.release.json` keeps pinning the previous GitHub Release (`catalog.db.gz` + snapshot, which still contain the rejected mapping) until `make catalog-release-prepare` / `catalog-release-publish` creates a **new** release and updates the manifest. Existing release tags are never overwritten, so the old backup remains the rollback target. `make catalog-fetch` on a fresh clone keeps returning the old contents until the new manifest is merged.
+
 ## Rebuild From Snapshot
 
 Use this to prove the logical snapshot can recreate the versioned database:

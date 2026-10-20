@@ -50,6 +50,17 @@ func FormatProfileAuditMarkdown(report ProfileAuditReport) []byte {
 		}
 		writeProfileMarkdown(&buf, p)
 	}
+	if len(report.RejectedProfiles) > 0 {
+		buf.WriteString("## Rejected profiles (history)\n\n")
+		for _, r := range report.RejectedProfiles {
+			fmt.Fprintf(&buf, "### `%s` - %s (%s) - **rejected**\n\n", r.SpotifyID, escapeMarkdown(r.ArtistName), r.ArtistSlug)
+			fmt.Fprintf(&buf, "- URI: `%s`\n- Reviewed: %s by %s\n", r.URI, r.ReviewedAt, r.Reviewer)
+			for _, e := range r.Evidence {
+				fmt.Fprintf(&buf, "- Evidence `%s` %s: %s\n", e.Type, e.URL, escapeMarkdown(e.Rationale))
+			}
+			buf.WriteString("\n")
+		}
+	}
 	return buf.Bytes()
 }
 

@@ -256,19 +256,25 @@ artists:
     notes: ""
   - slug: k-g-b
     name: K.G.B.
-    spotify_id: 2gKwx0Lm0JoOrN2mY9Z0PG
-    genres:
-      - chicago house
+    spotify_id: ""
+    spotify_profiles:
+      - id: 2gKwx0Lm0JoOrN2mY9Z0PG
+        status: rejected
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/2d9e108a-8f89-4ac3-8e6c-98f0ab323a62
+            rationale: '2026-10-20: Mixed homonym profile, quarantined. Spotify 2gKwx0Lm0JoOrN2mY9Z0PG (186 monthly listeners, genre chicago house) credits French releases Retour d''exil (2012) and Seule la lutte paye (1997, Musiki), K.G.B. (2013, Neat Face Records), Respect Rap (Trax Records) and compilations (Punk For Ukraine Vol. 2, Sabados Fatales, Rap Trax Vol.1). MusicBrainz K.G.B. 2d9e108a (US, alias Klik Ga Bow) has recordings Bless Ya Life, Journey Thru Hell, Freak the Flow; none of these releases appears here except possibly Heads On (East Coast Flava Vol. 2), so ownership of the profile cannot be shown. Unverified replacement candidates are listed in the catalog notes. Genre not used as evidence.'
+        reviewed_at: "2026-10-20T08:20:21Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:20:21Z"
     category: affiliate_group
     roles:
       - affiliate_group
     aliases:
       - Klik Ga Bow
-    enabled: true
+    enabled: false
     editorial_order: 20
-    notes: ""
-    external_url: https://open.spotify.com/artist/2gKwx0Lm0JoOrN2mY9Z0PG
-    image_url: https://i.scdn.co/image/ab67616d0000b273702bc957c95c9188b8319121
+    notes: 'Quarantined 2026-10-20 (#263): no verified Spotify profile. Unverified candidate: 7Jab8mHFYj7jSkFwKtPpxB (KGB, Freek Tha Flo 1994, Bless Ya Life); do not adopt without a primary Wu discography source.'
   - slug: killarmy
     name: Killarmy
     spotify_id: 5wwleY8YnxnutxOExPVoJb
@@ -980,10 +986,26 @@ artists:
     image_url: https://i.scdn.co/image/14b6a5ae3abe37260c5a1dff42350739075ab63c
   - slug: streetlife
     name: Streetlife
-    spotify_id: 0FCYBhXjpfQIQWNKiVEDg5
-    genres:
-      - acid jazz
-      - nu jazz
+    spotify_id: 7CrVv4zLga71gdlMOMfjXL
+    spotify_profiles:
+      - id: 7CrVv4zLga71gdlMOMfjXL
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/e70e310e-8e92-4da7-9aba-071bc6032a34
+            rationale: '2026-10-20: MusicBrainz artist e70e310e (Street Life, US rapper Patrick Charles) is credited with Method Man on release ff16ca9f ''Street Education'' (Method Man Presents Street Life). The Spotify profile 7CrVv4zLga71gdlMOMfjXL (104.8K monthly listeners) lists album ''Street Education (Method Man Presents Street Life)'' 2006 plus Wu-Tang Forever, Tical 2000, Iron Flag, The W and Wu-Tang Killa Bees: The Swarm. Genre was not used as evidence.'
+        reviewed_at: "2026-10-20T08:20:12Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:20:12Z"
+      - id: 0FCYBhXjpfQIQWNKiVEDg5
+        status: rejected
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/0FCYBhXjpfQIQWNKiVEDg5
+            rationale: '2026-10-20: Spotify API and profile page name this artist ''Streetlife Originals'' (nu jazz/acid jazz, 1.2K followers), a different act. Its 8 releases are Sidewalk Stories (1999, Paper Recordings), A Sidewalk Story, Lara''s Theme and appearances on Hotel Costes 2, Sunday Paper Vol. 2, Hitchhiking (Jas), Just Begun (Solaris Heights), Colours Of The Night (New Phunk Theory). No Wu-Tang, Method Man or hip hop release or credit. Replaced by 7CrVv4zLga71gdlMOMfjXL.'
+        reviewed_at: "2026-10-20T08:20:12Z"
+        reviewer: javi
+        last_checked_at: "2026-10-20T08:20:12Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -991,8 +1013,8 @@ artists:
     enabled: true
     editorial_order: 74
     notes: ""
-    external_url: https://open.spotify.com/artist/0FCYBhXjpfQIQWNKiVEDg5
-    image_url: https://i.scdn.co/image/ab67616d0000b273e5d4f3b2f0641a51d48c114a
+    external_url: https://open.spotify.com/artist/7CrVv4zLga71gdlMOMfjXL
+    image_url: https://i.scdn.co/image/ab67616d0000b2732ca649bf758bb0d73984340c
   - slug: sun-god
     name: Sun God
     spotify_id: 5FtiFDKYXZVHrm011mhQmL

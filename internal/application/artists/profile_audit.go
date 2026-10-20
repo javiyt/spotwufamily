@@ -157,6 +157,26 @@ type ProfileAuditReport struct {
 	Offline   bool                 `json:"offline"`
 	Summary   ProfileAuditSummary  `json:"summary"`
 	Profiles  []ProfileAuditResult `json:"profiles"`
+	// RejectedProfiles is the decision history of profiles that were rejected
+	// and are no longer linked, so a replaced or quarantined mapping stays visible.
+	RejectedProfiles []RejectedProfileRecord `json:"rejected_profiles,omitempty"`
+}
+
+// RejectedProfileRecord is one rejected Spotify profile with its decision evidence.
+type RejectedProfileRecord struct {
+	ArtistSlug string                  `json:"artist_slug"`
+	ArtistName string                  `json:"artist_name"`
+	SpotifyID  string                  `json:"spotify_id"`
+	URI        string                  `json:"uri"`
+	ReviewedAt string                  `json:"reviewed_at,omitempty"`
+	Reviewer   string                  `json:"reviewer,omitempty"`
+	Evidence   []RejectedEvidenceEntry `json:"evidence,omitempty"`
+}
+
+type RejectedEvidenceEntry struct {
+	Type      string `json:"type"`
+	URL       string `json:"url,omitempty"`
+	Rationale string `json:"rationale,omitempty"`
 }
 
 type AuditProfilesOptions struct {
@@ -201,7 +221,8 @@ func (a AuditProfiles) Run(ctx context.Context, options AuditProfilesOptions) (P
 	checked := now().UTC()
 
 	jobs := profileJobs(c, options.ArtistSlug)
-	if options.ArtistSlug != "" && len(jobs) == 0 {
+	rejected := rejectedProfiles(c, options.ArtistSlug)
+	if options.ArtistSlug != "" && len(jobs) == 0 && len(rejected) == 0 {
 		return ProfileAuditReport{}, fmt.Errorf("artist %q with Spotify IDs not found", options.ArtistSlug)
 	}
 
@@ -245,9 +266,46 @@ func (a AuditProfiles) Run(ctx context.Context, options AuditProfilesOptions) (P
 		CheckedOn: checked.Format(time.DateOnly),
 		Offline:   options.Offline,
 		Profiles:  results,
+
+		RejectedProfiles: rejected,
 	}
 	report.Summary = summarizeProfileAudit(results)
 	return report, nil
+}
+
+// rejectedProfiles lists the rejected, unlinked profiles in editorial order.
+func rejectedProfiles(c catalog.EditorialCatalog, slug string) []RejectedProfileRecord {
+	var out []RejectedProfileRecord
+	for _, artist := range c.Artists {
+		if slug != "" && artist.Slug != slug {
+			continue
+		}
+		for _, profile := range artist.SpotifyProfiles {
+			if profile.Status != catalog.ProfileRejected || artist.HasSpotifyID(profile.ID) {
+				continue
+			}
+			record := RejectedProfileRecord{
+				ArtistSlug: artist.Slug,
+				ArtistName: artist.Name,
+				SpotifyID:  profile.ID,
+				URI:        "spotify:artist:" + profile.ID,
+				ReviewedAt: profile.ReviewedAt,
+				Reviewer:   profile.Reviewer,
+			}
+			for _, e := range profile.Evidence {
+				record.Evidence = append(record.Evidence, RejectedEvidenceEntry{Type: string(e.Type), URL: e.URL, Rationale: e.Rationale})
+			}
+			out = append(out, record)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].ArtistSlug != out[j].ArtistSlug {
+			return out[i].ArtistSlug < out[j].ArtistSlug
+		}
+		return out[i].SpotifyID < out[j].SpotifyID
+	})
+
+	return out
 }
 
 func profileJobs(c catalog.EditorialCatalog, slug string) []profileJob {
