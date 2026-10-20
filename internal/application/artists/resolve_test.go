@@ -74,8 +74,9 @@ func TestResolveArtistsApplyWritesStrongUnambiguousSpotifyIDs(t *testing.T) {
 	}}
 	searcher := candidateSearcher{candidates: map[string][]catalog.ArtistCandidate{
 		"gravediggaz": {{
-			Name:      "Gravediggaz",
-			SpotifyID: "0CH4f9m2L3TRaA5oErU2p0",
+			Name:                  "Gravediggaz",
+			SpotifyID:             "0CH4f9m2L3TRaA5oErU2p0",
+			RelatedArtistEvidence: []string{`credited on Wu-Tang Clan track "Triumph"`},
 		}},
 	}}
 
@@ -105,8 +106,8 @@ func TestResolveArtistsApplySkipsAmbiguousCandidates(t *testing.T) {
 	}}
 	searcher := candidateSearcher{candidates: map[string][]catalog.ArtistCandidate{
 		"gravediggaz": {
-			{Name: "Gravediggaz", SpotifyID: "0CH4f9m2L3TRaA5oErU2p0"},
-			{Name: "Gravediggaz", SpotifyID: "1111111111111111111111"},
+			{Name: "Gravediggaz", SpotifyID: "0CH4f9m2L3TRaA5oErU2p0", RelatedArtistEvidence: []string{`credited on Wu-Tang Clan track "Triumph"`}},
+			{Name: "Gravediggaz", SpotifyID: "1111111111111111111111", RelatedArtistEvidence: []string{`credited on Wu-Tang Clan track "Triumph"`}},
 		},
 	}}
 
@@ -117,4 +118,58 @@ func TestResolveArtistsApplySkipsAmbiguousCandidates(t *testing.T) {
 	require.Len(t, report.Skipped, 1)
 	require.Empty(t, store.catalog.Artists[0].SpotifyID)
 	require.Contains(t, report.Skipped[0].Reason, "ambiguous")
+}
+
+func TestResolveArtistsApplyNeverWritesNameOnlyMatches(t *testing.T) {
+	for name, candidate := range map[string]catalog.ArtistCandidate{
+		"exact name":                  {Name: "Streetlife", SpotifyID: "1111111111111111111111"},
+		"exact name with hip hop":     {Name: "Streetlife", SpotifyID: "1111111111111111111111", Genres: []string{"hip hop"}, Popularity: 80, Followers: 100000},
+		"single weak release matched": {Name: "Streetlife", SpotifyID: "1111111111111111111111", IdentityEvidence: []catalog.IdentityEvidence{{Kind: catalog.EvidenceMusicBrainzRelease, Polarity: catalog.EvidencePositive, ReleaseName: "Intro"}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := &memoryStore{catalog: catalog.EditorialCatalog{Version: 1, Artists: []catalog.Artist{{
+				Slug: "streetlife", Name: "Streetlife", Category: catalog.CategoryAffiliateGroup,
+				Roles: []catalog.Category{catalog.CategoryAffiliateGroup}, EditorialOrder: 1,
+			}}}}
+			searcher := candidateSearcher{candidates: map[string][]catalog.ArtistCandidate{"streetlife": {candidate}}}
+
+			report, err := artists.NewResolveArtists(store, searcher).Apply(context.Background(), "x", artists.ApplyResolveOptions{EnableResolved: true, MinScore: 1, MinScoreGap: 1})
+
+			require.NoError(t, err)
+			require.Empty(t, report.Applied)
+			require.Equal(t, catalog.EligibilityNeedsReview, report.Skipped[0].Status)
+			require.Empty(t, store.catalog.Artists[0].SpotifyID)
+			require.Empty(t, store.catalog.Artists[0].SpotifyProfiles)
+			require.False(t, store.catalog.Artists[0].Enabled)
+			require.Zero(t, store.saveCount)
+		})
+	}
+}
+
+func TestResolveArtistsApplyEnablesOnlyEvidenceBackedArtists(t *testing.T) {
+	store := &memoryStore{catalog: catalog.EditorialCatalog{Version: 1, Artists: []catalog.Artist{
+		{Slug: "gravediggaz", Name: "Gravediggaz", Category: catalog.CategoryAffiliateGroup, Roles: []catalog.Category{catalog.CategoryAffiliateGroup}, EditorialOrder: 1},
+		{Slug: "streetlife", Name: "Streetlife", Category: catalog.CategoryAffiliateGroup, Roles: []catalog.Category{catalog.CategoryAffiliateGroup}, EditorialOrder: 2},
+	}}}
+	searcher := candidateSearcher{candidates: map[string][]catalog.ArtistCandidate{
+		"gravediggaz": {{Name: "Gravediggaz", SpotifyID: "0CH4f9m2L3TRaA5oErU2p0", IdentityEvidence: []catalog.IdentityEvidence{{
+			Kind: catalog.EvidenceMusicBrainzRelease, Polarity: catalog.EvidencePositive, Strong: true, URL: "https://musicbrainz.org/release-group/x", ReleaseName: "6 Feet Deep", ReleaseYear: "1994",
+		}}}},
+		"streetlife": {{Name: "Streetlife", SpotifyID: "1111111111111111111111", Genres: []string{"hip hop"}}},
+	}}
+
+	report, err := artists.NewResolveArtists(store, searcher).Apply(context.Background(), "x", artists.ApplyResolveOptions{EnableResolved: true})
+
+	require.NoError(t, err)
+	require.Len(t, report.Applied, 1)
+	require.NotEmpty(t, report.Applied[0].Evidence)
+	require.True(t, store.catalog.Artists[0].Enabled)
+	require.Equal(t, catalog.ProfileCandidate, store.catalog.Artists[0].StatusOf("0CH4f9m2L3TRaA5oErU2p0"))
+	require.False(t, store.catalog.Artists[1].Enabled)
+	require.Empty(t, store.catalog.Artists[1].SpotifyID)
+
+	markdown := string(artists.FormatResolveReportMarkdown(report))
+	require.Contains(t, markdown, "https://musicbrainz.org/release-group/x")
+	require.Contains(t, markdown, "6 Feet Deep (1994)")
+	require.Contains(t, markdown, "needs_review")
 }

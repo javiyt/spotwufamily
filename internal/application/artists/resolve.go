@@ -3,6 +3,7 @@ package artists
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -35,22 +36,25 @@ type ResolveReport struct {
 }
 
 type ResolveReportEntry struct {
-	Artist  catalog.Artist
-	Matches []catalog.CandidateMatch
+	Artist   catalog.Artist
+	Matches  []catalog.CandidateMatch
+	Decision catalog.EligibilityDecision
 }
 
 type ResolvedArtist struct {
-	Slug      string
-	Name      string
-	SpotifyID string
-	Score     int
-	Reason    string
+	Slug      string                     `json:"slug"`
+	Name      string                     `json:"name"`
+	SpotifyID string                     `json:"spotify_id"`
+	Score     int                        `json:"score"`
+	Reason    string                     `json:"reason"`
+	Evidence  []catalog.IdentityEvidence `json:"evidence,omitempty"`
 }
 
 type ResolveSkip struct {
-	Slug   string
-	Name   string
-	Reason string
+	Slug   string                    `json:"slug"`
+	Name   string                    `json:"name"`
+	Status catalog.EligibilityStatus `json:"status"`
+	Reason string                    `json:"reason"`
 }
 
 type ResolveError struct {
@@ -85,7 +89,7 @@ func (r ResolveArtists) RunWithProgress(ctx context.Context, path string, progre
 		return ResolveReport{}, fmt.Errorf("load artist catalog: %w", err)
 	}
 
-	return r.resolve(ctx, c, progress)
+	return r.resolve(ctx, c, catalog.EligibilityPolicy{IsRejected: c.IsRejectedSpotifyID}, progress)
 }
 
 func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyResolveOptions) (ResolveReport, error) {
@@ -94,7 +98,14 @@ func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyRes
 		return ResolveReport{}, fmt.Errorf("load artist catalog: %w", err)
 	}
 
-	report, err := r.resolve(ctx, c, options.Progress)
+	// The evidence gate is part of the policy: --apply and --enable-applied
+	// both go through the same evaluator as the report and the CLI.
+	policy := catalog.EligibilityPolicy{
+		MinScore:    options.MinScore,
+		MinScoreGap: options.MinScoreGap,
+		IsRejected:  c.IsRejectedSpotifyID,
+	}
+	report, err := r.resolve(ctx, c, policy, options.Progress)
 	if err != nil {
 		return ResolveReport{}, err
 	}
@@ -102,22 +113,25 @@ func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyRes
 		return report, nil
 	}
 
-	if options.MinScore == 0 {
-		options.MinScore = 95
-	}
-	if options.MinScoreGap == 0 {
-		options.MinScoreGap = 10
-	}
-
 	updates := map[string]ResolvedArtist{}
 	for _, entry := range report.Entries {
-		resolved, ok, reason := autoResolvedMatch(entry, options)
-		if ok && c.IsRejectedSpotifyID(resolved.SpotifyID) {
-			ok, reason = false, "Spotify profile was rejected in review; a name match is not new evidence"
-		}
-		if !ok {
-			report.Skipped = append(report.Skipped, ResolveSkip{Slug: entry.Artist.Slug, Name: entry.Artist.Name, Reason: reason})
+		decision := entry.Decision
+		if decision.Status != catalog.EligibilityApproved {
+			report.Skipped = append(report.Skipped, ResolveSkip{
+				Slug:   entry.Artist.Slug,
+				Name:   entry.Artist.Name,
+				Status: decision.Status,
+				Reason: strings.Join(decision.Reasons, "; "),
+			})
 			continue
+		}
+		resolved := ResolvedArtist{
+			Slug:      entry.Artist.Slug,
+			Name:      entry.Artist.Name,
+			SpotifyID: decision.SpotifyID,
+			Score:     decision.Score,
+			Reason:    entry.Matches[0].Reason,
+			Evidence:  decision.Positive,
 		}
 		updates[entry.Artist.Slug] = resolved
 		report.Applied = append(report.Applied, resolved)
@@ -154,7 +168,7 @@ func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyRes
 	return report, nil
 }
 
-func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog, progress func(ResolveProgress)) (ResolveReport, error) {
+func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog, policy catalog.EligibilityPolicy, progress func(ResolveProgress)) (ResolveReport, error) {
 	report := ResolveReport{}
 	artistsToResolve := unresolvedArtists(c.Artists)
 	for index, artist := range artistsToResolve {
@@ -173,9 +187,11 @@ func (r ResolveArtists) resolve(ctx context.Context, c catalog.EditorialCatalog,
 		event.Stage = "artist_finished"
 		event.MatchCount = len(candidates)
 		emitResolveProgress(progress, event)
+		matches := catalog.RankCandidates(artist, candidates)
 		report.Entries = append(report.Entries, ResolveReportEntry{
-			Artist:  artist,
-			Matches: catalog.RankCandidates(artist, candidates),
+			Artist:   artist,
+			Matches:  matches,
+			Decision: catalog.EvaluateEligibility(artist, matches, policy),
 		})
 	}
 
@@ -210,37 +226,40 @@ func emitResolveProgress(progress func(ResolveProgress), event ResolveProgress) 
 	}
 }
 
-func autoResolvedMatch(entry ResolveReportEntry, options ApplyResolveOptions) (ResolvedArtist, bool, string) {
-	if len(entry.Matches) == 0 {
-		return ResolvedArtist{}, false, "no candidates"
-	}
-
-	best := entry.Matches[0]
-	if best.Candidate.SpotifyID == "" {
-		return ResolvedArtist{}, false, "best candidate has no Spotify ID"
-	}
-	if best.Score < options.MinScore {
-		return ResolvedArtist{}, false, fmt.Sprintf("best score %d is below minimum %d", best.Score, options.MinScore)
-	}
-	if len(entry.Matches) > 1 && best.Score-entry.Matches[1].Score < options.MinScoreGap {
-		return ResolvedArtist{}, false, fmt.Sprintf("ambiguous top candidates: score gap %d is below minimum %d", best.Score-entry.Matches[1].Score, options.MinScoreGap)
-	}
-
-	return ResolvedArtist{
-		Slug:      entry.Artist.Slug,
-		Name:      entry.Artist.Name,
-		SpotifyID: best.Candidate.SpotifyID,
-		Score:     best.Score,
-		Reason:    best.Reason,
-	}, true, ""
-}
-
 func formatValidationIssues(issues []catalog.ValidationIssue) string {
 	messages := make([]string, 0, len(issues))
 	for _, issue := range issues {
 		messages = append(messages, issue.Error())
 	}
 	return strings.Join(messages, "; ")
+}
+
+type resolveReportJSON struct {
+	Entries []resolveEntryJSON `json:"entries"`
+	Applied []ResolvedArtist   `json:"applied"`
+	Skipped []ResolveSkip      `json:"skipped"`
+}
+
+type resolveEntryJSON struct {
+	Slug     string                      `json:"slug"`
+	Name     string                      `json:"name"`
+	Decision catalog.EligibilityDecision `json:"decision"`
+}
+
+// FormatResolveReportJSON renders the gate decisions and their evidence in a
+// machine-readable form.
+func FormatResolveReportJSON(report ResolveReport) ([]byte, error) {
+	out := resolveReportJSON{Entries: []resolveEntryJSON{}, Applied: report.Applied, Skipped: report.Skipped}
+	if out.Applied == nil {
+		out.Applied = []ResolvedArtist{}
+	}
+	if out.Skipped == nil {
+		out.Skipped = []ResolveSkip{}
+	}
+	for _, entry := range report.Entries {
+		out.Entries = append(out.Entries, resolveEntryJSON{Slug: entry.Artist.Slug, Name: entry.Artist.Name, Decision: entry.Decision})
+	}
+	return json.MarshalIndent(out, "", "  ")
 }
 
 func FormatResolveReportMarkdown(report ResolveReport) []byte {
@@ -273,6 +292,17 @@ func FormatResolveReportMarkdown(report ResolveReport) []byte {
 		if len(entry.Artist.Aliases) > 0 {
 			buf.WriteString(fmt.Sprintf("- Aliases: %s\n", strings.Join(entry.Artist.Aliases, ", ")))
 		}
+		buf.WriteString(fmt.Sprintf("- Decision: `%s`", entry.Decision.Status))
+		if entry.Decision.Evaluated != "" {
+			buf.WriteString(fmt.Sprintf(" (evaluated `%s`)", entry.Decision.Evaluated))
+		}
+		buf.WriteString("\n")
+		for _, reason := range entry.Decision.Reasons {
+			buf.WriteString(fmt.Sprintf("  - %s\n", escapeMarkdown(reason)))
+		}
+		writeEvidenceMarkdown(&buf, "Positive evidence", entry.Decision.Positive)
+		writeEvidenceMarkdown(&buf, "Negative evidence", entry.Decision.Negative)
+		writeEvidenceMarkdown(&buf, "Warnings", entry.Decision.Warnings)
 		if len(entry.Matches) == 0 {
 			buf.WriteString("- Candidates: none\n\n")
 			continue
@@ -304,6 +334,42 @@ func FormatResolveReportMarkdown(report ResolveReport) []byte {
 	}
 
 	return buf.Bytes()
+}
+
+func writeEvidenceMarkdown(buf *bytes.Buffer, title string, items []catalog.IdentityEvidence) {
+	if len(items) == 0 {
+		return
+	}
+	buf.WriteString(fmt.Sprintf("- %s:\n", title))
+	for _, item := range items {
+		buf.WriteString("  - " + FormatIdentityEvidence(item) + "\n")
+	}
+}
+
+// FormatIdentityEvidence renders one evidence item as a single readable line
+// with its source URL, matching release and evaluated ID.
+func FormatIdentityEvidence(item catalog.IdentityEvidence) string {
+	parts := []string{string(item.Kind)}
+	if item.Strong {
+		parts = append(parts, "strong")
+	}
+	if item.ReleaseName != "" {
+		release := item.ReleaseName
+		if item.ReleaseYear != "" {
+			release += " (" + item.ReleaseYear + ")"
+		}
+		parts = append(parts, "release: "+release)
+	}
+	if item.Detail != "" {
+		parts = append(parts, item.Detail)
+	}
+	if item.SubjectID != "" {
+		parts = append(parts, "id: "+item.SubjectID)
+	}
+	if item.URL != "" {
+		parts = append(parts, item.URL)
+	}
+	return escapeMarkdown(strings.Join(parts, " | "))
 }
 
 func escapeMarkdown(value string) string {

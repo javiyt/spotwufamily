@@ -54,6 +54,18 @@ SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... \
 
 `--apply` defaults to `--min-score 95 --min-score-gap 10`, skips ambiguous candidates, validates the resulting YAML before saving, and keeps resolved artists disabled unless `--enable-applied` is provided.
 
+### Evidence gate
+
+A similarity score (name, alias, genre, popularity) only *ranks* candidates; it never approves one. `--apply` and `--enable-applied` write an ID only when `catalog.EvaluateEligibility` returns `approved`, the same evaluator the report and the interactive CLI use. Approval requires, on top of `--min-score`/`--min-score-gap`, at least one independent strong positive signal:
+
+- a verified credit on a track of a configured group with a known Spotify ID (`track_credit`);
+- at least two distinct Spotify albums matching MusicBrainz release groups (`musicbrainz_release`). A single shared album title can be a homonym, so it is recorded as weak evidence;
+- fixtures may also supply `official_discography` or `external_authority` evidence with `"strong": true`.
+
+Name, alias, Spotify genre and popularity are warnings/ranking hints only. MusicBrainz is advisory: outages, no release groups or a failed Spotify album fetch add a `musicbrainz_unavailable` warning and leave the candidate as `needs_review` (it is no longer discarded). Statuses are `approved`, `needs_review` (queued for a human; no catalog mutation) and `rejected` (below the score threshold or a previously rejected profile). Approved IDs are still recorded as `candidate` profiles and stay disabled unless `--enable-applied` is given and the gate passed.
+
+Reports list positive evidence, negative evidence and warnings with source URLs, release names/years and the evaluated Spotify ID. Use `--report resolve.json` for the machine-readable form. Offline fixtures can carry `identity_evidence` (fields: `kind`, `polarity`, `strong`, `source`, `url`, `subject_id`, `release_name`, `release_year`, `detail`).
+
 For human-in-the-loop resolution, omit `--non-interactive`. The CLI prompts per unresolved artist:
 
 ```bash

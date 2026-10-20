@@ -3,15 +3,16 @@ package catalog
 import "strings"
 
 type ArtistCandidate struct {
-	Name                  string   `json:"name"`
-	SpotifyID             string   `json:"spotify_id"`
-	URL                   string   `json:"url"`
-	ImageURL              string   `json:"image_url"`
-	Images                []Image  `json:"images,omitempty"`
-	Popularity            int      `json:"popularity"`
-	Followers             int      `json:"followers"`
-	Genres                []string `json:"genres"`
-	RelatedArtistEvidence []string `json:"related_artist_evidence,omitempty"`
+	Name                  string             `json:"name"`
+	SpotifyID             string             `json:"spotify_id"`
+	URL                   string             `json:"url"`
+	ImageURL              string             `json:"image_url"`
+	Images                []Image            `json:"images,omitempty"`
+	Popularity            int                `json:"popularity"`
+	Followers             int                `json:"followers"`
+	Genres                []string           `json:"genres"`
+	RelatedArtistEvidence []string           `json:"related_artist_evidence,omitempty"`
+	IdentityEvidence      []IdentityEvidence `json:"identity_evidence,omitempty"`
 }
 
 type CandidateMatch struct {
