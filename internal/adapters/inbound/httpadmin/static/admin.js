@@ -77,10 +77,17 @@
     if (!form.matches || !form.matches('form[method="post"]') || form.action.indexOf('/logout') !== -1) return;
     var msg = form.getAttribute('data-confirm');
     if (msg && !window.confirm(msg)) { e.preventDefault(); return; }
-    if (!window.fetch || !window.FormData) return;
+    // data-once buttons (e.g. "Confirm and run") are disabled once submitted;
+    // the server's conflict check still refuses a second run.
+    var once = form.querySelectorAll('button[data-once]');
+    if (!window.fetch || !window.FormData) {
+      setTimeout(function () { once.forEach(function (b) { b.disabled = true; }); }, 0);
+      return;
+    }
     e.preventDefault();
     var data = new URLSearchParams(new FormData(form));
     if (e.submitter && e.submitter.name) data.set(e.submitter.name, e.submitter.value);
+    once.forEach(function (b) { b.disabled = true; });
     fetch(form.action, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Admin-Fetch': '1' },
@@ -99,6 +106,7 @@
       if (type.indexOf('application/json') !== -1) {
         return res.json().then(function (body) {
           var msg = body && body.error && body.error.message;
+          once.forEach(function (b) { b.disabled = false; });
           toast(msg ? String(msg) : 'The request was refused.', 'err');
         });
       }
@@ -106,6 +114,7 @@
         document.open(); document.write(html); document.close();
       });
     }).catch(function () {
+      once.forEach(function (b) { b.disabled = false; });
       toast('The admin server could not be reached. Nothing was saved; your edits are still in the form.', 'err');
     });
   });

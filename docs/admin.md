@@ -27,7 +27,7 @@ The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?to
 | `/groups/new`, `/groups/{slug}` | | create / edit a group and its members |
 | `/review` | `/api/v1/review` | unverified Spotify profiles and proposed relationships |
 | `/resolve`, `/resolve/{slug}` | `/api/v1/resolve`, `/api/v1/resolve/{slug}` | Spotify profile review queue and side-by-side workbench (see below) |
-| `/operations` | | database/credential status and the CLI commands to run |
+| `/operations`, `/operations/{action}` | `/api/v1/operations`, `/api/v1/freshness` | status, data freshness, maintenance actions with preview and confirmation, recent operations (see below) |
 | `/jobs`, `/jobs/{id}` | `/api/v1/jobs`, `/api/v1/jobs/{id}` | background maintenance jobs: status, step, progress, counts, result and report downloads (see below) |
 
 List endpoints take `q`, `page` and `page_size` (default 25, max 100; out-of-range values are clamped). `/artists` and `/api/v1/artists` also take `category`, `enabled` (`yes`/`no`), `ids` (`verified`/`pending`/`unresolved`), `rel` (a relationship type, matches both endpoints), `archived=1`, `sort` (`name`, `slug`, `category`, `ids`, `order`) and `dir=desc`; unknown values are ignored. The API response adds `facets` with whole-catalog totals. Errors are always `{"error":{"code":"...","message":"..."}}` for `/api/*` and for clients sending `Accept: application/json`, and an HTML error page otherwise. Messages never include paths, stack traces or Go error text; details are logged server-side.
@@ -92,11 +92,25 @@ Rules the workbench enforces: an ID linked to or tracked by another artist is ne
 Maintenance operations run as background jobs. `/jobs` lists them newest first; `/jobs/{id}` shows the status, current step, progress (`done` of `total`), counts, resources, timestamps and the result summary. While a job is queued, running or cancelling the page refreshes itself every 3 seconds without JavaScript (`<noscript>` meta refresh); with JavaScript it polls `/api/v1/jobs/{id}` every 2 seconds instead, updates in place and reloads once when the job finishes. If polling fails the offline banner is shown until it succeeds again.
 
 - **Cancel** (`POST /jobs/{id}/cancel`, queued or running jobs) asks the job to stop at its next safe point. Cancelling a finished job changes nothing and says so.
-- **Resume/retry…** (`POST /jobs/{id}/retry`) is offered for failed jobs and for partial, interrupted or cancelled jobs that are resumable. It starts nothing: it redirects to the operation's preview, `/operations/{action}?resume_of={id}`, where the run must be confirmed.
+- **Resume/retry…** (`POST /jobs/{id}/retry`) is offered for failed jobs and for partial, interrupted or cancelled jobs that are resumable; the maintenance service decides (`ResumeEligible`), not the page. It starts nothing: it redirects to the operation's preview, `/operations/{action}?resume_of={id}`, where the run must be confirmed.
+- A refused cancel or retry (finished job, not resumable) answers `409` with the JSON error to API and in-page (fetch) clients, so it never shows as a success; plain forms get a redirect and a message.
 - An **interrupted** job is one the admin was running when it restarted. It never counts as a success; the page says whether it can be resumed. A **partial** job shows what completed, what is left and any retry-after hint.
 - Reports download from `/jobs/{id}/report.csv` and `/jobs/{id}/report.json` as `<action>-<first 8 characters of the id>.<ext>` attachments, byte-identical to the deterministic CSV/JSON report writers. The JSON API never inlines report rows; it reports `report_available` and links. Times are RFC 3339 UTC.
 
 Job IDs in paths must be hexadecimal with dashes; anything else is a 404 before any lookup.
+
+## Operations
+
+`/operations` shows the database, credential and last-sync status (with banners when there is no database or no Spotify credentials), a data freshness panel, the maintenance actions and the last 10 entries of the operations log, newest first. When the service has no maintenance actions (`Operator` not implemented) the page keeps the status block and lists the CLI commands instead, and every route below is absent (404).
+
+- **Actions** are grouped as Discover, Audit, Sync, Refresh/Export, Reconcile and Release. Each card shows the title, a one-line description, `NETWORK`/`DESTRUCTIVE` badges and either *Available* with a **Review…** link to `/operations/{action}` or the action's own unavailability reason. Release cards link to `/publish`. Nothing runs from the dashboard; in particular a sync is only ever started from its form and preview.
+- **`GET /operations/{action}`** is the parameter form: sync and sync-dry-run take `scope` (artist/selected/all), `artists` (comma-separated slugs) and `resume`; audit-profiles takes `artist` and `offline`; refresh-metadata(-preview) takes `force`; reconcile-* take `artist`; the rest take none. Unknown actions are 404; an unavailable action shows its reason and no form. `?resume_of={jobID}` shows "Resuming job …" (and ticks `resume` for sync) only when the service confirms that job exists, ran this action and is resumable or failed; otherwise it says so and is ignored.
+- **`POST /operations/{action}/preview`** shows the estimated impact (scope lines), warnings, badges and, for network or destructive actions, a quota/impact caveat. Form fields are passed to the service untouched and validated there; a validation error re-renders the form with the message. The confirmation form carries an opaque preview token and the validated parameters as hidden fields, and a typed-confirmation field only when the action requires one (e.g. `sync 42 artists` for a large sync).
+- **`POST /operations/{action}/run`** (`token`, `typed`, the parameters) re-checks the preview and redirects `303` to `/jobs/{id}`. A missing, expired or mismatched token shows "The preview is out of date; review it again" with a button that re-previews the same parameters; a wrong phrase re-renders the preview with a message; a resource conflict answers `409` naming and linking the job that holds it. The confirm button disables itself on submit (JavaScript); the server's conflict check is what prevents double runs.
+- **Data freshness** is never computed on page load or by `GET /api/v1/freshness` (which returns the last result or `{"checked":false}`). **Check data freshness** (`POST /operations/freshness`) runs the comparison once — it reads the whole database and can take seconds — and caches the result for 60 seconds; concurrent clicks share one computation. The page shows the result with its age.
+- `GET /api/v1/operations` lists every action with `name`, `title`, `group`, `description`, `available`, `unavailable_reason`, `uses_network`, `destructive` and a `page` link.
+
+All operation POSTs need the session, the CSRF token and a same-origin request. Preview tokens are never logged, and pages never show paths or Go error text.
 
 ## Offline mode
 

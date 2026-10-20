@@ -94,3 +94,5 @@ button.link{border:0;background:none;color:inherit;text-decoration:underline;cur
 .job progress{width:100%;max-width:32rem;height:1rem}
 .job .counts{max-width:32rem}
 .job .actions form{margin:0}
+.op-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:1rem}
+.op-cards .pcard{margin:0}.op-cards p{margin:.35rem 0}

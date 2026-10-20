@@ -1,0 +1,24 @@
+{{define "content"}}{{$csrf := .CSRF}}{{with .Data}}
+<p class="badges"><code>{{.Action.Name}}</code>{{if .Action.UsesNetwork}} <span class="badge warn">NETWORK</span>{{end}}{{if .Action.Destructive}} <span class="badge bad">DESTRUCTIVE</span>{{end}}</p>
+{{if .Description}}<p>{{.Description}}</p>{{end}}
+{{if .Unavailable}}
+<p class="notice bad" role="alert"><strong>Unavailable:</strong> {{.Unavailable}}</p>
+{{else}}
+{{if .ResumeOf}}<p class="notice" role="status">Resuming job <a href="/jobs/{{.ResumeOf}}"><code>{{.ResumeShort}}</code></a>.{{if not .ResumeField}} This action has no resume option; it runs again from the start.{{end}} Review the parameters, then preview the run.</p>{{end}}
+{{if .ResumeNote}}<p class="notice warn" role="status">{{.ResumeNote}}</p>{{end}}
+{{if .Error}}<p class="notice bad" role="alert">{{.Error}}</p>{{end}}
+<form method="post" action="/operations/{{.Action.Name}}/preview" class="stack">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+{{range .Fields}}{{if eq .Type "checkbox"}}<p class="check"><input id="{{.ID}}" type="checkbox" name="{{.Name}}" value="{{.Value}}"{{if .Checked}} checked{{end}}><label for="{{.ID}}">{{.Label}}</label></p>
+{{if .Help}}<p class="hint">{{.Help}}</p>{{end}}
+{{else}}<div class="field"><label for="{{.ID}}">{{.Label}}</label>
+{{if eq .Type "select"}}<select id="{{.ID}}" name="{{.Name}}"{{if .Required}} required{{end}}>{{$v := .Value}}{{range .Options}}<option value="{{.Value}}"{{if eq .Value $v}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+{{else}}<input id="{{.ID}}" type="text" name="{{.Name}}" value="{{.Value}}" maxlength="1000" autocomplete="off"{{if .Required}} required{{end}}>{{end}}
+{{if .Help}}<p class="hint">{{.Help}}</p>{{end}}</div>
+{{end}}{{else}}<p class="muted">This action takes no parameters.</p>
+{{end}}<p class="muted">Previewing changes nothing; the next page shows exactly what will run.</p>
+<div class="actions"><button type="submit" class="primary">Preview</button> <a href="/operations" data-cancel>Cancel</a></div>
+</form>
+{{end}}
+<p><a href="/operations">← All operations</a></p>
+{{end}}{{end}}

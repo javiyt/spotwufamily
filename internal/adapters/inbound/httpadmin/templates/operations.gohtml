@@ -1,14 +1,59 @@
-{{define "content"}}{{with .Data}}
+{{define "content"}}{{$csrf := .CSRF}}{{with .Data}}
+{{if not .DatabaseAvailable}}<p class="notice bad" role="alert"><strong>No database found (offline mode).</strong> Actions that need the database are unavailable until a sync creates it or it is rebuilt from the snapshot.</p>{{end}}
+{{if not .SpotifyCredentialsPresent}}<p class="notice warn" role="status"><strong>Spotify credentials are not configured.</strong> Actions that call Spotify are unavailable.</p>{{end}}
 <dl class="stats">
 <div><dt>Database</dt><dd>{{if .DatabaseAvailable}}available{{else}}unavailable (offline){{end}}</dd></div>
 <div><dt>Spotify credentials</dt><dd>{{if .SpotifyCredentialsPresent}}present{{else}}missing{{end}}</dd></div>
 <div><dt>Last sync</dt><dd>{{if .LastSyncAt}}{{.LastSyncStatus}} · {{.LastSyncAt}}{{else}}never{{end}}</dd></div>
 </dl>
-<p>Operations run from the CLI; this UI never calls Spotify. Common commands:</p>
+{{if .Operator}}
+<section id="freshness" aria-labelledby="fresh-h">
+<h2 id="fresh-h">Data freshness</h2>
+{{with .Fresh}}{{if .Checked}}
+<p class="muted">Last checked <time datetime="{{.At}}">{{.At}}</time> (checked {{.Age}} ago).</p>
+{{if .Reasons}}<ul>{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>{{else}}<p>Everything derived from the catalog is up to date.</p>{{end}}
+{{else}}<p class="muted">Freshness not checked yet. The check reads the whole database and can take a few seconds.</p>{{end}}{{end}}
+<form method="post" action="/operations/freshness">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<button type="submit">Check data freshness</button>
+</form>
+</section>
+
+<section aria-labelledby="actions-h">
+<h2 id="actions-h">Actions</h2>
+<p class="muted">Nothing runs from this page. Each action shows a preview of exactly what it will do and runs only after you confirm it. Sync is never started from here directly.</p>
+{{range .Groups}}<section class="op-group">
+<h3>{{.Name}}</h3>
+<ul class="op-cards">
+{{range .Cards}}<li class="pcard">
+<p class="badges"><strong>{{.Title}}</strong>{{if .UsesNetwork}} <span class="badge warn">NETWORK</span>{{end}}{{if .Destructive}} <span class="badge bad">DESTRUCTIVE</span>{{end}}</p>
+{{if .Description}}<p>{{.Description}}</p>{{end}}
+{{if .Available}}<p class="muted"><span class="badge ok">Available</span></p>
+<p><a class="button" href="{{.Page}}">Review…</a></p>
+{{else}}<p class="notice warn">Unavailable: {{if .UnavailableReason}}{{.UnavailableReason}}{{else}}This action is not available right now.{{end}}</p>{{end}}
+</li>
+{{end}}</ul>
+</section>
+{{end}}</section>
+
+<section aria-labelledby="recent-h">
+<h2 id="recent-h">Recent operations</h2>
+{{if .RecentErr}}<p class="notice warn">{{.RecentErr}}</p>{{end}}
+{{if .Recent}}<div class="table-wrap"><table>
+<caption class="sr">Recent operations, newest first</caption>
+<thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">Event</th><th scope="col">Outcome</th><th scope="col">Summary</th><th scope="col">Job</th></tr></thead>
+<tbody>
+{{range .Recent}}<tr><td>{{if .At}}<time datetime="{{.At}}">{{.At}}</time>{{end}}</td><td>{{.Action}}</td><td>{{.Event}}</td><td>{{.Outcome}}</td><td>{{.Summary}}</td><td>{{if .JobID}}<a href="/jobs/{{.JobID}}"><code>{{.ShortJobID}}</code></a>{{else}}—{{end}}</td></tr>
+{{end}}</tbody></table></div>
+{{else if not .RecentErr}}<p class="muted">No operations recorded yet.</p>{{end}}
+</section>
+{{else}}
+<p>Maintenance actions are not available in this admin; run them from the CLI. Common commands:</p>
 <ul>
 <li><code>make artists-validate</code> validate the YAML catalog</li>
 <li><code>make sync-all</code> sync enabled artists (needs credentials)</li>
 <li><code>make db-verify</code> verify the database</li>
 <li><code>make export</code> regenerate the static JSON</li>
 </ul>
+{{end}}
 {{end}}{{end}}

@@ -166,15 +166,6 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleOperations(w http.ResponseWriter, r *http.Request) {
-	d, err := s.svc.Dashboard(r.Context())
-	if err != nil {
-		s.internal(w, r, err)
-		return
-	}
-	s.render(w, r, "operations", "Operations", dashboardView(d))
-}
-
 type dashboardViewModel struct {
 	admin.Dashboard
 	LastSyncStatus string
@@ -415,7 +406,7 @@ type relRowView struct {
 
 func parseTemplates() (map[string]*template.Template, error) {
 	out := map[string]*template.Template{}
-	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm", "jobs", "job"} {
+	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm", "jobs", "job", "operation", "operation_preview"} {
 		t, err := template.New("").Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.gohtml", "templates/"+name+".gohtml")
 		if err != nil {
 			return nil, err
