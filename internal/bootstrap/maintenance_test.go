@@ -83,7 +83,7 @@ func (abortingFetcher) GetAlbumTracks(context.Context, string) ([]catalog.Track,
 
 func TestSyncRunnerWritesPartialSnapshotOnRateLimit(t *testing.T) {
 	paths := newMaintenancePaths(t)
-	runner, closeFn, err := NewSyncRunner(paths.catalog, paths.db, paths.snapshot, envMap(nil), withSyncFetcher(abortingFetcher{}))
+	runner, closeFn, err := NewSyncRunner(context.Background(), paths.catalog, paths.db, paths.snapshot, envMap(nil), withSyncFetcher(abortingFetcher{}))
 	require.NoError(t, err)
 	defer closeFn()
 
@@ -110,7 +110,7 @@ func TestSyncRunnerReportsPartialSnapshotFailureSeparately(t *testing.T) {
 	paths := newMaintenancePaths(t)
 	blocked := filepath.Join(filepath.Dir(paths.snapshot), "not-a-dir")
 	require.NoError(t, os.WriteFile(blocked, nil, 0o644))
-	runner, closeFn, err := NewSyncRunner(paths.catalog, paths.db, filepath.Join(blocked, "snapshot.sql.gz"), envMap(nil), withSyncFetcher(abortingFetcher{}))
+	runner, closeFn, err := NewSyncRunner(context.Background(), paths.catalog, paths.db, filepath.Join(blocked, "snapshot.sql.gz"), envMap(nil), withSyncFetcher(abortingFetcher{}))
 	require.NoError(t, err)
 	defer closeFn()
 
@@ -123,7 +123,7 @@ func TestSyncRunnerReportsPartialSnapshotFailureSeparately(t *testing.T) {
 
 func TestSyncRunnerDryRunNeedsNoCredentialsOrDatabase(t *testing.T) {
 	paths := newMaintenancePaths(t)
-	runner, closeFn, err := NewSyncRunner(paths.catalog, paths.db, paths.snapshot, envMap(nil), WithDryRun(true))
+	runner, closeFn, err := NewSyncRunner(context.Background(), paths.catalog, paths.db, paths.snapshot, envMap(nil), WithDryRun(true))
 	require.NoError(t, err)
 	defer closeFn()
 
@@ -139,7 +139,7 @@ func TestSyncRunnerDryRunNeedsNoCredentialsOrDatabase(t *testing.T) {
 func TestNewSyncRunnerWithoutCredentialsReturnsTypedError(t *testing.T) {
 	paths := newMaintenancePaths(t)
 
-	_, closeFn, err := NewSyncRunner(paths.catalog, paths.db, paths.snapshot, envMap(map[string]string{"SPOTIFY_CLIENT_ID": "id"}))
+	_, closeFn, err := NewSyncRunner(context.Background(), paths.catalog, paths.db, paths.snapshot, envMap(map[string]string{"SPOTIFY_CLIENT_ID": "id"}))
 
 	require.ErrorIs(t, err, ErrSpotifyCredentialsMissing)
 	require.Equal(t, "SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required", err.Error())
@@ -151,7 +151,7 @@ func TestNewSyncRunnerWithoutCredentialsReturnsTypedError(t *testing.T) {
 func TestNewSyncRunnerWithCredentialsMakesNoNetworkCalls(t *testing.T) {
 	paths := newMaintenancePaths(t)
 
-	runner, closeFn, err := NewSyncRunner(paths.catalog, paths.db, paths.snapshot, credentials)
+	runner, closeFn, err := NewSyncRunner(context.Background(), paths.catalog, paths.db, paths.snapshot, credentials)
 
 	require.NoError(t, err)
 	require.NotNil(t, runner)
@@ -162,7 +162,7 @@ func TestNewSyncRunnerWithCredentialsMakesNoNetworkCalls(t *testing.T) {
 func TestNewRefreshRunnerWithoutCredentialsReturnsTypedErrorBeforeOpeningDatabase(t *testing.T) {
 	paths := newMaintenancePaths(t)
 
-	_, closeFn, err := NewRefreshRunner(paths.catalog, paths.db, envMap(nil))
+	_, closeFn, err := NewRefreshRunner(context.Background(), paths.catalog, paths.db, envMap(nil))
 
 	require.ErrorIs(t, err, ErrSpotifyCredentialsMissing)
 	require.NotNil(t, closeFn)
@@ -178,7 +178,7 @@ func (stubArtistFetcher) GetArtist(_ context.Context, id string) (catalog.Artist
 
 func TestRefreshRunnerFillsCatalogPathAndCheckpointStore(t *testing.T) {
 	paths := newMaintenancePaths(t)
-	runner, closeFn, err := NewRefreshRunner(paths.catalog, paths.db, envMap(nil), withArtistFetcher(stubArtistFetcher{}))
+	runner, closeFn, err := NewRefreshRunner(context.Background(), paths.catalog, paths.db, envMap(nil), withArtistFetcher(stubArtistFetcher{}))
 	require.NoError(t, err)
 	defer closeFn()
 
@@ -197,9 +197,23 @@ func TestRefreshRunnerFillsCatalogPathAndCheckpointStore(t *testing.T) {
 	require.Equal(t, 1, again.SkippedRecent, "the checkpoint written by the first run is honoured")
 }
 
+func TestRefreshRunnerPerCallDryRunIgnoresCheckpoints(t *testing.T) {
+	paths := newMaintenancePaths(t)
+	runner, closeFn, err := NewRefreshRunner(context.Background(), paths.catalog, paths.db, envMap(nil), withArtistFetcher(stubArtistFetcher{}))
+	require.NoError(t, err)
+	defer closeFn()
+	_, err = runner.Run(context.Background(), artists.RefreshGenresOptions{})
+	require.NoError(t, err)
+
+	dry, err := runner.Run(context.Background(), artists.RefreshGenresOptions{DryRun: true})
+
+	require.NoError(t, err)
+	require.Zero(t, dry.SkippedRecent, "a per-call dry run must not consult checkpoints")
+}
+
 func TestRefreshRunnerDryRunSkipsDatabase(t *testing.T) {
 	paths := newMaintenancePaths(t)
-	runner, closeFn, err := NewRefreshRunner(paths.catalog, paths.db, envMap(nil), WithDryRun(true), withArtistFetcher(stubArtistFetcher{}))
+	runner, closeFn, err := NewRefreshRunner(context.Background(), paths.catalog, paths.db, envMap(nil), WithDryRun(true), withArtistFetcher(stubArtistFetcher{}))
 	require.NoError(t, err)
 	defer closeFn()
 
@@ -219,7 +233,7 @@ func TestDiscoverRunnerUsesConfiguredWikipediaSource(t *testing.T) {
 	}))
 	defer server.Close()
 
-	runner, closeFn, err := NewDiscoverRunner(paths.catalog, WithWikipedia(server.URL, ""))
+	runner, closeFn, err := NewDiscoverRunner(context.Background(), paths.catalog, WithWikipedia(server.URL, ""))
 	require.NoError(t, err)
 	defer closeFn()
 

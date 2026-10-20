@@ -85,7 +85,7 @@ type discoverPort struct{ cfg MaintenanceActionsConfig }
 var _ maintenance.DiscoverPort = discoverPort{}
 
 func (p discoverPort) Run(ctx context.Context, apply bool, progress func(artists.DiscoverWuFamilyProgress)) (artists.DiscoverWuFamilyReport, error) {
-	runner, closeFn, err := NewDiscoverRunner(p.cfg.CatalogPath, p.cfg.Options...)
+	runner, closeFn, err := NewDiscoverRunner(ctx, p.cfg.CatalogPath, p.cfg.Options...)
 	if err != nil {
 		return artists.DiscoverWuFamilyReport{}, err
 	}
@@ -99,7 +99,7 @@ var _ maintenance.RefreshPort = refreshPort{}
 
 func (p refreshPort) Run(ctx context.Context, dryRun, force bool, progress func(artists.RefreshGenresProgress)) (artists.RefreshGenresReport, error) {
 	opts := append([]MaintenanceOption{WithDryRun(dryRun)}, p.cfg.Options...)
-	runner, closeFn, err := NewRefreshRunner(p.cfg.CatalogPath, p.cfg.DBPath, p.cfg.Env, opts...)
+	runner, closeFn, err := NewRefreshRunner(ctx, p.cfg.CatalogPath, p.cfg.DBPath, p.cfg.Env, opts...)
 	if errors.Is(err, ErrSpotifyCredentialsMissing) {
 		return artists.RefreshGenresReport{}, maintenance.ErrCredentialsMissing
 	}
@@ -185,7 +185,7 @@ type databaseBackuper struct{ dbPath, dir string }
 var _ maintenance.Backuper = databaseBackuper{}
 
 func (b databaseBackuper) Backup(ctx context.Context) error {
-	database, err := openMigrated(b.dbPath)
+	database, err := openMigrated(ctx, b.dbPath)
 	if err != nil {
 		return err
 	}

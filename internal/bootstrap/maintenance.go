@@ -142,12 +142,12 @@ func spotifyConfig(env EnvLookup, config maintenanceConfig) (spotifyadapter.Conf
 
 // openMigrated opens and migrates the catalog database. Migration errors are
 // prefixed so callers print the same message the CLI always has.
-func openMigrated(dbPath string) (*sqliteadapter.Database, error) {
+func openMigrated(ctx context.Context, dbPath string) (*sqliteadapter.Database, error) {
 	database, err := sqliteadapter.Open(dbPath)
 	if err != nil {
 		return nil, err
 	}
-	if err := database.Migrate(context.Background()); err != nil {
+	if err := database.Migrate(ctx); err != nil {
 		_ = database.Close()
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}
@@ -179,7 +179,7 @@ type SyncResult struct {
 // NewSyncRunner opens and migrates the database and builds the Spotify
 // fetcher. A dry run needs neither. It never contacts Spotify. The returned
 // function releases the database and is safe to call even when err != nil.
-func NewSyncRunner(catalogPath, dbPath, snapshotPath string, env EnvLookup, opts ...MaintenanceOption) (SyncRunner, func(), error) {
+func NewSyncRunner(ctx context.Context, catalogPath, dbPath, snapshotPath string, env EnvLookup, opts ...MaintenanceOption) (SyncRunner, func(), error) {
 	config := resolveMaintenanceConfig(opts)
 	runner := SyncRunner{catalogPath: catalogPath, snapshotPath: snapshotPath, dryRun: config.dryRun}
 	if config.dryRun {
@@ -187,7 +187,7 @@ func NewSyncRunner(catalogPath, dbPath, snapshotPath string, env EnvLookup, opts
 		return runner, noop, nil
 	}
 
-	database, err := openMigrated(dbPath)
+	database, err := openMigrated(ctx, dbPath)
 	if err != nil {
 		return SyncRunner{}, noop, err
 	}
@@ -300,7 +300,7 @@ type RefreshRunner struct {
 // first) and, unless dryRun or dbPath is empty, opens and migrates the
 // checkpoint database. It never contacts Spotify. The returned function is
 // safe to call even when err != nil.
-func NewRefreshRunner(catalogPath, dbPath string, env EnvLookup, opts ...MaintenanceOption) (RefreshRunner, func(), error) {
+func NewRefreshRunner(ctx context.Context, catalogPath, dbPath string, env EnvLookup, opts ...MaintenanceOption) (RefreshRunner, func(), error) {
 	config := resolveMaintenanceConfig(opts)
 
 	fetcher := config.artistFetcher
@@ -323,7 +323,7 @@ func NewRefreshRunner(catalogPath, dbPath string, env EnvLookup, opts ...Mainten
 	}
 	closeFn := noop
 	if !config.dryRun && dbPath != "" {
-		database, err := openMigrated(dbPath)
+		database, err := openMigrated(ctx, dbPath)
 		if err != nil {
 			return RefreshRunner{}, noop, err
 		}
@@ -342,7 +342,8 @@ func (r RefreshRunner) Run(ctx context.Context, o artists.RefreshGenresOptions) 
 	if r.dryRun {
 		o.DryRun = true
 	}
-	if o.CheckpointStore == nil {
+	// A dry run never reads or records checkpoints, whatever the runner was built for.
+	if o.CheckpointStore == nil && !o.DryRun {
 		o.CheckpointStore = r.checkpoints
 	}
 	return r.refresh.Run(ctx, o)
@@ -357,7 +358,7 @@ type DiscoverRunner struct {
 
 // NewDiscoverRunner builds the Wikipedia source. It needs no credentials and
 // never contacts Wikipedia; the returned function is a no-op kept for symmetry.
-func NewDiscoverRunner(catalogPath string, opts ...MaintenanceOption) (DiscoverRunner, func(), error) {
+func NewDiscoverRunner(_ context.Context, catalogPath string, opts ...MaintenanceOption) (DiscoverRunner, func(), error) {
 	config := resolveMaintenanceConfig(opts)
 	source := wikipedia.NewClient(wikipedia.Config{APIURL: config.wikipediaAPIURL, Page: config.wikipediaPage})
 	return DiscoverRunner{

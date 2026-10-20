@@ -59,7 +59,7 @@ func ExecuteWithContext(ctx context.Context, args []string, stdin io.Reader, std
 	case "artists":
 		return executeArtists(ctx, args[1:], stdin, stdout, stderr, store)
 	case "sync":
-		return executeSync(ctx, args[1:], stdout, stderr, store)
+		return executeSync(ctx, args[1:], stdout, stderr)
 	case "export":
 		return executeExport(ctx, args[1:], stdout, stderr, store)
 	case "audit":
@@ -154,7 +154,7 @@ type syncOptions struct {
 	quiet        bool
 }
 
-func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if hasHelp(args) {
 		printSyncHelp(stdout)
 		return 0
@@ -174,7 +174,7 @@ func executeSync(ctx context.Context, args []string, stdout, stderr io.Writer, s
 		defer release()
 	}
 
-	runner, closeRunner, err := bootstrap.NewSyncRunner(options.catalogPath, options.dbPath, options.snapshotPath, os.Getenv,
+	runner, closeRunner, err := bootstrap.NewSyncRunner(ctx, options.catalogPath, options.dbPath, options.snapshotPath, os.Getenv,
 		bootstrap.WithDryRun(options.dryRun),
 		bootstrap.WithMarket(options.market),
 		bootstrap.WithSpotifyProgress(spotifyProgress(stderr, options.quiet)),
@@ -933,13 +933,13 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 	case "review-profile":
 		return executeArtistsReviewProfile(ctx, args[1:], stdout, stderr, store)
 	case "discover-wu":
-		return executeArtistsDiscoverWu(ctx, args[1:], stdout, stderr, store)
+		return executeArtistsDiscoverWu(ctx, args[1:], stdout, stderr)
 	case "import-candidates":
 		return executeArtistsImportCandidates(ctx, args[1:], stdout, stderr, store)
 	case "review-candidate":
 		return executeArtistsReviewCandidate(ctx, args[1:], stdout, stderr, store)
 	case "refresh-genres":
-		return executeArtistsRefreshGenres(ctx, args[1:], stdout, stderr, store)
+		return executeArtistsRefreshGenres(ctx, args[1:], stdout, stderr)
 	case "resolve":
 		return executeArtistsResolve(ctx, args[1:], stdin, stdout, stderr, store)
 	case "audit-albums":
@@ -1052,7 +1052,7 @@ type artistsDiscoverWuOptions struct {
 	quiet           bool
 }
 
-func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if hasHelp(args) {
 		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists discover-wu [--catalog data/artists.yaml] [--ledger data/wu-candidates.yaml] [--report wu-discovery.md] [--apply] [--quiet] [--wikipedia-api-url URL] [--wikipedia-page TITLE]")
 		return 0
@@ -1070,7 +1070,7 @@ func executeArtistsDiscoverWu(ctx context.Context, args []string, stdout, stderr
 			printDiscoverWuFamilyProgress(stderr, event)
 		}
 	}
-	runner, closeRunner, err := bootstrap.NewDiscoverRunner(options.catalogPath, bootstrap.WithWikipedia(options.wikipediaAPIURL, options.wikipediaPage))
+	runner, closeRunner, err := bootstrap.NewDiscoverRunner(ctx, options.catalogPath, bootstrap.WithWikipedia(options.wikipediaAPIURL, options.wikipediaPage))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists discover-wu: %v\n", err)
 		return 1
@@ -1176,7 +1176,7 @@ type artistsRefreshGenresOptions struct {
 	refreshTTL  time.Duration
 }
 
-func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if hasHelp(args) {
 		_, _ = fmt.Fprintln(stdout, "usage: spotwufamily artists refresh-genres [--catalog data/artists.yaml] [--db data/catalog.db] [--market ES] [--checkpoint-ttl 168h] [--force] [--dry-run] [--quiet]")
 		return 0
@@ -1188,7 +1188,7 @@ func executeArtistsRefreshGenres(ctx context.Context, args []string, stdout, std
 		return 2
 	}
 
-	runner, closeRunner, err := bootstrap.NewRefreshRunner(options.catalogPath, options.dbPath, os.Getenv,
+	runner, closeRunner, err := bootstrap.NewRefreshRunner(ctx, options.catalogPath, options.dbPath, os.Getenv,
 		bootstrap.WithDryRun(options.dryRun),
 		bootstrap.WithMarket(options.market),
 		bootstrap.WithSpotifyProgress(spotifyProgress(stderr, options.quiet)),
