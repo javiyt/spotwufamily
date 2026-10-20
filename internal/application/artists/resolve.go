@@ -112,6 +112,9 @@ func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyRes
 	updates := map[string]ResolvedArtist{}
 	for _, entry := range report.Entries {
 		resolved, ok, reason := autoResolvedMatch(entry, options)
+		if ok && c.IsRejectedSpotifyID(resolved.SpotifyID) {
+			ok, reason = false, "Spotify profile was rejected in review; a name match is not new evidence"
+		}
 		if !ok {
 			report.Skipped = append(report.Skipped, ResolveSkip{Slug: entry.Artist.Slug, Name: entry.Artist.Name, Reason: reason})
 			continue
@@ -130,6 +133,12 @@ func (r ResolveArtists) Apply(ctx context.Context, path string, options ApplyRes
 			continue
 		}
 		c.Artists[i].SpotifyID = update.SpotifyID
+		// A name match is a lead, not proof: record it as a candidate so sync
+		// waits for a human review.
+		c.Artists[i].SpotifyProfiles = append(c.Artists[i].SpotifyProfiles, catalog.SpotifyProfile{
+			ID:     update.SpotifyID,
+			Status: catalog.ProfileCandidate,
+		})
 		if options.EnableResolved {
 			c.Artists[i].Enabled = true
 		}

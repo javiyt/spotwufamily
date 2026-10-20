@@ -24,26 +24,32 @@ var (
 )
 
 type Artist struct {
-	Slug           string
-	Name           string
-	PublicName     string
-	SpotifyID      string
-	SpotifyIDs     []string
-	Genres         []string
-	Category       Category
-	Roles          []Category
-	Aliases        []string
-	Enabled        bool
-	EditorialOrder int
-	Notes          string
-	ExternalURL    string
-	ImageURL       string
-	AddedAt        string
+	Slug       string
+	Name       string
+	PublicName string
+	SpotifyID  string
+	SpotifyIDs []string
+	// SpotifyProfiles holds review metadata keyed by Spotify ID. Linked IDs
+	// without an entry are unreviewed. Rejected and candidate IDs may be
+	// tracked here without being linked.
+	SpotifyProfiles []SpotifyProfile
+	Genres          []string
+	Category        Category
+	Roles           []Category
+	Aliases         []string
+	Enabled         bool
+	EditorialOrder  int
+	Notes           string
+	ExternalURL     string
+	ImageURL        string
+	AddedAt         string
 }
 
 type EditorialCatalog struct {
 	Version int
-	Artists []Artist
+	// ProfileSyncPolicy is empty (verified only) unless explicitly migrated.
+	ProfileSyncPolicy ProfileSyncPolicy
+	Artists           []Artist
 }
 
 type ValidationIssue struct {
@@ -64,6 +70,9 @@ func ValidateEditorialCatalog(c EditorialCatalog) []ValidationIssue {
 
 	if c.Version != 1 {
 		issues = append(issues, ValidationIssue{Field: "version", Message: "must be 1"})
+	}
+	if !IsKnownProfileSyncPolicy(c.ProfileSyncPolicy) {
+		issues = append(issues, ValidationIssue{Field: "profile_sync_policy", Message: "must be verified_only or allow_unreviewed"})
 	}
 	if len(c.Artists) == 0 {
 		issues = append(issues, ValidationIssue{Field: "artists", Message: "must contain at least one artist"})
@@ -103,6 +112,13 @@ func ValidateEditorialCatalog(c EditorialCatalog) []ValidationIssue {
 				field = fmt.Sprintf("%s.spotify_ids[%d]", prefix, idIndex)
 			}
 			addDuplicateIssue(spotifyIDs, spotifyID, field, "duplicate Spotify ID")
+		}
+
+		for profileIndex, profile := range artist.SpotifyProfiles {
+			if artist.HasSpotifyID(profile.ID) {
+				continue
+			}
+			addDuplicateIssue(spotifyIDs, profile.ID, fmt.Sprintf("%s.spotify_profiles[%d].id", prefix, profileIndex), "duplicate Spotify ID")
 		}
 
 		if artist.EditorialOrder > 0 {
@@ -214,6 +230,8 @@ func validateArtist(prefix string, artist Artist) []ValidationIssue {
 		}
 		seenSpotifyIDs[spotifyID] = index
 	}
+
+	issues = append(issues, validateProfiles(prefix, artist)...)
 
 	genres := map[string]int{}
 	for genreIndex, genre := range artist.Genres {

@@ -48,3 +48,86 @@ func TestStoreSaveAndLoad(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, c, loaded)
 }
+
+func TestStoreRoundTripsProfilesAndPolicy(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "artists.yaml")
+	store := yamlcatalog.NewStore()
+	c := catalog.EditorialCatalog{
+		Version:           1,
+		ProfileSyncPolicy: catalog.SyncVerifiedOnly,
+		Artists: []catalog.Artist{{
+			Slug: "rza", Name: "RZA", SpotifyID: "34EP7KEpOjXcM2TCat1ISk", Category: catalog.CategoryCore, Aliases: []string{},
+			SpotifyProfiles: []catalog.SpotifyProfile{
+				{
+					ID: "34EP7KEpOjXcM2TCat1ISk", Status: catalog.ProfileVerified, Reviewer: "javi",
+					ReviewedAt: "2026-01-02T15:04:05Z", LastCheckedAt: "2026-02-03T00:00:00Z",
+					Evidence: []catalog.Evidence{
+						{Type: catalog.EvidenceMusicBrainz, URL: "https://musicbrainz.org/artist/1", Rationale: "linked"},
+						{Type: catalog.EvidenceCredit, ReleaseID: "0H8YCcvC3MPLKnbDRasGiG", TrackID: "1111111111111111111111", Rationale: "credited"},
+					},
+				},
+				{ID: "0H8YCcvC3MPLKnbDRasGiG", Status: catalog.ProfileRejected, Reviewer: "javi", ReviewedAt: "2026-01-02T15:04:05Z",
+					Evidence: []catalog.Evidence{{Type: catalog.EvidenceNameMatch, Rationale: "different person"}}},
+			},
+		}},
+	}
+
+	require.NoError(t, store.Save(context.Background(), path, c))
+	loaded, err := store.Load(context.Background(), path)
+	require.NoError(t, err)
+	require.Equal(t, c, loaded)
+	require.Empty(t, catalog.ValidateEditorialCatalog(loaded))
+}
+
+func TestStoreOmitsProfileFieldsForLegacyCatalogs(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "artists.yaml")
+	store := yamlcatalog.NewStore()
+	c := catalog.EditorialCatalog{Version: 1, Artists: []catalog.Artist{{Slug: "rza", Name: "RZA", SpotifyID: "34EP7KEpOjXcM2TCat1ISk", Category: catalog.CategoryCore}}}
+	require.NoError(t, store.Save(context.Background(), path, c))
+
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "spotify_profiles")
+	require.NotContains(t, string(raw), "profile_sync_policy")
+}
+
+func TestStoreRejectsUnknownProfileFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "artists.yaml")
+	body := "version: 1\nartists:\n  - slug: a\n    name: A\n    spotify_profiles:\n      - id: 34EP7KEpOjXcM2TCat1ISk\n        status: candidate\n        confidence: 0.9\n"
+	require.NoError(t, os.WriteFile(path, []byte(body), 0o644))
+	_, err := yamlcatalog.NewStore().Load(context.Background(), path)
+	require.Error(t, err)
+}
+
+func TestStoreKeepsBackupOfPreviousCatalog(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "artists.yaml")
+	store := yamlcatalog.NewStore()
+	first := catalog.EditorialCatalog{Version: 1, Artists: []catalog.Artist{{Slug: "a", Name: "A", Category: catalog.CategoryCore}}}
+	require.NoError(t, store.Save(context.Background(), path, first))
+	before, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	first.Artists[0].Name = "A2"
+	require.NoError(t, store.Save(context.Background(), path, first))
+
+	backup, err := os.ReadFile(path + ".bak")
+	require.NoError(t, err)
+	require.Equal(t, before, backup)
+}
+
+func TestRepositoryCatalogRoundTripsByteForByte(t *testing.T) {
+	const source = "../../../../data/artists.yaml"
+	original, err := os.ReadFile(source)
+	require.NoError(t, err)
+
+	store := yamlcatalog.NewStore()
+	loaded, err := store.Load(context.Background(), source)
+	require.NoError(t, err)
+	require.Empty(t, catalog.ValidateEditorialCatalog(loaded))
+
+	out := filepath.Join(t.TempDir(), "artists.yaml")
+	require.NoError(t, store.Save(context.Background(), out, loaded))
+	saved, err := os.ReadFile(out)
+	require.NoError(t, err)
+	require.Equal(t, string(original), string(saved), "loading and saving must not lose or reorder anything")
+}

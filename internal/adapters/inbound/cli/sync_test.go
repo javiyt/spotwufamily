@@ -15,6 +15,7 @@ func TestExecuteSyncDryRun(t *testing.T) {
 	catalogPath := filepath.Join(dir, "artists.yaml")
 	require.NoError(t, os.WriteFile(catalogPath, []byte(`
 version: 1
+profile_sync_policy: allow_unreviewed
 artists:
   - slug: wu-tang-clan
     name: Wu-Tang Clan

@@ -4,6 +4,7 @@
 # `roles` preserves cases where an entry belongs to more than one editorial category.
 
 version: 1
+profile_sync_policy: allow_unreviewed
 artists:
   - slug: wu-tang-clan
     name: Wu-Tang Clan

@@ -947,6 +947,8 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsValidate(ctx, args[1:], stdout, stderr, store)
 	case "enable-with-ids":
 		return executeArtistsEnableWithIDs(ctx, args[1:], stdout, stderr, store)
+	case "review-profile":
+		return executeArtistsReviewProfile(ctx, args[1:], stdout, stderr, store)
 	case "discover-wu":
 		return executeArtistsDiscoverWu(ctx, args[1:], stdout, stderr, store)
 	case "refresh-genres":
@@ -1755,8 +1757,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 			case "keep":
 				kept++
 			case "clear":
-				artist.SpotifyID = ""
-				artist.SpotifyIDs = nil
+				artist.UnlinkSpotifyIDs()
 				artist.Enabled = false
 				cleared++
 				if err := saveInteractiveResolve(ctx, store, options.catalogPath, c); err != nil {
@@ -1784,8 +1785,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 			case "keep":
 				kept++
 			case "clear":
-				artist.SpotifyID = ""
-				artist.SpotifyIDs = nil
+				artist.UnlinkSpotifyIDs()
 				artist.Enabled = false
 				cleared++
 				if err := saveInteractiveResolve(ctx, store, options.catalogPath, c); err != nil {
@@ -1830,8 +1830,7 @@ func executeArtistsResolveInteractive(ctx context.Context, stdin io.Reader, stdo
 				break
 			}
 			if len(artist.AllSpotifyIDs()) > 0 && (choice == "c" || choice == "clear") {
-				artist.SpotifyID = ""
-				artist.SpotifyIDs = nil
+				artist.UnlinkSpotifyIDs()
 				artist.Enabled = false
 				cleared++
 				break
@@ -2063,6 +2062,10 @@ func applyInteractiveCandidate(stdout io.Writer, c catalog.EditorialCatalog, art
 		_, _ = fmt.Fprintf(stdout, "Spotify ID already configured for %s\n", artist.Name)
 		return interactiveCandidateResult{kept: true}
 	}
+	if c.IsRejectedSpotifyID(candidate.SpotifyID) {
+		_, _ = fmt.Fprintln(stdout, "Spotify profile was rejected in review; skipped")
+		return interactiveCandidateResult{skipped: true}
+	}
 	if existing := spotifyIDOwner(c, candidate.SpotifyID, artist.Slug); existing != "" {
 		_, _ = fmt.Fprintf(stdout, "Spotify ID already belongs to %s; skipped\n", existing)
 		return interactiveCandidateResult{skipped: true}
@@ -2073,6 +2076,7 @@ func applyInteractiveCandidate(stdout io.Writer, c catalog.EditorialCatalog, art
 	} else {
 		artist.SpotifyID = candidate.SpotifyID
 	}
+	artist.SpotifyProfiles = append(artist.SpotifyProfiles, catalog.SpotifyProfile{ID: candidate.SpotifyID, Status: catalog.ProfileCandidate})
 	if enableApplied {
 		artist.Enabled = true
 	}
@@ -2248,6 +2252,7 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "commands:")
 	_, _ = fmt.Fprintln(w, "  validate [catalog-path]")
 	_, _ = fmt.Fprintln(w, "  enable-with-ids")
+	_, _ = fmt.Fprintln(w, "  review-profile")
 	_, _ = fmt.Fprintln(w, "  discover-wu")
 	_, _ = fmt.Fprintln(w, "  refresh-genres")
 	_, _ = fmt.Fprintln(w, "  resolve")
@@ -2279,4 +2284,79 @@ func printDBHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  verify")
 	_, _ = fmt.Fprintln(w, "  snapshot")
 	_, _ = fmt.Fprintln(w, "  rebuild")
+}
+
+const artistsReviewProfileUsage = "usage: spotwufamily artists review-profile --slug SLUG --spotify-id ID --status unreviewed|candidate|verified|rejected|needs_review --reviewer NAME --evidence-type TYPE --rationale TEXT [--evidence-url URL] [--release-id ID] [--track-id ID] [--link] [--dry-run] [--catalog data/artists.yaml]"
+
+func executeArtistsReviewProfile(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
+	if hasHelp(args) {
+		_, _ = fmt.Fprintln(stdout, artistsReviewProfileUsage)
+		return 0
+	}
+
+	catalogPath := defaultCatalogPath
+	input := artists.ReviewProfileInput{ReviewedAt: time.Now().UTC()}
+	evidence := catalog.Evidence{}
+	values := map[string]*string{
+		"--catalog":      &catalogPath,
+		"--slug":         &input.Slug,
+		"--spotify-id":   &input.SpotifyID,
+		"--reviewer":     &input.Reviewer,
+		"--evidence-url": &evidence.URL,
+		"--release-id":   &evidence.ReleaseID,
+		"--track-id":     &evidence.TrackID,
+		"--rationale":    &evidence.Rationale,
+	}
+	var status, evidenceType string
+	values["--status"] = &status
+	values["--evidence-type"] = &evidenceType
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--link":
+			input.Link = true
+		case "--dry-run":
+			input.DryRun = true
+		default:
+			target, ok := values[args[i]]
+			if !ok {
+				_, _ = fmt.Fprintf(stderr, "artists review-profile: unknown option %q\n", args[i])
+				return 2
+			}
+			i++
+			if i >= len(args) {
+				_, _ = fmt.Fprintf(stderr, "artists review-profile: %s requires a value\n", args[i-1])
+				return 2
+			}
+			*target = args[i]
+		}
+	}
+	if input.Slug == "" || input.SpotifyID == "" || status == "" {
+		_, _ = fmt.Fprintln(stderr, "artists review-profile: --slug, --spotify-id and --status are required")
+		_, _ = fmt.Fprintln(stderr, artistsReviewProfileUsage)
+		return 2
+	}
+	input.Status = catalog.ProfileStatus(status)
+	if evidenceType != "" || evidence.Rationale != "" || evidence.URL != "" {
+		evidence.Type = catalog.EvidenceType(evidenceType)
+		input.Evidence = []catalog.Evidence{evidence}
+		if issues := catalog.ValidateEvidence(evidence); len(issues) > 0 {
+			_, _ = fmt.Fprintf(stderr, "artists review-profile: invalid evidence: %s\n", issues[0].Error())
+			return 2
+		}
+	}
+
+	result, err := artists.NewReviewProfile(store).Run(ctx, catalogPath, input)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists review-profile: %v\n", err)
+		return 1
+	}
+
+	mode := "applied"
+	if input.DryRun {
+		mode = "dry-run"
+	}
+	_, _ = fmt.Fprintf(stdout, "artists review-profile %s: slug=%s spotify_id=%s %s -> %s linked=%t unlinked=%t catalog=%s\n",
+		mode, result.Slug, result.SpotifyID, result.From, result.To, result.Linked, result.Unlinked, catalogPath)
+	return 0
 }
