@@ -21,6 +21,7 @@ import (
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
+	"github.com/javiyt/spotwufamily/internal/application/catalogaudit"
 	"github.com/javiyt/spotwufamily/internal/application/catalogexport"
 	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
 	"github.com/javiyt/spotwufamily/internal/bootstrap"
@@ -571,44 +572,11 @@ func parseAuditOptions(args []string) (auditOptions, error) {
 }
 
 func verifySnapshotFreshness(ctx context.Context, database *sqliteadapter.Database, snapshotPath string) error {
-	generated, err := database.Snapshot(ctx)
-	if err != nil {
-		return fmt.Errorf("generate snapshot: %w", err)
-	}
-	current, err := sqliteadapter.ReadSnapshot(snapshotPath)
-	if err != nil {
-		return fmt.Errorf("read snapshot %s: %w", snapshotPath, err)
-	}
-	if !bytes.Equal(generated, current) {
-		return fmt.Errorf("snapshot is out of date: %s", snapshotPath)
-	}
-	return nil
+	return catalogaudit.CheckSnapshot(ctx, database, sqliteadapter.ReadSnapshot, snapshotPath)
 }
 
 func verifyExportArtifacts(options auditOptions) error {
-	required := []struct {
-		path string
-		dir  bool
-	}{
-		{path: filepath.Join(options.outputDir, "catalog-summary.json")},
-		{path: filepath.Join(options.outputDir, "artists", "index.json")},
-		{path: filepath.Join(options.outputDir, "albums", "index.json")},
-		{path: filepath.Join(options.outputDir, "tracks", "index.json")},
-		{path: filepath.Join(options.staticDir, "search-index.json")},
-	}
-	for _, item := range required {
-		info, err := os.Stat(item.path)
-		if err != nil {
-			return fmt.Errorf("missing export artifact %s: %w", item.path, err)
-		}
-		if item.dir && !info.IsDir() {
-			return fmt.Errorf("export artifact is not a directory: %s", item.path)
-		}
-		if !item.dir && info.IsDir() {
-			return fmt.Errorf("export artifact is a directory: %s", item.path)
-		}
-	}
-	return nil
+	return catalogaudit.CheckExportArtifacts(os.Stat, catalogaudit.ExportArtifacts(options.outputDir, options.staticDir))
 }
 
 func verifyGeneratedGitDiff(ctx context.Context, options auditOptions) error {
