@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -72,4 +73,42 @@ func TestReconcileApplyRefusesWhileDatabaseIsLocked(t *testing.T) {
 	require.Empty(t, stdout.String())
 	require.Equal(t, lockedMessage, stderr.String())
 	require.NoDirExists(t, filepath.Join(dir, "backups"))
+
+	before, err := os.ReadFile(dbPath)
+	require.NoError(t, err)
+	stdout.Reset()
+	stderr.Reset()
+	code = cli.Execute(append(common, "--restore", "2026-10-20T07:08:07Z"), &stdout, &stderr)
+	require.Equal(t, 1, code)
+	require.Empty(t, stdout.String())
+	require.Equal(t, lockedMessage, stderr.String())
+	after, err := os.ReadFile(dbPath)
+	require.NoError(t, err)
+	require.Equal(t, before, after, "a refused restore leaves the database untouched")
+}
+
+func TestReconcileApplyReleasesDatabaseLock(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(reviewCatalog), 0o644))
+	dbPath := filepath.Join(dir, "catalog.db")
+	var stdout, stderr bytes.Buffer
+	require.Equal(t, 0, cli.Execute([]string{"db", "migrate", "--db", dbPath}, &stdout, &stderr), stderr.String())
+	seedRzaHomonymHistory(t, dbPath)
+	common := []string{"artists", "reconcile", "--artist", "rza", "--catalog", catalogPath, "--db", dbPath}
+
+	stdout.Reset()
+	require.Equal(t, 0, cli.Execute(append(common, "--dry-run", "--format", "json"), &stdout, &stderr), stderr.String())
+	var report struct {
+		PlanChecksum string `json:"plan_checksum"`
+	}
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
+
+	stderr.Reset()
+	code := cli.Execute(append(common, "--apply", "--confirm", report.PlanChecksum, "--backup-dir", filepath.Join(dir, "backups")), &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+
+	release, err := filesystem.NewResourceLock(dbPath + ".lock").TryLock()
+	require.NoError(t, err, "the lock is released once the command returns")
+	release()
 }

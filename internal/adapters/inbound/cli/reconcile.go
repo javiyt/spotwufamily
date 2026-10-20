@@ -99,7 +99,7 @@ func executeArtistsReconcile(ctx context.Context, args []string, stdout, stderr 
 		return 2
 	}
 
-	if options.apply {
+	if options.apply || options.restore != "" {
 		release, ok := lockDatabase(options.dbPath, "artists reconcile", stderr)
 		if !ok {
 			return 1
