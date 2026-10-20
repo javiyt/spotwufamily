@@ -102,3 +102,39 @@ Candidate JSON shape:
 ```
 
 `data/artist-candidates.example.json` is a small offline fixture for smoke-testing this path. The JSON adapter is only for offline reports and tests.
+
+## Auditing every configured Spotify profile
+
+`artists audit-albums` merges the albums of all IDs of an artist before comparing them with MusicBrainz, so one wrong secondary ID can hide among authentic releases. `artists audit-profiles` evaluates every `spotify_id` and every `spotify_ids` entry on its own, including IDs of disabled artists:
+
+```bash
+SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... go run ./cmd/spotwufamily artists audit-profiles --report profiles-audit.md
+go run ./cmd/spotwufamily artists audit-profiles --offline --artist wu-tang-clan --format json --report -
+make artists-audit-profiles ARTIST_FILTER=streetlife OFFLINE=1
+```
+
+Options: `--artist`, `--offline` (cache only, no secrets, no network), `--report` (path or `-`), `--format markdown|json` (inferred from a `.json` report), `--catalog`, `--db`, `--market`, `--concurrency` (default 4) and `--quiet`.
+
+Each profile gets a classification, a severity, an explanation and the date it was checked:
+
+| Classification | Meaning |
+| --- | --- |
+| `verified` | Independent evidence supports the profile (MusicBrainz release match, credit next to another verified profile, or a manual review with independent evidence). |
+| `suspicious` | Strong negative evidence (none of its albums match the known release groups) and no independent proof. |
+| `ambiguous` | Duplicate ID across artists, or positive and negative evidence at the same time. |
+| `unavailable` | Spotify answered 404 (removed), 429 or an outage. The profile is never called wrong because a source failed. |
+| `insufficient_evidence` | Nothing contradicts or proves the profile, e.g. MusicBrainz was down, nothing is cached offline, or the profile has no albums. |
+
+Reports list positive evidence, negative evidence, warnings and missing evidence separately. Genre mismatch, a renamed profile, release metadata anomalies, conflicting credits and unrelated albums are findings; a genre mismatch is always only a warning because cross-genre collaborations are legitimate, and an identical name or unverified group membership is never identity evidence. Output is deterministic (artist editorial order, primary before secondary IDs).
+
+Spotify albums and tracks are read from `data/catalog.db` first and fetched at most once per ID; MusicBrainz is queried once per artist. After a Spotify 429 the remaining profiles are marked `unavailable` instead of hammering the API. Spotify profile metadata (name, genres) is not cached, so offline runs have no profile name or genre findings, and MusicBrainz is skipped offline, so offline results are mostly `insufficient_evidence` plus the structural findings.
+
+Audit mode never writes `data/artists.yaml`. The only write path is explicit and manual:
+
+```bash
+go run ./cmd/spotwufamily artists audit-profiles --artist streetlife --spotify-id 0FCYBhXjpfQIQWNKiVEDg5 --apply
+```
+
+It re-audits that artist and only moves a `suspicious` profile to `needs_review` (exit code 3 for any other result, in particular `ambiguous`). Rejecting or verifying stays a human decision through `artists review-profile`.
+
+The typed report (`artists.ProfileAuditReport`, produced by `artists.NewAuditProfiles(...).Run`) is the single definition used by the CLI renderers and is the use case for the later local web UI.

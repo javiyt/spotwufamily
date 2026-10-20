@@ -957,6 +957,8 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsResolve(ctx, args[1:], stdin, stdout, stderr, store)
 	case "audit-albums":
 		return executeArtistsAuditAlbums(ctx, args[1:], stdout, stderr, store)
+	case "audit-profiles":
+		return executeArtistsAuditProfiles(ctx, args[1:], stdout, stderr, store)
 	case "seed-db":
 		return executeArtistsSeedDB(ctx, args[1:], stdout, stderr, store)
 	case "help", "--help", "-h":
@@ -2264,6 +2266,7 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  artists resolve")
 	_, _ = fmt.Fprintln(w, "  artists seed-db")
 	_, _ = fmt.Fprintln(w, "  artists audit-albums")
+	_, _ = fmt.Fprintln(w, "  artists audit-profiles")
 	_, _ = fmt.Fprintln(w, "  sync")
 	_, _ = fmt.Fprintln(w, "  db migrate|verify|snapshot|rebuild")
 	_, _ = fmt.Fprintln(w, "  export")
@@ -2283,6 +2286,7 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  resolve")
 	_, _ = fmt.Fprintln(w, "  seed-db")
 	_, _ = fmt.Fprintln(w, "  audit-albums")
+	_, _ = fmt.Fprintln(w, "  audit-profiles")
 }
 
 func printSyncHelp(w io.Writer) {
