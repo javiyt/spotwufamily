@@ -32,12 +32,6 @@ type Repository interface {
 	SaveArtistSyncCheckpoint(context.Context, int64, catalog.Artist, string, SyncStats, time.Time) error
 }
 
-// RelationshipSaver is implemented by repositories that project the verified
-// editorial relationships. It is optional so existing repositories keep working.
-type RelationshipSaver interface {
-	SaveArtistRelationships(context.Context, []catalog.Relationship) error
-}
-
 type Clock interface {
 	Now() time.Time
 }
@@ -214,11 +208,6 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 
 	if err := s.repository.SaveConfiguredArtists(ctx, editorialCatalog.Artists); err != nil {
 		return report, fmt.Errorf("save configured artists: %w", err)
-	}
-	if saver, ok := s.repository.(RelationshipSaver); ok {
-		if err := saver.SaveArtistRelationships(ctx, editorialCatalog.Relationships); err != nil {
-			return report, fmt.Errorf("save artist relationships: %w", err)
-		}
 	}
 	report.Stats.ConfiguredArtistsUpserted = len(editorialCatalog.Artists)
 	progress(options.Progress, ProgressEvent{Stage: ProgressConfiguredSaved, ConfiguredCount: len(editorialCatalog.Artists)})

@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -30,4 +31,32 @@ func TestExecuteExport(t *testing.T) {
 	require.FileExists(t, filepath.Join(outputDir, "catalog-summary.json"))
 	require.FileExists(t, filepath.Join(outputDir, "artists", "index.json"))
 	require.FileExists(t, filepath.Join(staticDir, "search-index.json"))
+}
+
+func TestExecuteExportPublishesOnlyVerifiedRelationshipsFromCatalog(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "catalog.db")
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	outputDir := filepath.Join(dir, "generated")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(relationshipsCatalog), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	require.Equal(t, 0, cli.Execute([]string{"db", "migrate", "--db", dbPath, "--snapshot", filepath.Join(dir, "snapshot.sql")}, &stdout, &stderr))
+	require.Equal(t, 0, cli.Execute([]string{"artists", "relationships", "add", "--type", "member_of", "--from", "rza", "--to", "wu-tang-clan", "--catalog", catalogPath}, &stdout, &stderr), stderr.String())
+
+	export := []string{"export", "--catalog", catalogPath, "--db", dbPath, "--output", outputDir, "--static", filepath.Join(dir, "static"), "--content", filepath.Join(dir, "content")}
+	require.Equal(t, 0, cli.Execute(export, &stdout, &stderr), stderr.String())
+	data, err := os.ReadFile(filepath.Join(outputDir, "relationships", "index.json"))
+	require.NoError(t, err)
+	require.Contains(t, string(data), `"items": []`, "a proposed claim must not be exported")
+
+	require.Equal(t, 0, cli.Execute([]string{"artists", "relationships", "review", "--type", "member_of", "--from", "rza", "--to", "wu-tang-clan",
+		"--status", "verified", "--reviewer", "tester", "--confidence", "high", "--evidence-type", "wikipedia",
+		"--evidence-url", "https://en.wikipedia.org/wiki/Wu-Tang_Clan", "--evidence-rationale", "Founding member.", "--catalog", catalogPath}, &stdout, &stderr), stderr.String())
+	require.Equal(t, 0, cli.Execute(export, &stdout, &stderr), stderr.String())
+	data, err = os.ReadFile(filepath.Join(outputDir, "relationships", "index.json"))
+	require.NoError(t, err)
+	require.Contains(t, string(data), `"from": "rza"`)
+
+	require.Equal(t, 1, cli.Execute(append(append([]string{}, export[:1]...), "--catalog", filepath.Join(dir, "missing.yaml"), "--db", dbPath), &stdout, &stderr), "an explicit missing catalog is an error")
 }

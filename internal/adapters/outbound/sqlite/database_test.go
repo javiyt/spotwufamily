@@ -34,7 +34,7 @@ VALUES ('wu-tang-clan', 'Wu Tang Clan', 1);`)
 	require.NoError(t, err)
 	report, err := database.Verify(ctx, migrations)
 	require.NoError(t, err)
-	require.Equal(t, 6, report.Migrations)
+	require.Equal(t, 5, report.Migrations)
 	require.Contains(t, report.Checks, "integrity_check")
 	require.Contains(t, report.Checks, "foreign_key_check")
 

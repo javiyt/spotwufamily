@@ -56,7 +56,7 @@ func ExecuteWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) 
 	case "sync":
 		return executeSync(ctx, args[1:], stdout, stderr, store)
 	case "export":
-		return executeExport(ctx, args[1:], stdout, stderr)
+		return executeExport(ctx, args[1:], stdout, stderr, store)
 	case "audit":
 		return executeAudit(ctx, args[1:], stdout, stderr, store)
 	case "db":
@@ -491,10 +491,16 @@ func executeAudit(ctx context.Context, args []string, stdout, stderr io.Writer, 
 	}
 	_, _ = fmt.Fprintf(stdout, "audit: database ok (%d migrations)\n", report.Migrations)
 
+	relationships, err := loadExportRelationships(ctx, store, options.catalogPath, true)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "audit: %v\n", err)
+		return 1
+	}
 	exportReport, err := catalogexport.NewExportCatalog(database, filesystem.NewWriter()).Run(ctx, catalogexport.Options{
-		OutputDir:  options.outputDir,
-		StaticDir:  options.staticDir,
-		ContentDir: options.contentDir,
+		OutputDir:     options.outputDir,
+		StaticDir:     options.staticDir,
+		ContentDir:    options.contentDir,
+		Relationships: relationships,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "audit: export catalog: %v\n", err)
@@ -664,13 +670,16 @@ func verifyGeneratedGitDiff(ctx context.Context, options auditOptions) error {
 }
 
 type exportOptions struct {
-	dbPath     string
-	outputDir  string
-	staticDir  string
-	contentDir string
+	catalogPath string
+	// catalogExplicit is set when --catalog was passed, so a missing file is an error.
+	catalogExplicit bool
+	dbPath          string
+	outputDir       string
+	staticDir       string
+	contentDir      string
 }
 
-func executeExport(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+func executeExport(ctx context.Context, args []string, stdout, stderr io.Writer, store artists.CatalogStore) int {
 	if hasHelp(args) {
 		printExportHelp(stdout)
 		return 0
@@ -699,10 +708,16 @@ func executeExport(ctx context.Context, args []string, stdout, stderr io.Writer)
 		return 1
 	}
 
+	relationships, err := loadExportRelationships(ctx, store, options.catalogPath, options.catalogExplicit)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "export: %v\n", err)
+		return 1
+	}
 	report, err := catalogexport.NewExportCatalog(database, filesystem.NewWriter()).Run(ctx, catalogexport.Options{
-		OutputDir:  options.outputDir,
-		StaticDir:  options.staticDir,
-		ContentDir: options.contentDir,
+		OutputDir:     options.outputDir,
+		StaticDir:     options.staticDir,
+		ContentDir:    options.contentDir,
+		Relationships: relationships,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "export: %v\n", err)
@@ -721,9 +736,16 @@ func executeExport(ctx context.Context, args []string, stdout, stderr io.Writer)
 }
 
 func parseExportOptions(args []string) (exportOptions, error) {
-	options := exportOptions{dbPath: defaultDatabasePath, outputDir: defaultExportOutputDir, staticDir: defaultExportStaticDir, contentDir: defaultExportContentDir}
+	options := exportOptions{catalogPath: defaultCatalogPath, dbPath: defaultDatabasePath, outputDir: defaultExportOutputDir, staticDir: defaultExportStaticDir, contentDir: defaultExportContentDir}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--catalog":
+			i++
+			if i >= len(args) {
+				return exportOptions{}, fmt.Errorf("--catalog requires a value")
+			}
+			options.catalogPath = args[i]
+			options.catalogExplicit = true
 		case "--db":
 			i++
 			if i >= len(args) {
@@ -1378,10 +1400,6 @@ func executeArtistsSeedDB(ctx context.Context, args []string, stdout, stderr io.
 	}
 	if err := database.SaveConfiguredArtists(ctx, c.Artists); err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists seed-db: save configured artists: %v\n", err)
-		return 1
-	}
-	if err := database.SaveArtistRelationships(ctx, c.Relationships); err != nil {
-		_, _ = fmt.Fprintf(stderr, "artists seed-db: save artist relationships: %v\n", err)
 		return 1
 	}
 
@@ -2325,7 +2343,7 @@ func printSyncHelp(w io.Writer) {
 }
 
 func printExportHelp(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "usage: spotwufamily export [--db data/catalog.db] [--output site/data/generated] [--static site/static] [--content site/content/generated]")
+	_, _ = fmt.Fprintln(w, "usage: spotwufamily export [--db data/catalog.db] [--catalog data/artists.yaml] [--output site/data/generated] [--static site/static] [--content site/content/generated]")
 }
 
 func printSiteHelp(w io.Writer) {
@@ -2419,4 +2437,21 @@ func executeArtistsReviewProfile(ctx context.Context, args []string, stdout, std
 	_, _ = fmt.Fprintf(stdout, "artists review-profile %s: slug=%s spotify_id=%s %s -> %s linked=%t unlinked=%t catalog=%s\n",
 		mode, result.Slug, result.SpotifyID, result.From, result.To, result.Linked, result.Unlinked, catalogPath)
 	return 0
+}
+
+// loadExportRelationships reads the verified relationships from the editorial
+// catalog. A missing default catalog is not an error, so exporting from a
+// database alone keeps working; an explicitly requested one must exist.
+func loadExportRelationships(ctx context.Context, store artists.CatalogStore, path string, required bool) ([]catalogexport.Relationship, error) {
+	if _, err := os.Stat(path); err != nil && os.IsNotExist(err) && !required {
+		return nil, nil
+	}
+	c, err := store.Load(ctx, path)
+	if err != nil {
+		return nil, fmt.Errorf("load artist catalog: %w", err)
+	}
+	if issues := catalog.ValidateEditorialCatalog(c); len(issues) > 0 {
+		return nil, fmt.Errorf("artist catalog is invalid: %s", issues[0].Error())
+	}
+	return catalogexport.RelationshipsFromCatalog(c), nil
 }

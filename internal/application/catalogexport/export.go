@@ -33,6 +33,9 @@ type Options struct {
 	OutputDir  string
 	StaticDir  string
 	ContentDir string
+	// Relationships are the verified editorial relationships to publish; see
+	// RelationshipsFromCatalog. They come from the editorial YAML, not SQLite.
+	Relationships []Relationship
 }
 
 type Report struct {
@@ -44,10 +47,9 @@ type Report struct {
 }
 
 type Catalog struct {
-	Artists []Artist
-	Albums  []Album
-	Tracks  []Track
-	// Relationships holds verified editorial relationships only.
+	Artists       []Artist
+	Albums        []Album
+	Tracks        []Track
 	Relationships []Relationship
 	Stats         Stats
 }
@@ -195,6 +197,7 @@ func (e ExportCatalog) Run(ctx context.Context, options Options) (Report, error)
 	if err != nil {
 		return Report{}, fmt.Errorf("load export catalog: %w", err)
 	}
+	catalog.Relationships = options.Relationships
 	sortCatalog(&catalog)
 
 	report := Report{Artists: len(catalog.Artists), Albums: len(catalog.Albums), Tracks: len(catalog.Tracks)}

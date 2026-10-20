@@ -126,7 +126,7 @@ spotwufamily artists relationships remove --type member_of --from rza --to wu-ta
 spotwufamily artists rename --slug old-slug --to new-slug --dry-run
 ```
 
-New edges default to `proposed`. `seed-db` and `sync` project verified edges into `artist_relationships` (migration `0006`, additive) and `export` writes them to `relationships/index.json`. Rollout: merge, run `spotwufamily db migrate`, then `artists seed-db` and `export`. Rollback: the migration only adds tables; restoring the previous `artists.yaml` (or `.bak`) and re-seeding removes the projection.
+New edges default to `proposed`. `export` and `audit` read the verified edges from the catalog (`--catalog`, default `data/artists.yaml`) and write `relationships/index.json`. No database migration or reseed is needed, so the pinned catalog release is unaffected. Rollback: restore the previous `artists.yaml` (or `.bak`) and re-export.
 
 ## Rebuild From Snapshot
 
