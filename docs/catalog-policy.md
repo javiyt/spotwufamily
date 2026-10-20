@@ -162,8 +162,8 @@ To lift the K.G.B. quarantine, confirm a candidate against a primary Wu discogra
 Every core member has exactly one editorial record: `rza`, `gza`, `method-man`, `ghostface-killah`, `raekwon`, `inspectah-deck`, `u-god`, `masta-killa`, `cappadonna` and `ol-dirty-bastard`. Their primary Spotify profile is `verified` through the MusicBrainz URL relation of the matching artist, never through the name or through Wu-Tang Clan credits, and no member reuses a group profile.
 
 - Other Spotify profiles with the same name that exist in the local cache (several members have a second, same-named profile) are **not** linked: nothing independent ties them to the artist. Link them with `artists review-profile` only after evidence is found.
-- `category: core` is an editorial label. Group membership must come from relation records once the relationships model exists; this change does not create them.
-- Cappadonna began as an affiliate and is credited as a full member on later group albums. He is kept as `core`, with the nuance recorded in `notes`; the membership period belongs in his relation record.
+- `category: core` is an editorial label. Group membership comes only from `relationships` records (see Artist relationships below).
+- Cappadonna began as an affiliate and is credited as a full member on later group albums. He is kept as `core`, with the nuance recorded in `notes`; the membership period lives in his `member_of` relationship (`start: 2007`, medium confidence, with commentary).
 - New records get appended `editorial_order` values (196-204). Existing orders are never shifted: `seed-db` upserts row by row against a unique `editorial_order` index, so renumbering breaks seeding of existing databases.
 
 ## Candidate inventory and curation
@@ -231,3 +231,21 @@ Source: the 2026-10-19 comparative inventory (266 artists and 4 groups absent by
 | Ghostface Killah and the other core members | alias_of_existing | Already catalogued as core records (#264); the inventory predates them |
 
 No Spotify IDs were guessed, and no staged entry is enabled.
+
+## Artist relationships
+
+`relationships:` in `data/artists.yaml` is an optional top-level list of typed edges between existing artist slugs (YAML `version` stays 1; files without it load and save unchanged). A group is an editorial artist with the `affiliate_group` category or role (`wu-tang-clan` carries it as a role next to `core`); an individual is never the same record as the group.
+
+| Type | Direction | Rule |
+| --- | --- | --- |
+| `member_of` | `from` is a member of `to` | `to` must be a group. An `end` date (or era) makes it a former membership. |
+| `producer_for` | `from` produced for `to` | `from` must have the `producer` category. |
+| `collective_or_imprint` | `from` belongs to the collective, label or imprint `to` | `to` must be a group. |
+| `collaborated_with` | undirected | Stored once, lower slug in `from`. |
+| `associated_with` | undirected | Documented affiliation that is neither membership nor collaboration. |
+
+- **Cardinality**: many-to-many, at most one edge per `(type, from, to)`; undirected pairs are one edge in either order. Several stints in a group are described in `era`/`commentary`, not by repeated edges. A pair that has `member_of` cannot also carry `collaborated_with` or `associated_with`. `member_of`/`collective_or_imprint` cycles are rejected.
+- **Fields**: `start`/`end` are partial dates (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`) and stay empty when unknown; `era`, `commentary`, `confidence` (`low|medium|high`), `reviewer`, `reviewed_at` and `evidence` (same types as Spotify profile evidence).
+- **Review**: `status` is `proposed`, `verified` or `rejected`. `verified` needs a reviewer, a confidence and at least one *independent* evidence item; `credit` and `name_match` evidence never count, so a track credit or a shared name can never create a membership. Only `verified` edges are projected to SQLite and exported; proposed/rejected claims stay in the YAML.
+- **Seed**: the ten Wu-Tang Clan members, RZA in Gravediggaz, the accepted `member` entries of the candidate ledger, and `associated_with` for affiliate groups listed on Wikipedia's *List of Wu-Tang Clan affiliates*. Affiliate groups are associated with Wu-Tang Clan, and their members are *not* Wu-Tang Clan members.
+- **Safety**: all edits go through `artists relationships ...` / `artists rename`, which validate the whole catalog, only fail on issues the change introduces, support `--dry-run`, and save atomically (the previous file is kept as `artists.yaml.bak`). Renaming a slug rewrites every reference; renaming onto an existing slug is blocked. An artist that is still referenced cannot be removed.

@@ -967,6 +967,10 @@ func executeArtists(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return executeArtistsSeedDB(ctx, args[1:], stdout, stderr, store)
 	case "reconcile":
 		return executeArtistsReconcile(ctx, args[1:], stdout, stderr, store)
+	case "relationships":
+		return executeArtistsRelationships(ctx, args[1:], stdout, stderr, store)
+	case "rename":
+		return executeArtistsRename(ctx, args[1:], stdout, stderr, store)
 	case "help", "--help", "-h":
 		printArtistsHelp(stdout)
 		return 0
@@ -1374,6 +1378,10 @@ func executeArtistsSeedDB(ctx context.Context, args []string, stdout, stderr io.
 	}
 	if err := database.SaveConfiguredArtists(ctx, c.Artists); err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists seed-db: save configured artists: %v\n", err)
+		return 1
+	}
+	if err := database.SaveArtistRelationships(ctx, c.Relationships); err != nil {
+		_, _ = fmt.Fprintf(stderr, "artists seed-db: save artist relationships: %v\n", err)
 		return 1
 	}
 
@@ -2308,6 +2316,8 @@ func printArtistsHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  audit-albums")
 	_, _ = fmt.Fprintln(w, "  audit-profiles")
 	_, _ = fmt.Fprintln(w, "  reconcile")
+	_, _ = fmt.Fprintln(w, "  relationships")
+	_, _ = fmt.Fprintln(w, "  rename")
 }
 
 func printSyncHelp(w io.Writer) {

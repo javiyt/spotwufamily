@@ -113,6 +113,21 @@ Rollback: `--apply` prints a `retired_at` token. `spotwufamily artists reconcile
 
 Release backups: the local database is not tracked by Git. A cleanup changes `data/catalog.db` / `data/catalog.snapshot.sql.gz` only, and `data/catalog.release.json` keeps pinning the previous GitHub Release (`catalog.db.gz` + snapshot, which still contain the rejected mapping) until `make catalog-release-prepare` / `catalog-release-publish` creates a **new** release and updates the manifest. Existing release tags are never overwritten, so the old backup remains the rollback target. `make catalog-fetch` on a fresh clone keeps returning the old contents until the new manifest is merged.
 
+## Artist Relationships
+
+```
+spotwufamily artists relationships list [--slug S] [--type T] [--established]
+spotwufamily artists relationships members --group wu-tang-clan --established
+spotwufamily artists relationships groups --artist rza
+spotwufamily artists relationships add --type member_of --from rza --to wu-tang-clan --dry-run
+spotwufamily artists relationships review --type member_of --from rza --to wu-tang-clan --status verified \
+  --reviewer NAME --confidence high --evidence-type wikipedia --evidence-url URL --evidence-rationale TEXT
+spotwufamily artists relationships remove --type member_of --from rza --to wu-tang-clan
+spotwufamily artists rename --slug old-slug --to new-slug --dry-run
+```
+
+New edges default to `proposed`. `seed-db` and `sync` project verified edges into `artist_relationships` (migration `0006`, additive) and `export` writes them to `relationships/index.json`. Rollout: merge, run `spotwufamily db migrate`, then `artists seed-db` and `export`. Rollback: the migration only adds tables; restoring the previous `artists.yaml` (or `.bak`) and re-seeding removes the projection.
+
 ## Rebuild From Snapshot
 
 Use this to prove the logical snapshot can recreate the versioned database:

@@ -20,6 +20,7 @@ artists:
     category: core
     roles:
       - core
+      - affiliate_group
     aliases:
       - Wu Tang Clan
     enabled: true
@@ -2848,3 +2849,396 @@ artists:
     notes: Curated from source-backed candidate inventory (member of theodore-unit, t-m-f); Spotify profile not mapped. The Wikipedia article carries a needs-citations banner; the independent anchor is the MusicBrainz group relation plus his Bulletproof Wallets and 718 credits.
     external_url: https://musicbrainz.org/artist/9438f713-4b0c-411e-897e-040d45c928f0
     added_at: "2026-10-20"
+relationships:
+  - type: associated_with
+    from: black-knights
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: associated_with
+    from: deadly-venoms
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: associated_with
+    from: gravediggaz
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: associated_with
+    from: hillside-scramblers
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: associated_with
+    from: killarmy
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: associated_with
+    from: sunz-of-man
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: associated_with
+    from: theodore-unit
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: associated_with
+    from: wu-syndicate
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: associated_with
+    from: wu-tang-clan
+    to: wu-tang-killa-beez
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed among the Wu-Tang Clan affiliated groups.
+    commentary: Affiliation only; it does not make the group members Wu-Tang Clan members.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: 60-second-assassin
+    to: sunz-of-man
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/a02ee6d6-9b9b-4ddf-9a24-8f2b093b329c
+        rationale: Member of Sunz of Man
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Sunz_of_Man
+        rationale: Lists 60 Second Assassin as a current member of Sunz of Man
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Sunz of Man.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: cappadonna
+    to: wu-tang-clan
+    start: "2007"
+    era: close affiliate before 2007; official member from 8 Diagrams
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    commentary: Cappadonna appeared on group releases as an affiliate long before 2007 and was not an official member then. Wikipedia dates his official inclusion to the 8 Diagrams album (2007); the start year follows that source and should be re-checked against primary sources.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: champ-mc
+    to: deadly-venoms
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/5cecfa95-e1bf-4e1a-8748-7bcaf71c1496
+        rationale: Member of Deadly Venoms
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Deadly_Venoms
+        rationale: Lists Champ MC as a member of the Wu-Tang Clan-affiliated group
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Deadly Venoms.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: frukwan
+    to: gravediggaz
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/6c20758e-b910-4ea0-84da-b20ecc7c7d1e
+        rationale: Original member of Gravediggaz and member of Wu-Tang Killa Bees
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Gravediggaz
+        rationale: Lists Frukwan as The Gatekeeper, one of four original members, alongside The RZArector
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Gravediggaz (The Gatekeeper); Gravediggaz also includes RZA.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: ghostface-killah
+    to: wu-tang-clan
+    start: "1992"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: gza
+    to: wu-tang-clan
+    start: "1992"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: illah-dayz
+    to: wisemen
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/0d792f19-cbf8-446c-8fbc-e5f83637b906
+        rationale: Member of Wisemen
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wisemen_(rap_group)
+        rationale: Lists Illah Dayz among the emcees of the group
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Wisemen.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: inspectah-deck
+    to: wu-tang-clan
+    start: "1992"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: joe-mafia
+    to: wu-syndicate
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/84b73dc8-017e-4d13-8ad4-789786e96680
+        rationale: Member of Wu-Syndicate
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Syndicate
+        rationale: Lists Joe Mafia as a member; the group signed to Wu-Tang Records
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Wu-Syndicate.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: kevlaar-7
+    to: wisemen
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/5c30c7b8-920e-4f55-aa84-ef61611260cc
+        rationale: Member of Wisemen
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wisemen_(rap_group)
+        rationale: Lists Kevlaar 7 as co-founder and producer of the group
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Wisemen; lyricist and producer; died 2014.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: masta-killa
+    to: wu-tang-clan
+    start: "1993"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: method-man
+    to: wu-tang-clan
+    start: "1992"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: myalansky
+    to: wu-syndicate
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/4f5d8b41-e4bb-46a8-adb7-182c673844f7
+        rationale: Member of Wu-Syndicate
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Syndicate
+        rationale: Lists Myalansky as a member; the group signed to Wu-Tang Records
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Wu-Syndicate.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: n-tyce
+    to: deadly-venoms
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/0315f11a-c3bc-497b-a31c-733ceb3b6293
+        rationale: US rapper Amma Brown, member of Deadly Venoms
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Deadly_Venoms
+        rationale: Lists N-Tyce as a member of the Wu-Tang Clan-affiliated group; RZA produced his single Hush Hush Tip
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Deadly Venoms.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: ol-dirty-bastard
+    to: wu-tang-clan
+    start: "1992"
+    end: "2004"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    commentary: Membership ended with the death of Ol' Dirty Bastard in 2004.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: prince-paul
+    to: gravediggaz
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/50840ae7-d000-4858-8aac-bd776a12dafa
+        rationale: Original member of Gravediggaz; hip hop DJ and producer
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Gravediggaz
+        rationale: Lists Prince Paul as The Undertaker, a non-rapping producer member
+    commentary: 'Imported from the accepted candidate ledger entry: Member and producer of Gravediggaz (The Undertaker).'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: raekwon
+    to: wu-tang-clan
+    start: "1992"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: rza
+    to: gravediggaz
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Gravediggaz
+        rationale: Lists RZA (The RZArector) as one of the four original members.
+    commentary: Group membership of a Wu affiliate group; it is separate from Wu-Tang Clan membership.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: rza
+    to: wu-tang-clan
+    start: "1992"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    reviewer: catalog-seed (#266)
+  - type: member_of
+    from: too-poetic
+    to: gravediggaz
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/22ff0ca3-ad1c-4514-92ed-3df7ad23e496
+        rationale: Original member of Gravediggaz; life-span ends 2001-07-15
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Gravediggaz
+        rationale: Lists Too Poetic as The Grym Reaper, died July 2001
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Gravediggaz (The Grym Reaper); deceased 2001.'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: trife-diesel
+    to: t-m-f
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/9438f713-4b0c-411e-897e-040d45c928f0
+        rationale: Member of Theodore Unit and TMF; described as a Wu-Tang affiliate
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Theodore_Unit
+        rationale: Describes Trife Diesel as a Theodore Unit member first heard on Ghostface Killah Bulletproof Wallets
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Theodore Unit (Ghostface Killah''s group); formerly T.M.F..'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: trife-diesel
+    to: theodore-unit
+    status: verified
+    confidence: high
+    evidence:
+      - type: musicbrainz
+        url: https://musicbrainz.org/artist/9438f713-4b0c-411e-897e-040d45c928f0
+        rationale: Member of Theodore Unit and TMF; described as a Wu-Tang affiliate
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Theodore_Unit
+        rationale: Describes Trife Diesel as a Theodore Unit member first heard on Ghostface Killah Bulletproof Wallets
+    commentary: 'Imported from the accepted candidate ledger entry: Member of Theodore Unit (Ghostface Killah''s group); formerly T.M.F..'
+    reviewer: candidate-ledger (#278)
+  - type: member_of
+    from: u-god
+    to: wu-tang-clan
+    start: "1992"
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Wu-Tang_Clan
+        rationale: The Members section of the Wu-Tang Clan article lists this artist as a group member.
+    reviewer: catalog-seed (#266)

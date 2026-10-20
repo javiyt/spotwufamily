@@ -62,8 +62,12 @@ func (d *Database) LoadExportCatalog(ctx context.Context) (catalogexport.Catalog
 	if err != nil {
 		return catalogexport.Catalog{}, err
 	}
+	relationships, err := d.exportRelationships(ctx)
+	if err != nil {
+		return catalogexport.Catalog{}, err
+	}
 
-	return catalogexport.Catalog{Artists: artists, Albums: albums, Tracks: tracks, Stats: stats}, nil
+	return catalogexport.Catalog{Artists: artists, Albums: albums, Tracks: tracks, Relationships: relationships, Stats: stats}, nil
 }
 
 func (d *Database) exportArtists(ctx context.Context) ([]catalogexport.Artist, error) {

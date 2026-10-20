@@ -127,3 +127,35 @@ func sampleCatalog() catalogexport.Catalog {
 		}},
 	}
 }
+
+func TestExportCatalogWritesSortedRelationships(t *testing.T) {
+	c := sampleCatalog()
+	c.Relationships = []catalogexport.Relationship{
+		{Type: "member_of", From: "rza", To: "wu-tang-clan", Confidence: "high"},
+		{Type: "associated_with", From: "a", To: "b"},
+		{Type: "member_of", From: "gza", To: "wu-tang-clan", End: "2000", Former: true},
+	}
+	writer := &memoryWriter{files: map[string][]byte{}}
+	opts := catalogexport.Options{OutputDir: "generated", StaticDir: "static", ContentDir: "content/generated"}
+	_, err := catalogexport.NewExportCatalog(fakeReader{catalog: c}, writer).Run(context.Background(), opts)
+	require.NoError(t, err)
+
+	out := string(writer.files["generated/relationships/index.json"])
+	require.Less(t, strings.Index(out, `"associated_with"`), strings.Index(out, `"gza"`))
+	require.Less(t, strings.Index(out, `"gza"`), strings.Index(out, `"rza"`))
+	require.Contains(t, out, `"former": true`)
+
+	// Same input in another order produces byte-identical output.
+	c.Relationships[0], c.Relationships[2] = c.Relationships[2], c.Relationships[0]
+	other := &memoryWriter{files: map[string][]byte{}}
+	_, err = catalogexport.NewExportCatalog(fakeReader{catalog: c}, other).Run(context.Background(), opts)
+	require.NoError(t, err)
+	require.Equal(t, out, string(other.files["generated/relationships/index.json"]))
+}
+
+func TestExportCatalogWritesEmptyRelationshipsForLegacyCatalogs(t *testing.T) {
+	writer := &memoryWriter{files: map[string][]byte{}}
+	_, err := catalogexport.NewExportCatalog(fakeReader{catalog: sampleCatalog()}, writer).Run(context.Background(), catalogexport.Options{OutputDir: "generated", StaticDir: "static", ContentDir: "content/generated"})
+	require.NoError(t, err)
+	require.Contains(t, string(writer.files["generated/relationships/index.json"]), `"items": []`)
+}

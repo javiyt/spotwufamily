@@ -17,6 +17,22 @@ type document struct {
 	Version           int                       `yaml:"version"`
 	ProfileSyncPolicy catalog.ProfileSyncPolicy `yaml:"profile_sync_policy,omitempty"`
 	Artists           []artistRecord            `yaml:"artists"`
+	Relationships     []relationshipRecord      `yaml:"relationships,omitempty"`
+}
+
+type relationshipRecord struct {
+	Type       catalog.RelationshipType    `yaml:"type"`
+	From       string                      `yaml:"from"`
+	To         string                      `yaml:"to"`
+	Start      string                      `yaml:"start,omitempty"`
+	End        string                      `yaml:"end,omitempty"`
+	Era        string                      `yaml:"era,omitempty"`
+	Status     catalog.RelationshipStatus  `yaml:"status"`
+	Confidence catalog.CandidateConfidence `yaml:"confidence,omitempty"`
+	Evidence   []evidenceRecord            `yaml:"evidence,omitempty"`
+	Commentary string                      `yaml:"commentary,omitempty"`
+	Reviewer   string                      `yaml:"reviewer,omitempty"`
+	ReviewedAt string                      `yaml:"reviewed_at,omitempty"`
 }
 
 type artistRecord struct {
@@ -83,7 +99,12 @@ func (s Store) Load(ctx context.Context, path string) (catalog.EditorialCatalog,
 		artists = append(artists, record.toDomain())
 	}
 
-	return catalog.EditorialCatalog{Version: doc.Version, ProfileSyncPolicy: doc.ProfileSyncPolicy, Artists: artists}, nil
+	return catalog.EditorialCatalog{
+		Version:           doc.Version,
+		ProfileSyncPolicy: doc.ProfileSyncPolicy,
+		Artists:           artists,
+		Relationships:     relationshipsToDomain(doc.Relationships),
+	}, nil
 }
 
 func (s Store) Save(ctx context.Context, path string, c catalog.EditorialCatalog) error {
@@ -97,6 +118,7 @@ func (s Store) Save(ctx context.Context, path string, c catalog.EditorialCatalog
 	for _, artist := range c.Artists {
 		doc.Artists = append(doc.Artists, fromDomain(artist))
 	}
+	doc.Relationships = relationshipsFromDomain(c.Relationships)
 
 	var buf bytes.Buffer
 	buf.WriteString("# Editorial artist catalog.\n")
@@ -242,4 +264,50 @@ func writeBackup(path string, data []byte) error {
 		return fmt.Errorf("write catalog backup %s: %w", path, err)
 	}
 	return nil
+}
+
+func relationshipsToDomain(records []relationshipRecord) []catalog.Relationship {
+	if len(records) == 0 {
+		return nil
+	}
+	rels := make([]catalog.Relationship, 0, len(records))
+	for _, r := range records {
+		rel := catalog.Relationship{
+			Type: r.Type, From: r.From, To: r.To, Start: r.Start, End: r.End, Era: r.Era,
+			Status: r.Status, Confidence: r.Confidence, Commentary: r.Commentary,
+			Reviewer: r.Reviewer, ReviewedAt: r.ReviewedAt,
+		}
+		for _, e := range r.Evidence {
+			rel.Evidence = append(rel.Evidence, catalog.Evidence(e))
+		}
+		rels = append(rels, rel)
+	}
+	return rels
+}
+
+// relationshipsFromDomain writes edges in a canonical order (type, from, to)
+// so the file and every export derived from it stay deterministic.
+func relationshipsFromDomain(rels []catalog.Relationship) []relationshipRecord {
+	if len(rels) == 0 {
+		return nil
+	}
+	sorted := make([]catalog.Relationship, 0, len(rels))
+	for _, rel := range rels {
+		sorted = append(sorted, rel.Normalized())
+	}
+	catalog.SortRelationships(sorted)
+
+	records := make([]relationshipRecord, 0, len(sorted))
+	for _, r := range sorted {
+		record := relationshipRecord{
+			Type: r.Type, From: r.From, To: r.To, Start: r.Start, End: r.End, Era: r.Era,
+			Status: r.Status, Confidence: r.Confidence, Commentary: r.Commentary,
+			Reviewer: r.Reviewer, ReviewedAt: r.ReviewedAt,
+		}
+		for _, e := range r.Evidence {
+			record.Evidence = append(record.Evidence, evidenceRecord(e))
+		}
+		records = append(records, record)
+	}
+	return records
 }
