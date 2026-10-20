@@ -9,6 +9,7 @@
 ## Local admin
 
 - `admin serve` is local-only by default, requires a session token, CSRF tokens and Host/Origin checks, and is never deployed with the static site. See [Local admin](admin.md).
+- Catalog writes are same-origin + CSRF protected, serialised by a file lock, validated against the whole catalog and replaced atomically; Spotify profile mappings cannot be edited from the UI.
 - Spotify credentials stay in the Go process; the admin only reports whether they are present.
 
 ## GitHub Automation

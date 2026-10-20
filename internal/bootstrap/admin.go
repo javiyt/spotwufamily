@@ -12,7 +12,7 @@ import (
 	"github.com/javiyt/spotwufamily/internal/application/admin"
 )
 
-// NewAdminService wires the read-only admin use cases. A missing or unusable
+// NewAdminService wires the admin use cases (queries and catalog edits). A missing or unusable
 // database is not an error: the service keeps serving the YAML catalog
 // (offline mode) and never creates the database file. The returned function
 // releases the database handle.

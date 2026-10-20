@@ -98,3 +98,20 @@ func TestSlugify(t *testing.T) {
 	require.Equal(t, "1-4-0-productions", catalog.Slugify("1.4.0. Productions"))
 	require.Equal(t, "trūvillain", catalog.Slugify("TrūVillain"))
 }
+
+func TestValidateEditorialCatalogRejectsEnabledArchivedArtist(t *testing.T) {
+	c := catalog.EditorialCatalog{
+		Version: 1,
+		Artists: []catalog.Artist{{
+			Slug: "rza", Name: "RZA", SpotifyID: "34EP7KEpOjXcM2TCat1ISk",
+			Category: catalog.CategoryCore, Enabled: true, Archived: true,
+		}},
+	}
+
+	issues := catalog.ValidateEditorialCatalog(c)
+	require.Len(t, issues, 1)
+	require.Equal(t, "artists[0].archived", issues[0].Field)
+
+	c.Artists[0].Enabled = false
+	require.Empty(t, catalog.ValidateEditorialCatalog(c))
+}

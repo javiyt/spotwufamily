@@ -1,0 +1,183 @@
+{{define "relfields"}}
+<div class="grid">
+<div class="field"><label for="rt-{{.Idx}}">Type</label>
+<select id="rt-{{.Idx}}" name="rel_type">{{$v := .Vals}}{{range .RelTypes}}<option value="{{.Value}}"{{if eq .Value (index $v "rel_type")}} selected{{end}}>{{.Label}}</option>{{end}}</select>{{template "fielderr" (index .Errors "type")}}</div>
+<div class="field"><label for="rd-{{.Idx}}">This artist is…</label>
+<select id="rd-{{.Idx}}" name="direction"><option value="outbound"{{if ne (index $v "direction") "inbound"}} selected{{end}}>the source (from)</option><option value="inbound"{{if eq (index $v "direction") "inbound"}} selected{{end}}>the target (to)</option></select></div>
+<div class="field"><label for="ro-{{.Idx}}">Other artist (slug)</label>
+<input id="ro-{{.Idx}}" name="other" list="choices" value="{{index $v "other"}}" required autocomplete="off">{{template "fielderr" (index .Errors "from")}}{{template "fielderr" (index .Errors "to")}}</div>
+<div class="field"><label for="rs-{{.Idx}}">Status</label>
+<select id="rs-{{.Idx}}" name="status">{{range .RelStatuses}}<option value="{{.Value}}"{{if eq .Value (index $v "status")}} selected{{end}}>{{.Label}}</option>{{end}}</select>{{template "fielderr" (index .Errors "status")}}</div>
+<div class="field"><label for="rc-{{.Idx}}">Confidence</label>
+<select id="rc-{{.Idx}}" name="confidence">{{range .Confidences}}<option value="{{.Value}}"{{if eq .Value (index $v "confidence")}} selected{{end}}>{{.Label}}</option>{{end}}</select>{{template "fielderr" (index .Errors "confidence")}}</div>
+<div class="field"><label for="rb-{{.Idx}}">Start (YYYY[-MM[-DD]])</label>
+<input id="rb-{{.Idx}}" name="start" value="{{index $v "start"}}" maxlength="10">{{template "fielderr" (index .Errors "start")}}</div>
+<div class="field"><label for="re-{{.Idx}}">End</label>
+<input id="re-{{.Idx}}" name="end" value="{{index $v "end"}}" maxlength="10">{{template "fielderr" (index .Errors "end")}}</div>
+<div class="field"><label for="ra-{{.Idx}}">Era</label>
+<input id="ra-{{.Idx}}" name="era" value="{{index $v "era"}}" maxlength="100"></div>
+<div class="field"><label for="rr-{{.Idx}}">Reviewer</label>
+<input id="rr-{{.Idx}}" name="reviewer" value="{{index $v "reviewer"}}" maxlength="100">{{template "fielderr" (index .Errors "reviewer")}}</div>
+</div>
+<div class="field"><label for="rk-{{.Idx}}">Commentary</label>
+<textarea id="rk-{{.Idx}}" name="commentary" rows="2" maxlength="1000">{{index $v "commentary"}}</textarea>{{template "fielderr" (index .Errors "commentary")}}</div>
+<fieldset><legend>Add provenance (evidence)</legend>
+<div class="grid">
+<div class="field"><label for="et-{{.Idx}}">Source type</label>
+<select id="et-{{.Idx}}" name="evidence_type">{{range .EvidenceTypes}}<option value="{{.Value}}"{{if eq .Value (index $v "evidence_type")}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="eu-{{.Idx}}">Source URL (https)</label>
+<input id="eu-{{.Idx}}" name="evidence_url" type="url" value="{{index $v "evidence_url"}}"></div>
+<div class="field wide"><label for="er-{{.Idx}}">Why this source supports the claim</label>
+<input id="er-{{.Idx}}" name="evidence_rationale" value="{{index $v "evidence_rationale"}}"></div>
+</div>
+{{template "fielderr" (index .Errors "evidence")}}
+<p class="hint">Verified relationships need a reviewer, a confidence and at least one independent source. Name matches and credits never count.</p>
+</fieldset>
+{{end}}
+
+{{define "relrow"}}
+<li class="rel">
+<p><strong>{{if .OtherName}}{{.OtherName}}{{else}}{{.OtherSlug}}{{end}}</strong> <code>{{.OtherSlug}}</code>
+<span class="tag">{{.Type}}{{if eq .Direction "inbound"}} ←{{else}} →{{end}}</span>
+<span class="state {{if .Verified}}verified{{else if eq .Status "rejected"}}unresolved{{end}}">{{.Status}}</span>
+{{if .Period}}<span class="muted">{{.Period}}</span>{{end}}</p>
+{{if .Evidence}}<ul class="evidence">{{range .Evidence}}<li>{{.Type}}{{if .URL}} · <a href="{{.URL}}" rel="noopener noreferrer nofollow" target="_blank">{{.URL}}</a>{{end}} — {{.Rationale}}</li>{{end}}</ul>
+{{else}}<p class="muted">No sources recorded.</p>{{end}}
+{{if .Reviewer}}<p class="muted">Reviewed by {{.Reviewer}}{{if .ReviewedAt}} on {{.ReviewedAt}}{{end}}</p>{{end}}
+{{if .Editable}}<details><summary>Edit</summary>
+<form method="post" action="{{.Path}}/relationships/update" class="stack">
+<input type="hidden" name="csrf_token" value="{{.CSRF}}">
+<input type="hidden" name="rel_key_type" value="{{.Type}}"><input type="hidden" name="rel_from" value="{{.From}}"><input type="hidden" name="rel_to" value="{{.To}}">
+<input type="hidden" name="rel_revision" value="{{.Revision}}">
+{{template "relfields" .Edit}}
+<div class="actions"><button type="submit" name="intent" value="preview">Preview changes</button> <button type="submit" name="intent" value="save" class="primary">Save</button></div>
+</form>
+<form method="post" action="{{.Path}}/relationships/remove" data-confirm="Remove this relationship? The artists stay in the catalog.">
+<input type="hidden" name="csrf_token" value="{{.CSRF}}">
+<input type="hidden" name="rel_key_type" value="{{.Type}}"><input type="hidden" name="rel_from" value="{{.From}}"><input type="hidden" name="rel_to" value="{{.To}}">
+<input type="hidden" name="rel_revision" value="{{.Revision}}">
+<button type="submit" class="danger">Remove relationship</button>
+</form>
+</details>{{end}}
+</li>
+{{end}}
+
+{{define "content"}}{{with .Data}}{{$p := .}}{{$csrf := $.CSRF}}
+{{if .Notice}}<p class="notice" role="alert">{{.Notice}}</p>{{end}}
+{{if or .Summary .RelSummary}}<div class="notice error-summary" role="alert" tabindex="-1" id="error-summary"><p><strong>Nothing was saved. Fix these problems:</strong></p><ul>
+{{range .Summary}}<li><a href="#f-{{.Anchor}}">{{.Message}}</a></li>{{end}}{{range .RelSummary}}<li>{{.Message}}</li>{{end}}</ul></div>{{end}}
+
+{{if not .New}}<p class="badges">
+<span class="badge">{{if .IsGroup}}group{{else}}individual{{end}}</span>
+<span class="badge {{if .Detail.Artist.Enabled}}ok{{end}}">{{if .Detail.Artist.Enabled}}enabled{{else}}disabled{{end}}</span>
+{{if .Detail.Artist.Archived}}<span class="badge bad">archived</span>{{end}}
+<span class="badge {{.Detail.IDState}}">Spotify: {{.Detail.IDState}}</span>
+<a href="/{{.Kind}}">← all {{if .IsGroup}}groups{{else}}artists{{end}}</a></p>{{end}}
+
+<section aria-labelledby="record-h">
+<h2 id="record-h">{{if .New}}New {{.KindLabel}}{{else}}Record{{end}}</h2>
+{{if .Editable}}
+<form method="post" action="{{.BasePath}}" class="stack" data-editor novalidate>
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<input type="hidden" name="revision" value="{{.Form.Revision}}">
+<div class="grid">
+<div class="field"><label for="f-name">Display name</label>
+<input id="f-name" name="name" value="{{.Form.Name}}" required maxlength="200" aria-describedby="e-name"{{if index .Errors "name"}} aria-invalid="true"{{end}}>
+<div id="e-name">{{template "fielderr" (index .Errors "name")}}</div></div>
+<div class="field"><label for="f-slug">Slug</label>
+<input id="f-slug" name="slug" value="{{.Form.Slug}}" maxlength="100" pattern="[a-z0-9]+(-[a-z0-9]+)*" aria-describedby="h-slug e-slug"{{if index .Errors "slug"}} aria-invalid="true"{{end}}>
+<p class="hint" id="h-slug">{{if .New}}Leave empty to derive it from the name.{{else}}Changing the slug rewrites relationships and needs confirmation.{{end}}</p>
+<div id="e-slug">{{template "fielderr" (index .Errors "slug")}}</div></div>
+<div class="field"><label for="f-public_name">Public name</label>
+<input id="f-public_name" name="public_name" value="{{.Form.PublicName}}" maxlength="200" aria-describedby="e-public_name">
+<div id="e-public_name">{{template "fielderr" (index .Errors "public_name")}}</div></div>
+<div class="field"><label for="f-category">Category</label>
+<select id="f-category" name="category" aria-describedby="e-category">{{range .Categories}}<option value="{{.Value}}"{{if eq .Value $p.Form.Category}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+<div id="e-category">{{template "fielderr" (index .Errors "category")}}</div></div>
+<div class="field"><label for="f-editorial_order">Editorial order</label>
+<input id="f-editorial_order" name="editorial_order" inputmode="numeric" value="{{.Form.Order}}" aria-describedby="e-editorial_order">
+<div id="e-editorial_order">{{template "fielderr" (index .Errors "editorial_order")}}</div></div>
+<div class="field"><label for="f-external_url">Reference URL (https)</label>
+<input id="f-external_url" name="external_url" type="url" value="{{.Form.ExternalURL}}" aria-describedby="e-external_url"{{if index .Errors "external_url"}} aria-invalid="true"{{end}}>
+<div id="e-external_url">{{template "fielderr" (index .Errors "external_url")}}</div></div>
+</div>
+<fieldset id="f-roles"><legend>Roles</legend>
+{{range .Categories}}<span class="check"><input id="role-{{.Value}}" type="checkbox" name="roles" value="{{.Value}}"{{if index $p.Form.Roles .Value}} checked{{end}}><label for="role-{{.Value}}">{{.Label}}</label></span>{{end}}
+<p class="hint">The primary category is always included. A group needs the “Affiliate group” category or role.</p>
+<div id="e-roles">{{template "fielderr" (index .Errors "roles")}}</div></fieldset>
+<div class="field"><label for="f-aliases">Aliases (one per line, order is kept)</label>
+<textarea id="f-aliases" name="aliases" rows="4" aria-describedby="e-aliases">{{.Form.Aliases}}</textarea>
+<div id="e-aliases">{{template "fielderr" (index .Errors "aliases")}}</div></div>
+<div class="field"><label for="f-notes">Editorial notes</label>
+<textarea id="f-notes" name="notes" rows="3" aria-describedby="e-notes">{{.Form.Notes}}</textarea>
+<div id="e-notes">{{template "fielderr" (index .Errors "notes")}}</div></div>
+<div class="field inline"><input id="f-enabled" type="checkbox" name="enabled"{{if .Form.Enabled}} checked{{end}} aria-describedby="h-enabled e-enabled"><label for="f-enabled">Enabled for Spotify sync</label></div>
+<p class="hint" id="h-enabled">Only entries with a reviewed Spotify profile can be enabled.</p>
+<div id="e-enabled">{{template "fielderr" (index .Errors "enabled")}}</div>
+{{if .SlugConfirm}}<div class="notice" role="alert"><p><strong>Slug change:</strong> this rewrites {{len .SlugConfirm.Refs}} relationship(s) to <code>{{.SlugConfirm.NewSlug}}</code>.</p>
+<ul>{{range .SlugConfirm.Refs}}<li>{{.Type}} · {{.OtherSlug}}</li>{{end}}</ul>
+<p class="check"><input id="f-confirm" type="checkbox" name="confirm_slug_change"{{if .Form.ConfirmSlugChange}} checked{{end}}><label for="f-confirm">I understand and want to change the slug</label></p></div>{{end}}
+<div class="actions"><button type="submit" name="intent" value="preview">Preview changes</button> <button type="submit" name="intent" value="save" class="primary">{{if .New}}Create{{else}}Save{{end}}</button> <a href="/{{.Kind}}" data-cancel>Cancel</a></div>
+<p class="hint">Keyboard: Ctrl/⌘+Enter saves, Esc cancels.</p>
+</form>
+{{else}}
+<dl class="facts"><dt>Name</dt><dd>{{.Detail.Artist.Name}}</dd><dt>Slug</dt><dd><code>{{.Detail.Artist.Slug}}</code></dd><dt>Category</dt><dd>{{.Detail.Artist.Category}}</dd></dl>
+<p class="notice" role="status">The catalog is read-only in this session.</p>
+{{end}}
+</section>
+
+{{if not .New}}
+<section aria-labelledby="spotify-h">
+<h2 id="spotify-h">Spotify profiles</h2>
+<p class="hint">Reviewed associations, shown separately from the artist identity. They cannot be edited here: link, verify or reject a profile through the profile review workflow (<a href="/review">review queue</a>, <code>make artists-review-interactive</code>).</p>
+{{if .Profiles}}<div class="table-wrap"><table><caption class="sr">Spotify profiles</caption>
+<thead><tr><th scope="col">Spotify ID</th><th scope="col">Review</th><th scope="col">Linked</th><th scope="col">Reviewer</th><th scope="col">Evidence</th></tr></thead><tbody>
+{{range .Profiles}}<tr><th scope="row"><code>{{.ID}}</code></th><td><span class="state {{.Status}}">{{.Status}}</span></td><td>{{if .Linked}}yes{{else}}no{{end}}</td><td>{{.Reviewer}}{{if .ReviewedAt}} · {{.ReviewedAt}}{{end}}</td>
+<td>{{range .Evidence}}{{.Type}}{{if .URL}} · <a href="{{.URL}}" rel="noopener noreferrer nofollow" target="_blank">link</a>{{end}}<br>{{end}}</td></tr>{{end}}
+</tbody></table></div>
+{{else}}<p>No Spotify profile is linked or tracked.</p>{{end}}
+</section>
+
+<section aria-labelledby="rel-h">
+<h2 id="rel-h">{{if .IsGroup}}Members and relationships{{else}}Relationships{{end}}</h2>
+{{if .IsGroup}}<h3>Members</h3>
+<ul class="rels">{{range .Members}}{{template "relrow" (relView . $csrf $p.Editable)}}{{else}}<li class="muted">No members recorded.</li>{{end}}</ul>{{end}}
+{{if .Memberships}}<h3>Member of</h3><ul class="rels">{{range .Memberships}}{{template "relrow" (relView . $csrf $p.Editable)}}{{end}}</ul>{{end}}
+{{if .Other}}<h3>Other relationships</h3><ul class="rels">{{range .Other}}{{template "relrow" (relView . $csrf $p.Editable)}}{{end}}</ul>{{end}}
+{{if and (not .IsGroup) (not .Memberships) (not .Other)}}<p class="muted">No relationships recorded.</p>{{end}}
+{{if .Editable}}<details {{if .RelSummary}}open{{end}}><summary>Add relationship</summary>
+<form method="post" action="{{.BasePath}}/relationships" class="stack" id="add-relationship">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+{{template "relfields" .AddRel}}
+<div class="actions"><button type="submit" name="intent" value="preview">Preview changes</button> <button type="submit" name="intent" value="save" class="primary">Add relationship</button></div>
+</form></details>
+<datalist id="choices">{{range .Choices}}<option value="{{.Slug}}">{{.Name}}{{if .Group}} (group){{end}}</option>{{end}}</datalist>{{end}}
+</section>
+
+{{if .Editable}}
+<section aria-labelledby="danger-h" class="danger-zone">
+<h2 id="danger-h">Archive or delete</h2>
+{{if .Detail.Artist.Archived}}
+<form method="post" action="{{.BasePath}}/restore"><input type="hidden" name="csrf_token" value="{{$csrf}}"><input type="hidden" name="revision" value="{{.Detail.Revision}}">
+<p>This entry is archived: hidden from lists and never synced. Relationships and synced Spotify data are kept.</p><button type="submit">Restore</button></form>
+{{else}}
+<form method="post" action="{{.BasePath}}/archive" data-confirm="Archive {{.Detail.Artist.Name}}? It is disabled and hidden, nothing is deleted.">
+<input type="hidden" name="csrf_token" value="{{$csrf}}"><input type="hidden" name="revision" value="{{.Detail.Revision}}">
+<p>Archiving disables the entry and hides it from lists. Relationships and synced Spotify albums and tracks are kept. This is the recommended way to retire a record.</p><button type="submit">Archive</button></form>
+{{end}}
+<h3>Delete</h3>
+{{if .DeleteRefs}}<p>Deleting is blocked while other records reference <code>{{.Detail.Artist.Slug}}</code>:</p>
+<ul>{{range .DeleteRefs}}<li>{{.Type}} · {{.OtherName}} <code>{{.OtherSlug}}</code> ({{.Direction}})</li>{{end}}</ul>
+<p>Archive it instead, or remove these relationships first.</p>
+{{else}}
+<form method="post" action="{{.BasePath}}/delete" class="stack">
+<input type="hidden" name="csrf_token" value="{{$csrf}}"><input type="hidden" name="revision" value="{{.Detail.Revision}}">
+<p>Deleting removes only the catalog entry. Synced Spotify albums and tracks are never deleted by this action.</p>
+<div class="field"><label for="f-confirm_slug">Type <code>{{.Detail.Artist.Slug}}</code> to confirm</label>
+<input id="f-confirm_slug" name="confirm_slug" autocomplete="off" aria-describedby="e-confirm_slug"><div id="e-confirm_slug">{{template "fielderr" (index .Errors "confirm_slug")}}</div></div>
+<button type="submit" class="danger">Delete permanently</button></form>
+{{end}}
+</section>
+{{end}}
+{{end}}
+{{end}}{{end}}

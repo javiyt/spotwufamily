@@ -2,8 +2,11 @@ package yamlcatalog_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
@@ -216,4 +219,118 @@ func TestRepositoryCatalogContainsEveryWuTangSoloArtistOnce(t *testing.T) {
 	require.Contains(t, bySlug["cappadonna"][0].Notes, "Historical membership")
 	require.Contains(t, bySlug["ol-dirty-bastard"][0].Aliases, "ODB")
 	require.NotEqual(t, bySlug["young-dirty-bastard"][0].Slug, bySlug["ol-dirty-bastard"][0].Slug)
+}
+
+func sampleArtist(slug string) catalog.Artist {
+	return catalog.Artist{Slug: slug, Name: slug, Category: catalog.CategoryCore, Aliases: []string{}}
+}
+
+func seed(t *testing.T, artists ...catalog.Artist) (string, yamlcatalog.Store) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "artists.yaml")
+	store := yamlcatalog.NewStore()
+	require.NoError(t, store.Save(context.Background(), path, catalog.EditorialCatalog{Version: 1, Artists: artists}))
+	return path, store
+}
+
+func TestStoreRoundTripsArchived(t *testing.T) {
+	archived := sampleArtist("rza")
+	archived.Archived = true
+	path, store := seed(t, archived)
+
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), "archived: true")
+
+	loaded, err := store.Load(context.Background(), path)
+	require.NoError(t, err)
+	require.True(t, loaded.Artists[0].Archived)
+}
+
+func TestStoreUpdateAppliesChangeToFreshCatalogAndKeepsBackup(t *testing.T) {
+	path, store := seed(t, sampleArtist("rza"))
+	before, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	err = store.Update(context.Background(), path, func(c catalog.EditorialCatalog) (catalog.EditorialCatalog, error) {
+		c.Artists = append(c.Artists, sampleArtist("gza"))
+		return c, nil
+	})
+	require.NoError(t, err)
+
+	loaded, err := store.Load(context.Background(), path)
+	require.NoError(t, err)
+	require.Len(t, loaded.Artists, 2)
+	backup, err := os.ReadFile(path + ".bak")
+	require.NoError(t, err)
+	require.Equal(t, before, backup)
+}
+
+func TestStoreUpdateLeavesFileUntouchedWhenCallbackFails(t *testing.T) {
+	path, store := seed(t, sampleArtist("rza"))
+	before, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	boom := errors.New("rejected")
+	err = store.Update(context.Background(), path, func(c catalog.EditorialCatalog) (catalog.EditorialCatalog, error) {
+		c.Artists = nil
+		return c, boom
+	})
+	require.ErrorIs(t, err, boom)
+
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, before, after)
+}
+
+func TestStoreConcurrentUpdatesNeverLoseWrites(t *testing.T) {
+	path, store := seed(t, sampleArtist("rza"))
+
+	const writers = 12
+	var wg sync.WaitGroup
+	for i := 0; i < writers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			err := store.Update(context.Background(), path, func(c catalog.EditorialCatalog) (catalog.EditorialCatalog, error) {
+				c.Artists = append(c.Artists, sampleArtist(fmt.Sprintf("artist-%02d", i)))
+				return c, nil
+			})
+			require.NoError(t, err)
+		}(i)
+	}
+	wg.Wait()
+
+	loaded, err := store.Load(context.Background(), path)
+	require.NoError(t, err)
+	require.Len(t, loaded.Artists, writers+1)
+}
+
+func TestStoreFailedWriteNeverTouchesExistingFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("directory permissions are not enforced for root")
+	}
+	path, store := seed(t, sampleArtist("rza"))
+	before, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	dir := filepath.Dir(path)
+	require.NoError(t, os.Chmod(dir, 0o500))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	err = store.Update(context.Background(), path, func(c catalog.EditorialCatalog) (catalog.EditorialCatalog, error) {
+		c.Artists = append(c.Artists, sampleArtist("gza"))
+		return c, nil
+	})
+	require.Error(t, err)
+
+	require.NoError(t, os.Chmod(dir, 0o755))
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, before, after)
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	for _, e := range entries {
+		require.NotContains(t, e.Name(), ".artists-", "temporary file left behind")
+	}
 }

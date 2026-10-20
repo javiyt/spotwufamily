@@ -18,6 +18,18 @@ For unit-test style runs without Hugo or Git checks:
 make audit-fast
 ```
 
+## Editing The Catalog In The Admin
+
+`make admin` serves a local editor for artists, groups and relationships (see [Local admin](admin.md)). After editing:
+
+```bash
+make artists-validate     # the admin already validated, this is the CLI gate
+make artists-resolve-report   # if a slug changed, then `artists reconcile` (see below)
+make export site-build    # regenerate the static data from the saved YAML
+```
+
+Every save keeps the previous file as `data/artists.yaml.bak` and serialises writers through `data/artists.yaml.lock` (both git-ignored). To undo the last save: `cp data/artists.yaml.bak data/artists.yaml`. The catalog Release backups are separate and never overwritten by the admin.
+
 ## Bootstrap From YAML
 
 Initialize the local project state from `data/artists.yaml`:

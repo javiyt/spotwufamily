@@ -45,3 +45,4 @@ data/catalog.snapshot.sql.gz
 __pycache__/
 
 *.yaml.bak
+*.yaml.lock

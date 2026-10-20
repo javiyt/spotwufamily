@@ -1,5 +1,6 @@
 // Package httpadmin is the inbound HTTP adapter of the local admin UI. It is
-// read-only today and keeps all business rules in internal/application/admin.
+// keeps all business rules in internal/application/admin. Editing routes exist
+// only when the service also implements Editor.
 package httpadmin
 
 import (
@@ -44,6 +45,8 @@ type Server struct {
 	templates map[string]*template.Template
 	static    http.Handler
 	routes    map[string]route
+	editor    Editor
+	dynamic   *http.ServeMux
 	http      *http.Server
 
 	mu    sync.RWMutex
@@ -106,6 +109,10 @@ func New(svc Service, opts Options) (*Server, error) {
 		"/api/v1/review":  {methods: []string{http.MethodGet}, handler: s.apiReview},
 		"/auth":           {methods: []string{http.MethodGet}, handler: s.handleAuth, public: true},
 		"/login":          {methods: []string{http.MethodGet, http.MethodPost}, handler: s.handleLogin, public: true},
+	}
+	if e, ok := svc.(Editor); ok {
+		s.editor = e
+		s.registerEditor()
 	}
 	s.http = &http.Server{
 		Handler:           s.Handler(),
@@ -214,6 +221,12 @@ func (s *Server) Handler() http.Handler {
 		if !known || !rt.public {
 			if !s.sessions.valid(s.sessionID(r)) {
 				s.fail(w, r, http.StatusUnauthorized, "unauthorized", "authentication required")
+				return
+			}
+		}
+		if !known && s.dynamic != nil {
+			if _, pattern := s.dynamic.Handler(r); pattern != "" {
+				s.dynamic.ServeHTTP(w, r)
 				return
 			}
 		}

@@ -47,6 +47,7 @@ type artistRecord struct {
 	Roles           []catalog.Category `yaml:"roles,omitempty"`
 	Aliases         []string           `yaml:"aliases"`
 	Enabled         bool               `yaml:"enabled"`
+	Archived        bool               `yaml:"archived,omitempty"`
 	EditorialOrder  int                `yaml:"editorial_order,omitempty"`
 	Notes           string             `yaml:"notes"`
 	ExternalURL     string             `yaml:"external_url,omitempty"`
@@ -114,6 +115,44 @@ func (s Store) Save(ctx context.Context, path string, c catalog.EditorialCatalog
 	default:
 	}
 
+	unlock, err := lockCatalog(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	return s.saveLocked(path, c)
+}
+
+// Update runs a read-modify-write cycle while holding the catalog lock, so
+// concurrent editors (browser tabs, the CLI) are serialised and none of them
+// can overwrite a change it never saw. mutate receives the freshly loaded
+// catalog; any error it returns aborts without touching the file.
+func (s Store) Update(ctx context.Context, path string, mutate func(catalog.EditorialCatalog) (catalog.EditorialCatalog, error)) error {
+	unlock, err := lockCatalog(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	current, err := s.Load(ctx, path)
+	if err != nil {
+		return err
+	}
+	next, err := mutate(current)
+	if err != nil {
+		return err
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	return s.saveLocked(path, next)
+}
+
+func (s Store) saveLocked(path string, c catalog.EditorialCatalog) error {
 	doc := document{Version: c.Version, ProfileSyncPolicy: c.ProfileSyncPolicy, Artists: make([]artistRecord, 0, len(c.Artists))}
 	for _, artist := range c.Artists {
 		doc.Artists = append(doc.Artists, fromDomain(artist))
@@ -147,33 +186,57 @@ func (s Store) Save(ctx context.Context, path string, c catalog.EditorialCatalog
 		return fmt.Errorf("create parent directory for %s: %w", path, err)
 	}
 
-	if err == nil {
-		if err := writeBackup(path+".bak", current); err != nil {
-			return err
-		}
-	}
-
+	// The new content is staged in full before the backup is refreshed, so a
+	// failure at any step leaves both the catalog and the last backup intact.
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".artists-*.yaml")
 	if err != nil {
 		return fmt.Errorf("create temporary catalog file: %w", err)
 	}
 	tmpName := tmp.Name()
-
-	if _, err := tmp.Write(buf.Bytes()); err != nil {
+	fail := func(step string, err error) error {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)
-		return fmt.Errorf("write temporary catalog file: %w", err)
+		return fmt.Errorf("%s temporary catalog file: %w", step, err)
+	}
+
+	if _, err := tmp.Write(buf.Bytes()); err != nil {
+		return fail("write", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		return fail("sync", err)
 	}
 	if err := tmp.Close(); err != nil {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("close temporary catalog file: %w", err)
 	}
+	if info, statErr := os.Stat(path); statErr == nil {
+		_ = os.Chmod(tmpName, info.Mode().Perm())
+	} else {
+		_ = os.Chmod(tmpName, 0o644)
+	}
+
+	if current != nil {
+		if err := writeBackup(path+".bak", current); err != nil {
+			_ = os.Remove(tmpName)
+			return err
+		}
+	}
 	if err := os.Rename(tmpName, path); err != nil {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("replace %s: %w", path, err)
 	}
+	syncDir(filepath.Dir(path))
 
 	return nil
+}
+
+// syncDir makes the rename durable. It is best effort: some filesystems do
+// not support syncing directories.
+func syncDir(dir string) {
+	if d, err := os.Open(dir); err == nil {
+		_ = d.Sync()
+		_ = d.Close()
+	}
 }
 
 func (r artistRecord) toDomain() catalog.Artist {
@@ -189,6 +252,7 @@ func (r artistRecord) toDomain() catalog.Artist {
 		Roles:           r.Roles,
 		Aliases:         r.Aliases,
 		Enabled:         r.Enabled,
+		Archived:        r.Archived,
 		EditorialOrder:  r.EditorialOrder,
 		Notes:           r.Notes,
 		ExternalURL:     r.ExternalURL,
@@ -220,6 +284,7 @@ func fromDomain(a catalog.Artist) artistRecord {
 		Roles:           a.Roles,
 		Aliases:         a.Aliases,
 		Enabled:         a.Enabled,
+		Archived:        a.Archived,
 		EditorialOrder:  a.EditorialOrder,
 		Notes:           a.Notes,
 		ExternalURL:     a.ExternalURL,

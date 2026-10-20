@@ -1,6 +1,6 @@
 # Local admin
 
-A small web UI for browsing the editorial catalog and its Spotify links. It is an inbound adapter of the hexagonal application: it only calls use cases in `internal/application/admin` and holds no business rules. This first version is **read-only**; edits still go through the CLI or `data/artists.yaml`.
+A small web UI for browsing the editorial catalog and its Spotify links. It is an inbound adapter of the hexagonal application: it only calls use cases in `internal/application/admin` and holds no business rules. It browses **and edits** the catalog (artists, groups and their relationships) without hand-editing YAML, with validation, previews, conflict detection and atomic writes.
 
 It is never part of the Hugo/Pages build: nothing in `site/` references it, and the static site stays read-only.
 
@@ -21,16 +21,38 @@ The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?to
 | Page | JSON | Content |
 | --- | --- | --- |
 | `/` | `/api/v1/status` | counts, verified/pending/unresolved IDs, groups/people, review queue, pending reconciliation, last sync, credential presence |
-| `/artists` | `/api/v1/artists` | searchable, paginated artist list |
+| `/artists` | `/api/v1/artists` | searchable, filterable, sortable, paginated artist list with catalog totals |
+| `/artists/new`, `/artists/{slug}` | | create / edit an individual |
 | `/groups` | `/api/v1/groups` | groups with verified/proposed member counts |
+| `/groups/new`, `/groups/{slug}` | | create / edit a group and its members |
 | `/review` | `/api/v1/review` | unverified Spotify profiles and proposed relationships |
 | `/operations` | | database/credential status and the CLI commands to run |
 
-List endpoints take `q`, `page` and `page_size` (default 25, max 100; out-of-range values are clamped). Errors are always `{"error":{"code":"...","message":"..."}}` for `/api/*` and for clients sending `Accept: application/json`, and an HTML error page otherwise. Messages never include paths, stack traces or Go error text; details are logged server-side.
+List endpoints take `q`, `page` and `page_size` (default 25, max 100; out-of-range values are clamped). `/artists` and `/api/v1/artists` also take `category`, `enabled` (`yes`/`no`), `ids` (`verified`/`pending`/`unresolved`), `rel` (a relationship type, matches both endpoints), `archived=1`, `sort` (`name`, `slug`, `category`, `ids`, `order`) and `dir=desc`; unknown values are ignored. The API response adds `facets` with whole-catalog totals. Errors are always `{"error":{"code":"...","message":"..."}}` for `/api/*` and for clients sending `Accept: application/json`, and an HTML error page otherwise. Messages never include paths, stack traces or Go error text; details are logged server-side.
 
 Definitions: *verified* = a linked Spotify ID has a verified profile review; *pending* = IDs linked but none verified; *unresolved* = no ID linked. A *group* is an artist tagged `affiliate_group` or the target of a non-rejected `member_of` relationship. Identical names and unverified memberships are never treated as identity evidence.
 
 *Pending reconciliation* counts active album/track links classified `orphan` by the same rule as `artists reconcile` (read-only dry run).
+
+## Editing
+
+One backend record serves two pages: `/artists/{slug}` for individuals and `/groups/{slug}` for groups (a slug is redirected to the page that fits it). Spotify identity is **not** part of the form.
+
+- **Editable fields**: display name, public name, slug, primary category, roles, aliases (order kept), enabled, editorial order, editorial notes and an HTTPS reference URL.
+- **Spotify profiles** are shown in their own section as reviewed associations (status, reviewer, evidence). Posted Spotify IDs are ignored; linking, verifying or rejecting a profile goes through the profile-review workflow (`/review`, `make artists-review-interactive`).
+- **Preview**: *Preview changes* runs the same use case as *Save* in dry-run mode and shows a field-level before/after diff. Nothing is written until *Save*.
+- **Validation**: the whole catalog is validated before any write. A change is rejected when it *introduces* catalog issues (reported next to the offending field); unrelated legacy problems do not block an edit.
+- **Concurrency**: every record has a revision (a hash of everything stored for it, including reviewed profiles) sent with the form (`revision`, also the `ETag` of the page). If the record changed since you opened it, in another tab, the CLI or by hand, the save is refused with `409` and the fields the other edit changed are listed; your submission is shown back so nothing is lost. Edits to different records never conflict, and a save always applies on top of the freshly loaded file, so unrelated changes made elsewhere are kept.
+- **Slug changes** need an explicit confirmation that lists the relationships that will be rewritten. Run `artists reconcile` afterwards so synced Spotify rows follow the new slug.
+- **Archive instead of delete**: archiving disables the entry and hides it from lists (`archived: true` in YAML, filter *Show archived*); relationships and synced albums/tracks are untouched, and restoring is one click. **Delete** removes only the catalog entry, is blocked while any relationship references it (the references are listed), and needs the slug typed to confirm. The admin never deletes database rows.
+- **Relationships** are edited inline on both pages through the same use cases as `artists relationship ...`: a verified relationship needs a reviewer, a confidence and at least one *independent* source (credits and name matches never count), a membership target must be a group, and cycles are rejected. New edges default to *proposed*; periods use `YYYY[-MM[-DD]]` plus an optional era. Existing evidence is kept; each edit can add one more source.
+- **Feedback**: successful saves show a toast built from the server's confirmation (JSON when JavaScript submits the form, a one-shot flash otherwise), failures show an alert summary linking to the fields, and the page disables saving and says so when the browser is offline. Without JavaScript every form still works. Keyboard: `/` focuses search, `Ctrl/⌘+Enter` saves, `Esc` closes a details panel or toast, then cancels.
+
+### How writes reach the file
+
+`Store.Update` (YAML adapter) takes an exclusive lock (`<catalog>.lock`, `flock`, so the CLI and several admin tabs are serialised), loads the current file, applies the change, writes a temp file in the same directory, `fsync`s it, copies the previous file to `<catalog>.bak` and renames the temp file over the catalog (then syncs the directory). Any failure before the rename leaves the catalog untouched and removes the temp file; the response is a generic error and the details are logged server-side. Output ordering is deterministic (struct field order, relationships sorted), and the leading header comments are re-emitted; other free-form comments are not preserved because the file is re-serialised from the domain model.
+
+Recovery: `cp data/artists.yaml.bak data/artists.yaml` restores the last version before the previous save. The Release backups of the catalog (`make catalog-release-prepare`) are never touched.
 
 ## Offline mode
 
@@ -41,7 +63,7 @@ The YAML catalog is read on every request, so edits show up on reload. If the da
 - Binds `127.0.0.1` by default. A non-loopback `--host` (including `0.0.0.0` or an empty host) is refused unless `--allow-remote` is passed **and** `SPOTWUFAMILY_ADMIN_TOKEN` holds a token of at least 32 characters. There is no TLS: put remote access behind an SSH tunnel or a TLS proxy.
 - `Host` must match the listen address (loopback aliases `localhost`/`127.0.0.1`/`[::1]` on the same port), which defeats DNS rebinding.
 - Every request except static assets needs a session. Sessions live in memory only, expire after 8 h and are lost on restart; nothing is written to the repo. Token comparison is constant-time and failed attempts are rate limited (10 per minute, then 429).
-- Every state-changing request needs a same-origin `Origin` (or no cross-site `Sec-Fetch-Site`) **and** a session-bound HMAC CSRF token (`csrf_token` form field). Today the only mutation is `POST /logout`; future edits must reuse the same path.
+- Every state-changing request needs a same-origin `Origin` (or no cross-site `Sec-Fetch-Site`) **and** a session-bound HMAC CSRF token (`csrf_token` form field). Mutations are `POST /logout` and the editor's `POST` routes; all go through the same checks.
 - Headers on every response: strict CSP (no inline script/style, `frame-ancestors 'none'`), `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: no-referrer`, COOP/CORP, `Cache-Control: no-store`.
 - Request bodies are capped at 64 KiB, headers at 16 KiB, with read/write/idle timeouts.
 - Templates are `html/template` with contextual escaping, so artist names and notes cannot inject script.
@@ -49,7 +71,7 @@ The YAML catalog is read on every request, so edits show up on reload. If the da
 
 ## Layout
 
-- `internal/application/admin`: read-only use cases, ports (`OperationsReader`) and pagination.
+- `internal/application/admin`: queries, the editing use cases (`ApplyChange`, `ApplyRelationship`), ports (`OperationsReader`, `CatalogUpdater`) and pagination.
 - `internal/adapters/inbound/httpadmin`: server, security middleware, handlers, embedded templates and CSS/JS (no Node build).
 - `internal/bootstrap`: shared composition root wiring YAML + SQLite into the admin service.
 - `internal/adapters/inbound/cli/admin.go`: the `admin serve` command.

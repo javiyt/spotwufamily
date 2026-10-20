@@ -1,0 +1,15 @@
+{{define "content"}}{{with .Data}}
+<section aria-labelledby="conflict-h">
+<h2 id="conflict-h">Someone else changed this record</h2>
+<p class="notice" role="alert">{{.Message}} Nothing was saved.</p>
+{{if .Changed}}<h3>{{if .BaseKnown}}Changed since you opened it{{else}}Differences with the stored record{{end}}</h3>
+<div class="table-wrap"><table class="diff"><caption class="sr">Fields changed by the other edit</caption>
+<thead><tr><th scope="col">Field</th><th scope="col">{{if .BaseKnown}}You saw{{else}}Yours{{end}}</th><th scope="col">Stored now</th></tr></thead><tbody>
+{{range .Changed}}<tr><th scope="row">{{.Field}}</th><td class="before">{{if .Before}}{{.Before}}{{else}}<span class="muted">empty</span>{{end}}</td><td class="after">{{if .After}}{{.After}}{{else}}<span class="muted">empty</span>{{end}}</td></tr>{{end}}
+</tbody></table></div>{{end}}
+{{if .Mine}}<h3>Your submission</h3>
+<div class="table-wrap"><table><caption class="sr">Your rejected values</caption><thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead><tbody>
+{{range .Mine}}<tr><th scope="row">{{.Field}}</th><td>{{.Mine}}</td></tr>{{end}}</tbody></table></div>{{end}}
+<p><a class="button" href="{{.Back}}">Reload the latest version</a></p>
+</section>
+{{end}}{{end}}

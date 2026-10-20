@@ -28,12 +28,13 @@ const contentSecurityPolicy = "default-src 'none'; script-src 'self'; style-src 
 type sessions struct {
 	mu      sync.Mutex
 	items   map[string]time.Time
+	flashes map[string]string
 	csrfKey []byte
 	now     func() time.Time
 }
 
 func newSessions() *sessions {
-	return &sessions{items: map[string]time.Time{}, csrfKey: randomBytes(32), now: time.Now}
+	return &sessions{items: map[string]time.Time{}, flashes: map[string]string{}, csrfKey: randomBytes(32), now: time.Now}
 }
 
 func randomBytes(n int) []byte {
@@ -75,9 +76,28 @@ func (s *sessions) valid(id string) bool {
 	return true
 }
 
+// setFlash stores a one-shot confirmation for the next page of this session.
+func (s *sessions) setFlash(id, message string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.items[id]; ok {
+		s.flashes[id] = message
+	}
+}
+
+// takeFlash returns and clears the pending confirmation.
+func (s *sessions) takeFlash(id string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	message := s.flashes[id]
+	delete(s.flashes, id)
+	return message
+}
+
 func (s *sessions) destroy(id string) {
 	s.mu.Lock()
 	delete(s.items, id)
+	delete(s.flashes, id)
 	s.mu.Unlock()
 }
 

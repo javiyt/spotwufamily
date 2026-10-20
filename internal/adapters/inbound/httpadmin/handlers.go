@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/admin"
+	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
 const maxSearchLength = 100
@@ -25,6 +26,7 @@ var navItems = []struct{ Path, Label string }{
 }
 
 type view struct {
+	Flash  string
 	Title  string
 	Path   string
 	Nav    []struct{ Path, Label string }
@@ -46,12 +48,15 @@ type pager struct {
 	PageSize int
 }
 
-func newPager(path string, page, pages, total, size int, search string) pager {
+// newPager builds pagination links that keep every active filter and sort.
+func newPager(path string, query url.Values, page, pages, total, size int, search string) pager {
 	p := pager{Path: path, Search: search, Page: page, Pages: pages, Total: total, PageSize: size, HasPrev: page > 1, HasNext: page < pages}
 	link := func(n int) string {
 		v := url.Values{}
-		if search != "" {
-			v.Set("q", search)
+		for key, values := range query {
+			if key != "page" {
+				v[key] = append([]string(nil), values...)
+			}
 		}
 		v.Set("page", strconv.Itoa(n))
 		return path + "?" + v.Encode()
@@ -61,14 +66,41 @@ func newPager(path string, page, pages, total, size int, search string) pager {
 }
 
 func listQuery(r *http.Request) admin.ListQuery {
-	q := r.URL.Query()
-	search := strings.TrimSpace(q.Get("q"))
+	v := r.URL.Query()
+	search := strings.TrimSpace(v.Get("q"))
 	if len(search) > maxSearchLength {
 		search = search[:maxSearchLength]
 	}
-	page, _ := strconv.Atoi(q.Get("page"))
-	size, _ := strconv.Atoi(q.Get("page_size"))
-	return admin.ListQuery{Search: search, Page: page, PageSize: size}
+	page, _ := strconv.Atoi(v.Get("page"))
+	size, _ := strconv.Atoi(v.Get("page_size"))
+	q := admin.ListQuery{Search: search, Page: page, PageSize: size}
+
+	// Unknown filter values are ignored rather than failing the page.
+	if c := catalog.Category(v.Get("category")); catalog.IsKnownCategory(c) {
+		q.Category = c
+	}
+	switch v.Get("enabled") {
+	case "yes", "true", "1":
+		t := true
+		q.Enabled = &t
+	case "no", "false", "0":
+		f := false
+		q.Enabled = &f
+	}
+	switch st := admin.IDState(v.Get("ids")); st {
+	case admin.IDVerified, admin.IDPending, admin.IDUnresolved:
+		q.IDState = st
+	}
+	if t := catalog.RelationshipType(v.Get("rel")); catalog.IsKnownRelationshipType(t) {
+		q.Relation = t
+	}
+	q.IncludeArchived = v.Get("archived") == "1" || v.Get("archived") == "true"
+	switch k := admin.SortKey(v.Get("sort")); k {
+	case admin.SortName, admin.SortSlug, admin.SortCategory, admin.SortOrder, admin.SortIDState:
+		q.Sort = k
+	}
+	q.Desc = v.Get("dir") == "desc"
+	return q
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -86,9 +118,7 @@ func (s *Server) handleArtists(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	s.render(w, r, "artists", "Artists", map[string]any{
-		"Page": page, "Pager": newPager("/artists", page.Page, page.Pages, page.Total, page.PageSize, page.Search),
-	})
+	s.render(w, r, "artists", "Artists", s.artistsView(r, page))
 }
 
 func (s *Server) handleGroups(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +128,8 @@ func (s *Server) handleGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "groups", "Groups", map[string]any{
-		"Page": page, "Pager": newPager("/groups", page.Page, page.Pages, page.Total, page.PageSize, page.Search),
+		"Page": page, "Pager": newPager("/groups", r.URL.Query(), page.Page, page.Pages, page.Total, page.PageSize, page.Search),
+		"Editable": s.canEdit(),
 	})
 }
 
@@ -109,7 +140,7 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "review", "Review queue", map[string]any{
-		"Page": page, "Pager": newPager("/review", page.Page, page.Pages, page.Total, page.PageSize, page.Search),
+		"Page": page, "Pager": newPager("/review", r.URL.Query(), page.Page, page.Pages, page.Total, page.PageSize, page.Search),
 	})
 }
 
@@ -254,10 +285,17 @@ func (s *Server) apiArtists(w http.ResponseWriter, r *http.Request) {
 		IDState  string `json:"id_state"`
 		IDs      int    `json:"spotify_id_count"`
 		Group    bool   `json:"group"`
+		Archived bool   `json:"archived"`
 	}
-	writeJSON(w, http.StatusOK, toAPIPage(p, func(a admin.ArtistRow) row {
-		return row{a.Slug, a.Name, string(a.Category), a.Enabled, string(a.IDState), a.IDs, a.Group}
-	}))
+	writeJSON(w, http.StatusOK, struct {
+		apiPage[row]
+		Facets map[string]int `json:"facets"`
+	}{toAPIPage(p, func(a admin.ArtistRow) row {
+		return row{a.Slug, a.Name, string(a.Category), a.Enabled, string(a.IDState), a.IDs, a.Group, a.Archived}
+	}), map[string]int{
+		"all": p.Facets.All, "enabled": p.Facets.Enabled, "disabled": p.Facets.Disabled, "archived": p.Facets.Archived,
+		"verified": p.Facets.Verified, "pending": p.Facets.Pending, "unresolved": p.Facets.Unresolved,
+	}})
 }
 
 func (s *Server) apiGroups(w http.ResponseWriter, r *http.Request) {
@@ -304,10 +342,23 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 // --- rendering and errors ---
 
+var templateFuncs = template.FuncMap{
+	// relView hands a relationship row its page-level context.
+	"relView": func(r relRow, csrf string, editable bool) relRowView {
+		return relRowView{relRow: r, CSRF: csrf, Editable: editable}
+	},
+}
+
+type relRowView struct {
+	relRow
+	CSRF     string
+	Editable bool
+}
+
 func parseTemplates() (map[string]*template.Template, error) {
 	out := map[string]*template.Template{}
-	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error"} {
-		t, err := template.ParseFS(templateFS, "templates/layout.gohtml", "templates/"+name+".gohtml")
+	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict"} {
+		t, err := template.New("").Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.gohtml", "templates/"+name+".gohtml")
 		if err != nil {
 			return nil, err
 		}
@@ -317,9 +368,14 @@ func parseTemplates() (map[string]*template.Template, error) {
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title string, data any) {
+	s.renderStatus(w, r, http.StatusOK, name, title, data)
+}
+
+func (s *Server) renderStatus(w http.ResponseWriter, r *http.Request, status int, name, title string, data any) {
 	v := view{Title: title, Path: r.URL.Path, Nav: navItems, Data: data}
 	if id := s.sessionID(r); s.sessions.valid(id) {
 		v.Authed, v.CSRF = true, s.sessions.csrf(id)
+		v.Flash = s.sessions.takeFlash(id)
 	}
 	var buf bytes.Buffer
 	if err := s.templates[name].ExecuteTemplate(&buf, "layout", v); err != nil {
@@ -328,6 +384,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title stri
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 	_, _ = w.Write(buf.Bytes())
 }
 

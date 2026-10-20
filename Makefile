@@ -53,7 +53,7 @@ help:
 	@printf '  make sync-artist ARTIST=slug Sync one enabled artist from Spotify\n'
 	@printf '  make sync-all                 Sync every enabled artist from Spotify\n'
 	@printf '  make refresh-all-from-spotify Refresh metadata, sync all artists, export/build/audit\n'
-	@printf '  make admin                   Start the local read-only admin UI (loopback only)\n'
+	@printf '  make admin                   Start the local admin UI: browse and edit the catalog (loopback only)\n'
 	@printf '  make admin-smoke             Smoke-test the admin server (loopback, auth, Host check)\n'
 	@printf '  make ci                      Local CI gate\n'
 	@printf '\nVariables: CATALOG=%s DB=%s SNAPSHOT=%s ARTIST=%s MARKET=%s REPORT=%s ALBUM_REPORT=%s DISCOVERY_REPORT=%s CONTENT_DIR=%s\n' "$(CATALOG)" "$(DB)" "$(SNAPSHOT)" "$(ARTIST)" "$(MARKET)" "$(REPORT)" "$(ALBUM_REPORT)" "$(DISCOVERY_REPORT)" "$(CONTENT_DIR)"

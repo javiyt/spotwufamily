@@ -1,9 +1,40 @@
-{{define "content"}}{{with .Data}}{{template "search" .Pager}}
+{{define "content"}}{{with .Data}}
+<p class="badges" aria-label="Catalog totals">
+<span class="badge">{{.Page.Facets.All}} artists</span>
+<span class="badge">{{.Page.Facets.Enabled}} enabled</span>
+<span class="badge ok">{{.Page.Facets.Verified}} verified</span>
+<span class="badge">{{.Page.Facets.Pending}} pending</span>
+<span class="badge bad">{{.Page.Facets.Unresolved}} unresolved</span>
+<span class="badge">{{.Page.Facets.Archived}} archived</span>
+</p>
+<form method="get" action="/artists" class="filters" role="search" aria-label="Search and filter artists">
+<div class="field"><label for="q">Search name, alias or slug</label>
+<input id="q" type="search" name="q" value="{{.Filters.Search}}" maxlength="100" autocomplete="off" data-hotkey="/"></div>
+<div class="field"><label for="f-category">Category</label>
+<select id="f-category" name="category">{{$f := .Filters}}{{range .Options.Categories}}<option value="{{.Value}}"{{if eq .Value $f.Category}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="f-enabled">Enabled</label>
+<select id="f-enabled" name="enabled">{{range .Options.Enabled}}<option value="{{.Value}}"{{if eq .Value $f.Enabled}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="f-ids">Spotify</label>
+<select id="f-ids" name="ids">{{range .Options.IDs}}<option value="{{.Value}}"{{if eq .Value $f.IDs}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="f-rel">Relationship</label>
+<select id="f-rel" name="rel">{{range .Options.Relations}}<option value="{{.Value}}"{{if eq .Value $f.Rel}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field inline"><input id="f-archived" type="checkbox" name="archived" value="1"{{if .Filters.Archived}} checked{{end}}><label for="f-archived">Show archived</label></div>
+{{if .Filters.Sort}}<input type="hidden" name="sort" value="{{.Filters.Sort}}">{{end}}{{if .Filters.Dir}}<input type="hidden" name="dir" value="{{.Filters.Dir}}">{{end}}
+<div class="actions"><button type="submit">Apply</button> <a href="{{.Reset}}">Reset</a>{{if .Editable}} <a class="button" href="/artists/new">New artist</a> <a class="button" href="/groups/new">New group</a>{{end}}</div>
+</form>
+<div class="table-wrap">
 <table>
 <caption class="sr">Artists</caption>
-<thead><tr><th scope="col">Name</th><th scope="col">Slug</th><th scope="col">Category</th><th scope="col">Spotify IDs</th><th scope="col">Enabled</th></tr></thead>
+<thead><tr>
+<th scope="col" {{with .Sorts.name.Aria}}aria-sort="{{.}}"{{end}}><a href="{{.Sorts.name.URL}}">Name</a></th>
+<th scope="col" {{with .Sorts.slug.Aria}}aria-sort="{{.}}"{{end}}><a href="{{.Sorts.slug.URL}}">Slug</a></th>
+<th scope="col" {{with .Sorts.category.Aria}}aria-sort="{{.}}"{{end}}><a href="{{.Sorts.category.URL}}">Category</a></th>
+<th scope="col" {{with .Sorts.ids.Aria}}aria-sort="{{.}}"{{end}}><a href="{{.Sorts.ids.URL}}">Spotify IDs</a></th>
+<th scope="col">Enabled</th>
+<th scope="col" {{with .Sorts.order.Aria}}aria-sort="{{.}}"{{end}}><a href="{{.Sorts.order.URL}}">Order</a></th>
+</tr></thead>
 <tbody>
-{{range .Page.Items}}<tr><th scope="row">{{.Name}}{{if .Group}} <span class="tag">group</span>{{end}}</th><td><code>{{.Slug}}</code></td><td>{{.Category}}</td><td><span class="state {{.IDState}}">{{.IDState}}</span> ({{.IDs}})</td><td>{{if .Enabled}}yes{{else}}no{{end}}</td></tr>
-{{else}}<tr><td colspan="5">No artists match.</td></tr>
-{{end}}</tbody></table>
+{{range .Page.Items}}<tr><th scope="row">{{if $.Data.Editable}}<a href="/{{if .Group}}groups{{else}}artists{{end}}/{{.Slug}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}{{if .Group}} <span class="tag">group</span>{{end}}{{if .Archived}} <span class="tag">archived</span>{{end}}</th><td><code>{{.Slug}}</code></td><td>{{.Category}}</td><td><span class="state {{.IDState}}">{{.IDState}}</span> ({{.IDs}})</td><td>{{if .Enabled}}yes{{else}}no{{end}}</td><td>{{if .Order}}{{.Order}}{{else}}—{{end}}</td></tr>
+{{else}}<tr><td colspan="6">No artists match. <a href="{{$.Data.Reset}}">Clear the filters</a>.</td></tr>
+{{end}}</tbody></table></div>
 {{template "pager" .Pager}}{{end}}{{end}}
