@@ -145,7 +145,8 @@ func validationErr(err error) error {
 // safeErr returns maintenance sentinels unchanged (so callers can match them
 // with errors.Is; Safe maps them) and converts everything else with Safe.
 func safeErr(err error) error {
-	for _, sentinel := range []error{ErrStalePreview, ErrConfirmationRequired, ErrUnavailable, ErrCredentialsMissing} {
+	for _, sentinel := range []error{ErrStalePreview, ErrConfirmationRequired, ErrUnavailable, ErrCredentialsMissing,
+		ErrGhNotAuthenticated, ErrReleasePrerequisite, ErrReleasePackageNotClean, ErrNothingPrepared} {
 		if errors.Is(err, sentinel) {
 			return sentinel
 		}

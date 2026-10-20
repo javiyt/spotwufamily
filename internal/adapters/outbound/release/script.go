@@ -99,7 +99,7 @@ var _ maintenance.Releaser = (*Script)(nil)
 
 // New validates the configuration. It runs nothing.
 func New(cfg Config) (*Script, error) {
-	if !validRepo(cfg.Repo) {
+	if !ValidRepo(cfg.Repo) {
 		return nil, ErrInvalidRepo
 	}
 	if !filepath.IsAbs(cfg.RepoRoot) {
@@ -117,7 +117,8 @@ func New(cfg Config) (*Script, error) {
 	}, nil
 }
 
-func validRepo(repo string) bool {
+// ValidRepo reports whether repo is a safe owner/name for --repo.
+func ValidRepo(repo string) bool {
 	if !repoPattern.MatchString(repo) {
 		return false
 	}

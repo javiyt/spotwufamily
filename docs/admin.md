@@ -90,6 +90,15 @@ Rules the workbench enforces: an ID linked to or tracked by another artist is ne
 
 The YAML catalog is read on every request, so edits show up on reload. If the database file is missing or unreadable the UI says so and keeps serving the catalog; the file is never created. The profile review workbench is the only part that can call Spotify or MusicBrainz, and only to answer a search or fill a card the cache cannot.
 
+## Catalog releases
+
+Publishing a catalog release is always manual and takes two maintenance actions; no other action, edit or save ever publishes.
+
+- `release-prepare` runs `catalog-release.py prepare` under the database lock and writes the package (backup, snapshot, manifest) to `build/catalog-release`. It uploads nothing and needs Go, a local database and an empty package directory; it does not need the GitHub CLI. Remove or publish an earlier package before preparing another.
+- `release-publish` runs `catalog-release.py publish`. It is listed only when `gh auth status` succeeds, needs the typed phrase `publish release`, and refuses unless the latest successful `release-prepare` in the admin job journal, and the verified package on disk, hold the current local content hash. It re-checks everything under the database lock. If the pinned `data/catalog.release.json` already has that content, nothing is uploaded and the manifest is not touched.
+
+Both run the script as `python3 scripts/automation/catalog-release.py <preflight|prepare|publish> --repo <owner/name>`, from the repository root, with only `PATH`, `HOME`, `LANG` and an already set `GH_TOKEN`/`GITHUB_TOKEN` in the environment. Script output is parsed, never shown; failures show a fixed message and log at most a short, redacted excerpt of stderr. The freshness view reads the pinned and local content hashes from the script's read-only `preflight`.
+
 ## Security model
 
 - Binds `127.0.0.1` by default. A non-loopback `--host` (including `0.0.0.0` or an empty host) is refused unless `--allow-remote` is passed **and** `SPOTWUFAMILY_ADMIN_TOKEN` holds a token of at least 32 characters. There is no TLS: put remote access behind an SSH tunnel or a TLS proxy.

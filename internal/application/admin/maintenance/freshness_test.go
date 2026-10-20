@@ -203,3 +203,34 @@ func TestUnreadableDatabaseIsNotOfflineOrFresh(t *testing.T) {
 		t.Fatalf("reasons %v", f.Reasons)
 	}
 }
+
+// sessionSource hands Freshness a per-call source and counts sessions.
+type sessionSource struct {
+	fakeFreshness
+	sessions *int
+}
+
+func (s sessionSource) Session() FreshnessSource {
+	*s.sessions++
+	f := s.fakeFreshness
+	f.pinned, f.pinnedOK, f.local, f.localOK = "p", true, "l", true
+	return f
+}
+
+func TestFreshnessReadsFromOneSessionPerCall(t *testing.T) {
+	n := 0
+	src := sessionSource{fakeFreshness: freshSource(), sessions: &n}
+	s := NewService(nil, nil, nil, time.Now, WithFreshness(src))
+	for i := 1; i <= 2; i++ {
+		f, err := s.Freshness(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !f.DiffersFromPublished {
+			t.Fatalf("digests must come from the session: %+v", f)
+		}
+		if n != i {
+			t.Fatalf("want one session per call, got %d after %d calls", n, i)
+		}
+	}
+}

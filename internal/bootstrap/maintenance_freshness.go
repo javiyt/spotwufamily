@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
@@ -25,15 +26,46 @@ type FreshnessConfig struct {
 	ExportOutputDir  string
 	ExportStaticDir  string
 	ExportContentDir string
+	// Releaser supplies the pinned and local content hashes through its
+	// read-only preflight. Nil leaves them unknown.
+	Releaser maintenance.Releaser
 }
 
 // NewFreshnessSource reads the real files on demand and never creates,
 // migrates or writes anything. Every method swallows errors into ok=false.
 func NewFreshnessSource(cfg FreshnessConfig) maintenance.FreshnessSource {
-	return freshnessSource{cfg}
+	return freshnessSource{cfg: cfg}
 }
 
-type freshnessSource struct{ cfg FreshnessConfig }
+type freshnessSource struct {
+	cfg FreshnessConfig
+	// release caches one preflight for a Freshness session; nil outside a
+	// session, where every call runs its own preflight.
+	release *releaseOnce
+}
+
+// releaseOnce runs the release preflight at most once.
+type releaseOnce struct {
+	once sync.Once
+	p    maintenance.Prereq
+	ok   bool
+}
+
+var _ maintenance.FreshnessSession = freshnessSource{}
+
+// Session returns a source that runs the release preflight at most once,
+// for the duration of one Freshness call.
+func (s freshnessSource) Session() maintenance.FreshnessSource {
+	return freshnessSource{cfg: s.cfg, release: &releaseOnce{}}
+}
+
+func (s freshnessSource) prereq() (maintenance.Prereq, bool) {
+	if s.release == nil {
+		return releaseHashes(s.cfg.Releaser)
+	}
+	s.release.once.Do(func() { s.release.p, s.release.ok = releaseHashes(s.cfg.Releaser) })
+	return s.release.p, s.release.ok
+}
 
 var _ maintenance.FreshnessSource = freshnessSource{}
 
@@ -144,8 +176,18 @@ func (s freshnessSource) ExportDigest() (string, bool) {
 	return db, true
 }
 
-// PinnedContentSHA and LocalContentSHA come from the release script's
-// preflight (data/catalog.release.json vs the local content hash), which is
-// delivered in Task 12/17. Until then they are unknown.
-func (freshnessSource) PinnedContentSHA() (string, bool) { return "", false }
-func (freshnessSource) LocalContentSHA() (string, bool)  { return "", false }
+// PinnedContentSHA is the content hash pinned in data/catalog.release.json,
+// from the release preflight; ok=false when the preflight is unavailable or
+// there is no valid pinned manifest.
+func (s freshnessSource) PinnedContentSHA() (string, bool) {
+	p, ok := s.prereq()
+	return p.PinnedContentSHA256, ok && p.PinnedContentSHA256 != ""
+}
+
+// LocalContentSHA is the local database content hash, from the release
+// preflight; ok=false when the preflight is unavailable or there is no
+// database.
+func (s freshnessSource) LocalContentSHA() (string, bool) {
+	p, ok := s.prereq()
+	return p.LocalContentSHA256, ok && p.LocalContentSHA256 != ""
+}

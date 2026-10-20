@@ -30,6 +30,14 @@ type FreshnessSource interface {
 	LocalContentSHA() (string, bool)
 }
 
+// FreshnessSession is optionally implemented by a FreshnessSource whose reads
+// are costly (the release preflight hashes the whole database). Freshness
+// calls Session once per call and reads every digest from the returned
+// source, so anything it caches lives for that one call only.
+type FreshnessSession interface {
+	Session() FreshnessSource
+}
+
 // DatabaseState is the presence of the database file.
 type DatabaseState int
 
@@ -82,6 +90,9 @@ func (s *Service) Freshness(ctx context.Context) (Freshness, error) {
 		return Freshness{}, err
 	}
 	src := s.freshness
+	if sess, ok := src.(FreshnessSession); ok {
+		src = sess.Session()
+	}
 	var f Freshness
 	add := func(r string) { f.Reasons = append(f.Reasons, r) }
 
