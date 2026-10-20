@@ -1,0 +1,402 @@
+{
+  "version": 1,
+  "checked_on": "2026-10-20",
+  "offline": false,
+  "summary": {
+    "total": 5,
+    "verified": 2,
+    "suspicious": 3,
+    "ambiguous": 0,
+    "unavailable": 0,
+    "insufficient_evidence": 0
+  },
+  "profiles": [
+    {
+      "artist_slug": "wu-tang-clan",
+      "artist_name": "Wu-Tang Clan",
+      "artist_enabled": true,
+      "spotify_id": "34EP7KEpOjXcM2TCat1ISk",
+      "uri": "spotify:artist:34EP7KEpOjXcM2TCat1ISk",
+      "role": "primary",
+      "review_status": "unreviewed",
+      "profile_name": "Wu-Tang Clan",
+      "genres": [
+        "east coast hip hop"
+      ],
+      "configured_genres": [
+        "east coast hip hop"
+      ],
+      "spotify_status": "ok",
+      "releases": [
+        {
+          "id": "a1",
+          "name": "Enter the Wu-Tang (36 Chambers)",
+          "date": "1993-11-09",
+          "url": "https://open.spotify.com/album/a1"
+        },
+        {
+          "id": "a2",
+          "name": "Wu-Tang Forever",
+          "date": "1997-06-03",
+          "url": "https://open.spotify.com/album/a2"
+        }
+      ],
+      "release_count": 2,
+      "track_samples": [],
+      "musicbrainz": {
+        "status": "ok",
+        "release_groups": 3,
+        "matched": 2,
+        "unmatched": 0,
+        "samples": [
+          "https://musicbrainz.org/release-group/m1",
+          "https://musicbrainz.org/release-group/m2",
+          "https://musicbrainz.org/release-group/m3"
+        ]
+      },
+      "evidence": [
+        {
+          "kind": "name_similarity",
+          "polarity": "positive",
+          "source": "spotify",
+          "detail": "profile name matches the configured name; a name alone is not identity evidence"
+        },
+        {
+          "kind": "musicbrainz_release",
+          "polarity": "positive",
+          "strong": true,
+          "source": "musicbrainz",
+          "url": "https://musicbrainz.org/release-group/m1",
+          "release_name": "Enter the Wu-Tang (36 Chambers)",
+          "release_year": "1993",
+          "detail": "2 of 2 Spotify albums match MusicBrainz release groups"
+        }
+      ],
+      "missing_evidence": [],
+      "contradictions": [],
+      "findings": [],
+      "classification": "verified",
+      "severity": "info",
+      "explanation": "Independent evidence supports this profile.",
+      "checked_on": "2026-10-20"
+    },
+    {
+      "artist_slug": "wu-tang-clan",
+      "artist_name": "Wu-Tang Clan",
+      "artist_enabled": true,
+      "spotify_id": "0H8YCcvC3MPLKnbDRasGiG",
+      "uri": "spotify:artist:0H8YCcvC3MPLKnbDRasGiG",
+      "role": "secondary",
+      "review_status": "unreviewed",
+      "profile_name": "Wu-Tang Clan",
+      "genres": [
+        "hip hop"
+      ],
+      "configured_genres": [
+        "east coast hip hop"
+      ],
+      "spotify_status": "ok",
+      "releases": [
+        {
+          "id": "a3",
+          "name": "The W",
+          "date": "2000-11-21",
+          "url": "https://open.spotify.com/album/a3"
+        }
+      ],
+      "release_count": 1,
+      "track_samples": [],
+      "musicbrainz": {
+        "status": "ok",
+        "release_groups": 3,
+        "matched": 1,
+        "unmatched": 0,
+        "samples": [
+          "https://musicbrainz.org/release-group/m1",
+          "https://musicbrainz.org/release-group/m2",
+          "https://musicbrainz.org/release-group/m3"
+        ]
+      },
+      "evidence": [
+        {
+          "kind": "name_similarity",
+          "polarity": "positive",
+          "source": "spotify",
+          "detail": "profile name matches the configured name; a name alone is not identity evidence"
+        },
+        {
+          "kind": "musicbrainz_release",
+          "polarity": "positive",
+          "strong": true,
+          "source": "musicbrainz",
+          "url": "https://musicbrainz.org/release-group/m3",
+          "release_name": "The W",
+          "release_year": "2000",
+          "detail": "1 of 1 Spotify albums match MusicBrainz release groups"
+        }
+      ],
+      "missing_evidence": [],
+      "contradictions": [],
+      "findings": [],
+      "classification": "verified",
+      "severity": "info",
+      "explanation": "Independent evidence supports this profile.",
+      "checked_on": "2026-10-20"
+    },
+    {
+      "artist_slug": "wu-tang-clan",
+      "artist_name": "Wu-Tang Clan",
+      "artist_enabled": true,
+      "spotify_id": "1aaaaaaaaaaaaaaaaaaaaa",
+      "uri": "spotify:artist:1aaaaaaaaaaaaaaaaaaaaa",
+      "role": "secondary",
+      "review_status": "unreviewed",
+      "profile_name": "Wu Tang Clan",
+      "genres": [
+        "lullaby"
+      ],
+      "configured_genres": [
+        "east coast hip hop"
+      ],
+      "spotify_status": "ok",
+      "releases": [
+        {
+          "id": "x2",
+          "name": "Ocean Waves",
+          "date": "2019-02-01",
+          "url": "https://open.spotify.com/album/x2"
+        },
+        {
+          "id": "x1",
+          "name": "Rain Sounds for Sleep",
+          "date": "2019-01-01",
+          "url": "https://open.spotify.com/album/x1"
+        }
+      ],
+      "release_count": 2,
+      "track_samples": [],
+      "musicbrainz": {
+        "status": "ok",
+        "release_groups": 3,
+        "matched": 0,
+        "unmatched": 2,
+        "samples": [
+          "https://musicbrainz.org/release-group/m1",
+          "https://musicbrainz.org/release-group/m2",
+          "https://musicbrainz.org/release-group/m3"
+        ]
+      },
+      "evidence": [
+        {
+          "kind": "name_similarity",
+          "polarity": "positive",
+          "source": "spotify",
+          "detail": "profile name matches the configured name; a name alone is not identity evidence"
+        },
+        {
+          "kind": "genre",
+          "polarity": "warning",
+          "source": "spotify",
+          "detail": "profile genres [lullaby] share nothing with configured genres [east coast hip hop]; legitimate cross-genre collaborations exist, so this is a warning only"
+        },
+        {
+          "kind": "release_mismatch",
+          "polarity": "negative",
+          "strong": true,
+          "source": "musicbrainz",
+          "detail": "none of the 2 Spotify albums match the 3 known MusicBrainz release groups"
+        }
+      ],
+      "missing_evidence": [],
+      "contradictions": [
+        "none of the 2 Spotify albums match the 3 known MusicBrainz release groups"
+      ],
+      "findings": [
+        {
+          "code": "genre_mismatch",
+          "severity": "warning",
+          "detail": "profile genres [lullaby] share nothing with configured genres [east coast hip hop]; legitimate cross-genre collaborations exist, so this is a warning only"
+        },
+        {
+          "code": "likely_homonym",
+          "severity": "warning",
+          "detail": "the profile has the same name as the artist but unrelated releases; an identical name is not identity evidence"
+        },
+        {
+          "code": "unrelated_albums",
+          "severity": "error",
+          "detail": "none of the 2 Spotify albums match the 3 known MusicBrainz release groups"
+        }
+      ],
+      "classification": "suspicious",
+      "severity": "error",
+      "explanation": "Releases contradict the artist: none of the 2 Spotify albums match the 3 known MusicBrainz release groups.",
+      "checked_on": "2026-10-20"
+    },
+    {
+      "artist_slug": "streetlife",
+      "artist_name": "Streetlife",
+      "artist_enabled": true,
+      "spotify_id": "0FCYBhXjpfQIQWNKiVEDg5",
+      "uri": "spotify:artist:0FCYBhXjpfQIQWNKiVEDg5",
+      "role": "primary",
+      "review_status": "unreviewed",
+      "profile_name": "Streetlife",
+      "genres": [
+        "acid jazz",
+        "nu jazz"
+      ],
+      "configured_genres": [
+        "east coast hip hop"
+      ],
+      "spotify_status": "ok",
+      "releases": [
+        {
+          "id": "s1",
+          "name": "Moonlit Lounge",
+          "date": "2005-05-05",
+          "url": "https://open.spotify.com/album/s1"
+        }
+      ],
+      "release_count": 1,
+      "track_samples": [],
+      "musicbrainz": {
+        "status": "ok",
+        "release_groups": 1,
+        "matched": 0,
+        "unmatched": 1,
+        "samples": [
+          "https://musicbrainz.org/release-group/m4"
+        ]
+      },
+      "evidence": [
+        {
+          "kind": "name_similarity",
+          "polarity": "positive",
+          "source": "spotify",
+          "detail": "profile name matches the configured name; a name alone is not identity evidence"
+        },
+        {
+          "kind": "genre",
+          "polarity": "warning",
+          "source": "spotify",
+          "detail": "profile genres [acid jazz, nu jazz] share nothing with configured genres [east coast hip hop]; legitimate cross-genre collaborations exist, so this is a warning only"
+        },
+        {
+          "kind": "release_mismatch",
+          "polarity": "negative",
+          "strong": true,
+          "source": "musicbrainz",
+          "detail": "none of the 1 Spotify albums match the 1 known MusicBrainz release groups"
+        }
+      ],
+      "missing_evidence": [],
+      "contradictions": [
+        "none of the 1 Spotify albums match the 1 known MusicBrainz release groups"
+      ],
+      "findings": [
+        {
+          "code": "genre_mismatch",
+          "severity": "warning",
+          "detail": "profile genres [acid jazz, nu jazz] share nothing with configured genres [east coast hip hop]; legitimate cross-genre collaborations exist, so this is a warning only"
+        },
+        {
+          "code": "likely_homonym",
+          "severity": "warning",
+          "detail": "the profile has the same name as the artist but unrelated releases; an identical name is not identity evidence"
+        },
+        {
+          "code": "unrelated_albums",
+          "severity": "error",
+          "detail": "none of the 1 Spotify albums match the 1 known MusicBrainz release groups"
+        }
+      ],
+      "classification": "suspicious",
+      "severity": "error",
+      "explanation": "Releases contradict the artist: none of the 1 Spotify albums match the 1 known MusicBrainz release groups.",
+      "checked_on": "2026-10-20"
+    },
+    {
+      "artist_slug": "k-g-b",
+      "artist_name": "K.G.B.",
+      "artist_enabled": false,
+      "spotify_id": "2gKwx0Lm0JoOrN2mY9Z0PG",
+      "uri": "spotify:artist:2gKwx0Lm0JoOrN2mY9Z0PG",
+      "role": "primary",
+      "review_status": "unreviewed",
+      "profile_name": "K.G.B.",
+      "genres": [
+        "chicago house"
+      ],
+      "configured_genres": [
+        "east coast hip hop"
+      ],
+      "spotify_status": "ok",
+      "releases": [
+        {
+          "id": "k1",
+          "name": "Warehouse Nights",
+          "date": "2011-03-03",
+          "url": "https://open.spotify.com/album/k1"
+        }
+      ],
+      "release_count": 1,
+      "track_samples": [],
+      "musicbrainz": {
+        "status": "ok",
+        "release_groups": 1,
+        "matched": 0,
+        "unmatched": 1,
+        "samples": [
+          "https://musicbrainz.org/release-group/m5"
+        ]
+      },
+      "evidence": [
+        {
+          "kind": "name_similarity",
+          "polarity": "positive",
+          "source": "spotify",
+          "detail": "profile name matches the configured name; a name alone is not identity evidence"
+        },
+        {
+          "kind": "genre",
+          "polarity": "warning",
+          "source": "spotify",
+          "detail": "profile genres [chicago house] share nothing with configured genres [east coast hip hop]; legitimate cross-genre collaborations exist, so this is a warning only"
+        },
+        {
+          "kind": "release_mismatch",
+          "polarity": "negative",
+          "strong": true,
+          "source": "musicbrainz",
+          "detail": "none of the 1 Spotify albums match the 1 known MusicBrainz release groups"
+        }
+      ],
+      "missing_evidence": [],
+      "contradictions": [
+        "none of the 1 Spotify albums match the 1 known MusicBrainz release groups"
+      ],
+      "findings": [
+        {
+          "code": "genre_mismatch",
+          "severity": "warning",
+          "detail": "profile genres [chicago house] share nothing with configured genres [east coast hip hop]; legitimate cross-genre collaborations exist, so this is a warning only"
+        },
+        {
+          "code": "likely_homonym",
+          "severity": "warning",
+          "detail": "the profile has the same name as the artist but unrelated releases; an identical name is not identity evidence"
+        },
+        {
+          "code": "unrelated_albums",
+          "severity": "error",
+          "detail": "none of the 1 Spotify albums match the 1 known MusicBrainz release groups"
+        }
+      ],
+      "classification": "suspicious",
+      "severity": "error",
+      "explanation": "Releases contradict the artist: none of the 1 Spotify albums match the 1 known MusicBrainz release groups.",
+      "checked_on": "2026-10-20"
+    }
+  ]
+}

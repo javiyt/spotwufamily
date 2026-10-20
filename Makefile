@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
+.PHONY: help setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums artists-audit-profiles sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -13,6 +13,7 @@ CONTENT_DIR ?= site/content/generated
 CANDIDATES ?= data/artist-candidates.example.json
 REPORT ?= resolve.md
 ALBUM_REPORT ?= albums-audit.md
+PROFILE_REPORT ?= profiles-audit.md
 DISCOVERY_REPORT ?= wu-discovery.md
 ARTIST ?= wu-tang-clan
 MARKET ?= ES
@@ -39,6 +40,7 @@ help:
 	@printf '  make artists-review-interactive   Review all artists, including existing Spotify IDs\n'
 	@printf '  make artists-resolve-offline Generate resolve report from local candidate fixture\n'
 	@printf '  make artists-audit-albums ARTIST=slug Compare Spotify albums with MusicBrainz\n'
+	@printf '  make artists-audit-profiles   Audit every configured Spotify profile ID (OFFLINE=1 for cache only)\n'
 	@printf '  make sync-artist ARTIST=slug Sync one enabled artist from Spotify\n'
 	@printf '  make sync-all                 Sync every enabled artist from Spotify\n'
 	@printf '  make refresh-all-from-spotify Refresh metadata, sync all artists, export/build/audit\n'
@@ -113,6 +115,9 @@ artists-resolve-offline:
 
 artists-audit-albums:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists audit-albums --artist $(ARTIST) --catalog $(CATALOG) --market $(MARKET) --report $(ALBUM_REPORT)
+
+artists-audit-profiles:
+	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists audit-profiles $(if $(ARTIST_FILTER),--artist $(ARTIST_FILTER)) $(if $(OFFLINE),--offline) --catalog $(CATALOG) --db $(DB) --market $(MARKET) --report $(PROFILE_REPORT)
 
 sync:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --resume --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)

@@ -30,6 +30,7 @@ const (
 var (
 	ErrPermanent     = errors.New("permanent Spotify error")
 	ErrTemporary     = errors.New("temporary Spotify error")
+	ErrNotFound      = fmt.Errorf("%w: Spotify resource not found", ErrPermanent)
 	ErrRateLimited   = fmt.Errorf("%w: Spotify rate limit exceeded", ErrTemporary)
 	ErrQuotaExceeded = fmt.Errorf("%w: Spotify quota exceeded", ErrRateLimited)
 )
@@ -451,7 +452,11 @@ func (c *Client) doWithRetry(ctx context.Context, options retryOptions, buildReq
 			c.emitProgress(event)
 		default:
 			event.Stage = "request_failed"
-			event.Err = spotifyHTTPError(resp.StatusCode, data, ErrPermanent)
+			kind := ErrPermanent
+			if resp.StatusCode == http.StatusNotFound {
+				kind = ErrNotFound
+			}
+			event.Err = spotifyHTTPError(resp.StatusCode, data, kind)
 			c.emitProgress(event)
 			return nil, event.Err
 		}
