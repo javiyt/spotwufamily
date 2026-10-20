@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
 )
@@ -116,5 +118,75 @@ func TestServiceJobReports(t *testing.T) {
 	}
 	if err := s.JobReportJSON(&got, "missing"); !errors.Is(err, jobs.ErrNotFound) {
 		t.Fatalf("want jobs.ErrNotFound, got %v", err)
+	}
+}
+
+func TestRetryable(t *testing.T) {
+	for _, tc := range []struct {
+		status    jobs.Status
+		resumable bool
+		want      bool
+	}{
+		{jobs.StatusFailed, false, true},
+		{jobs.StatusFailed, true, true},
+		{jobs.StatusPartial, true, true},
+		{jobs.StatusPartial, false, false},
+		{jobs.StatusInterrupted, true, true},
+		{jobs.StatusInterrupted, false, false},
+		{jobs.StatusCancelled, true, true},
+		{jobs.StatusCancelled, false, false},
+		{jobs.StatusSucceeded, true, false},
+		{jobs.StatusQueued, true, false},
+		{jobs.StatusRunning, true, false},
+		{jobs.StatusCancelling, true, false},
+	} {
+		j := jobs.Job{ID: "job-1", Kind: "sync", Status: tc.status, Resumable: tc.resumable}
+		if got := Retryable(j); got != tc.want {
+			t.Errorf("Retryable(%s, resumable=%v) = %v, want %v", tc.status, tc.resumable, got, tc.want)
+		}
+	}
+}
+
+func TestResumeEligible(t *testing.T) {
+	failing, ok := newFake("a"), newFake("b")
+	failing.run = func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
+		return jobs.Outcome{}, errors.New("boom")
+	}
+	s, m, _ := newTestService(t, failing, ok)
+	failed := runToEnd(t, s, m, "a")
+	succeeded := runToEnd(t, s, m, "b")
+	if got, _ := s.Job(failed.ID); got.Status != jobs.StatusFailed {
+		t.Fatalf("setup: want failed job, got %s", got.Status)
+	}
+
+	if !s.ResumeEligible(failed.ID, "a") {
+		t.Fatal("a failed job of the same action must be eligible")
+	}
+	for _, tc := range []struct{ id, action, why string }{
+		{failed.ID, "b", "kind mismatch"},
+		{failed.ID, "", "empty action"},
+		{succeeded.ID, "b", "succeeded job"},
+		{"missing", "a", "unknown job"},
+		{"", "a", "empty id"},
+	} {
+		if s.ResumeEligible(tc.id, tc.action) {
+			t.Errorf("%s: must not be eligible", tc.why)
+		}
+	}
+}
+
+func TestResumeEligibleRequiresRegisteredAction(t *testing.T) {
+	failing := newFake("a")
+	failing.run = func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
+		return jobs.Outcome{}, errors.New("boom")
+	}
+	var n int
+	m := jobs.NewManager(&memStore{}, time.Now, func() string { n++; return fmt.Sprintf("job-%d", n) })
+	full := NewService(m, []Action{failing}, []byte("k"), time.Now)
+	j := runToEnd(t, full, m, "a")
+	// A service sharing the manager but not registering "a" never resumes it.
+	other := NewService(m, nil, []byte("k"), time.Now)
+	if other.ResumeEligible(j.ID, "a") {
+		t.Fatal("an action the service does not register is never eligible")
 	}
 }

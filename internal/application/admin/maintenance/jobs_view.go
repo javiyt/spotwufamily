@@ -68,3 +68,30 @@ func (s *Service) report(id string) (jobs.Report, error) {
 	}
 	return *j.Result.Report, nil
 }
+
+// Retryable reports whether a finished job may be resumed or retried: failed
+// jobs always; partial, interrupted and cancelled ones only when resumable.
+// Active and succeeded jobs never are.
+func Retryable(j jobs.Job) bool {
+	switch j.Status {
+	case jobs.StatusFailed:
+		return true
+	case jobs.StatusPartial, jobs.StatusInterrupted, jobs.StatusCancelled:
+		return j.Resumable
+	}
+	return false
+}
+
+// ResumeEligible reports whether job id exists, was run by action (a
+// registered action) and is Retryable. Adapters must check it rather than
+// trust a job ID or kind they were sent.
+func (s *Service) ResumeEligible(id, action string) bool {
+	if id == "" || action == "" {
+		return false
+	}
+	if _, ok := s.byName[action]; !ok {
+		return false
+	}
+	j, ok := s.jobs.Get(id)
+	return ok && j.Kind == action && Retryable(j)
+}

@@ -33,6 +33,15 @@ type fakeMaint struct {
 	cancelErr error
 	reportErr error
 	cancelled []string
+	// ineligible makes the service refuse every resume, whatever the job says.
+	ineligible bool
+}
+
+// ResumeEligible mirrors the service: the job must exist, match the action
+// and be retryable.
+func (f *fakeMaint) ResumeEligible(id, action string) bool {
+	j, ok := f.Job(id)
+	return ok && !f.ineligible && j.Kind == action && maintenance.Retryable(j)
 }
 
 func (f *fakeMaint) Jobs() []jobs.Job {
@@ -533,4 +542,44 @@ func TestJobsAPIShape(t *testing.T) {
 	require.Equal(t, false, got["report_available"])
 	require.NotContains(t, got, "finished_at")
 	require.Equal(t, map[string]any{"self": "/api/v1/jobs/" + jobID1, "page": "/jobs/" + jobID1}, got["links"])
+}
+
+func TestRetryEligibilityComesFromTheService(t *testing.T) {
+	j := runningJob()
+	j.Status, j.FinishedAt = jobs.StatusFailed, jobT0.Add(time.Minute)
+	e := newJobsEnv(t, j)
+	e.svc.ineligible = true
+	require.NotContains(t, e.get(t, "/jobs/"+jobID1).Body.String(), "/retry", "no button when the service refuses")
+	rec := e.post("/jobs/"+jobID1+"/retry", e.form(), "http://"+host)
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+	require.Equal(t, "/jobs/"+jobID1, rec.Header().Get("Location"), "refused, back to the job")
+	require.Contains(t, e.get(t, "/jobs/"+jobID1).Body.String(), "cannot be resumed or retried")
+}
+
+func TestFetchRefusalIsAnErrorNotASuccess(t *testing.T) {
+	j := runningJob()
+	j.Status, j.FinishedAt = jobs.StatusSucceeded, jobT0.Add(time.Minute)
+	e := newJobsEnv(t, j)
+	for _, target := range []string{"/jobs/" + jobID1 + "/cancel", "/jobs/" + jobID1 + "/retry"} {
+		for _, header := range []string{"X-Admin-Fetch", "Accept"} {
+			req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(e.form().Encode()))
+			req.Host = host
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("Origin", "http://"+host)
+			if header == "Accept" {
+				req.Header.Set("Accept", "application/json")
+			} else {
+				req.Header.Set("X-Admin-Fetch", "1")
+			}
+			req.AddCookie(e.cookie)
+			rec := httptest.NewRecorder()
+			e.h.ServeHTTP(rec, req)
+			require.Equal(t, http.StatusConflict, rec.Code, target+" "+header)
+			var body map[string]map[string]string
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body), target)
+			require.NotEmpty(t, body["error"]["code"])
+			require.NotEmpty(t, body["error"]["message"])
+		}
+	}
+	require.Empty(t, e.svc.cancelled)
 }

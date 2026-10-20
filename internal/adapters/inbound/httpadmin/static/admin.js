@@ -94,6 +94,14 @@
           setTimeout(function () { window.location.href = body.redirect || window.location.href; }, 700);
         });
       }
+      // A refusal (e.g. cancelling a finished job) is JSON with an error
+      // status: report it as an error, never as a success.
+      if (type.indexOf('application/json') !== -1) {
+        return res.json().then(function (body) {
+          var msg = body && body.error && body.error.message;
+          toast(msg ? String(msg) : 'The request was refused.', 'err');
+        });
+      }
       return res.text().then(function (html) {
         document.open(); document.write(html); document.close();
       });

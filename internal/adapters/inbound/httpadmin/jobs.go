@@ -27,6 +27,9 @@ type Maintenance interface {
 	// maintenance.ErrNoReport for the expected refusals.
 	JobReportCSV(w io.Writer, id string) error
 	JobReportJSON(w io.Writer, id string) error
+	// ResumeEligible reports whether job id exists, was run by action and may
+	// be resumed or retried. The adapter never decides that on its own.
+	ResumeEligible(id, action string) bool
 }
 
 var (
@@ -97,19 +100,10 @@ func isActive(st jobs.Status) bool {
 
 func canCancel(st jobs.Status) bool { return st == jobs.StatusQueued || st == jobs.StatusRunning }
 
-// canRetry: failed jobs can always be retried; partial, interrupted and
-// cancelled ones only when they are resumable.
-func canRetry(j jobs.Job) bool {
-	if !actionPattern.MatchString(j.Kind) {
-		return false
-	}
-	switch j.Status {
-	case jobs.StatusFailed:
-		return true
-	case jobs.StatusPartial, jobs.StatusInterrupted, jobs.StatusCancelled:
-		return j.Resumable
-	}
-	return false
+// canRetry asks the service whether the job may be resumed or retried; the
+// kind must also be safe to put in a URL path.
+func (s *Server) canRetry(j jobs.Job) bool {
+	return actionPattern.MatchString(j.Kind) && s.maint.ResumeEligible(j.ID, j.Kind)
 }
 
 func shortID(id string) string {
@@ -153,7 +147,7 @@ func (s *Server) jobRow(j jobs.Job, now time.Time) jobRow {
 		ID: j.ID, ShortID: shortID(j.ID), Kind: j.Kind, Step: j.Step, Message: j.Message,
 		Status: string(j.Status), StatusLabel: statusLabels[j.Status], StatusClass: statusClass(j.Status),
 		Done: j.Done, Total: j.Total, Active: isActive(j.Status), Resumable: j.Resumable,
-		CanCancel: canCancel(j.Status), CanRetry: canRetry(j),
+		CanCancel: canCancel(j.Status), CanRetry: s.canRetry(j),
 		Interrupted: j.Status == jobs.StatusInterrupted, Partial: j.Status == jobs.StatusPartial,
 		Failed: j.Status == jobs.StatusFailed, Cancelled: j.Status == jobs.StatusCancelled,
 		Created: rfc3339(j.CreatedAt), Started: rfc3339(j.StartedAt), Finished: rfc3339(j.FinishedAt),
@@ -249,7 +243,7 @@ func (s *Server) handleJobRetry(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !canRetry(j) {
+	if !s.canRetry(j) {
 		s.refused(w, r, "not_retryable", "This job cannot be resumed or retried.", "/jobs/"+j.ID)
 		return
 	}
@@ -257,11 +251,12 @@ func (s *Server) handleJobRetry(w http.ResponseWriter, r *http.Request) {
 		"/operations/"+j.Kind+"?resume_of="+url.QueryEscape(j.ID))
 }
 
-// refused reports an expected no-op: API clients get 409, forms go back to
-// the job page with the explanation.
+// refused reports an expected no-op: API and fetch clients get a 409 JSON
+// error (never a success), plain forms go back to the job page with the
+// explanation.
 func (s *Server) refused(w http.ResponseWriter, r *http.Request, code, message, location string) {
-	if wantsJSON(r) && !isFetch(r) {
-		s.fail(w, r, http.StatusConflict, code, message)
+	if wantsJSON(r) || isFetch(r) {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": map[string]string{"code": code, "message": message}})
 		return
 	}
 	s.done(w, r, message, location)
