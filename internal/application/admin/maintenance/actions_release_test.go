@@ -3,6 +3,7 @@ package maintenance
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -28,6 +29,8 @@ type fakeReleaser struct {
 	pubErr       error
 	// onPreflight runs before each preflight returns (to simulate changes).
 	onPreflight func(*Prereq)
+	// publishFn, when set, replaces the canned publish result.
+	publishFn func(context.Context) (PublishInfo, error)
 }
 
 func (f *fakeReleaser) Preflight(context.Context) (Prereq, error) {
@@ -45,8 +48,11 @@ func (f *fakeReleaser) Prepare(context.Context) (PackageInfo, error) {
 	return f.pkg, nil
 }
 
-func (f *fakeReleaser) Publish(context.Context) (PublishInfo, error) {
+func (f *fakeReleaser) Publish(ctx context.Context) (PublishInfo, error) {
 	f.log.add("publish")
+	if f.publishFn != nil {
+		return f.publishFn(ctx)
+	}
 	return f.pub, f.pubErr
 }
 
@@ -462,4 +468,118 @@ func scopeMentions(pv Preview, substr string) bool {
 		}
 	}
 	return false
+}
+
+const interruptedMessage = "Publishing was interrupted; a partial release catalog-new may exist on GitHub — check the Releases page before retrying."
+
+// submitPublish runs release-publish through a jobs.Manager and returns it
+// with the job id.
+func submitPublish(t *testing.T, fx *releaseFixture) (*jobs.Manager, string) {
+	t.Helper()
+	s, m, _ := newTestService(t, NewReleasePublish(fx.deps))
+	_, tok, err := s.Preview(context.Background(), "release-publish", Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, err := s.Run(context.Background(), "release-publish", Params{}, tok, "publish release")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m, j.ID
+}
+
+func TestReleasePublishCannotBeCancelledOnceStarted(t *testing.T) {
+	fx := newReleaseFixture()
+	fx.prepared()
+	started, finish := make(chan struct{}), make(chan struct{})
+	var publishCtxErr error
+	fx.releaser.publishFn = func(ctx context.Context) (PublishInfo, error) {
+		close(started)
+		<-finish
+		publishCtxErr = ctx.Err()
+		return PublishInfo{Tag: "catalog-new", Published: true}, nil
+	}
+	m, id := submitPublish(t, fx)
+	<-started
+	if err := m.Cancel(id); err != nil {
+		t.Fatal(err)
+	}
+	close(finish)
+	m.Wait(id)
+	got, _ := m.Get(id)
+	if publishCtxErr != nil {
+		t.Fatalf("the user cancel must not reach the publish subprocess: %v", publishCtxErr)
+	}
+	if got.Status != jobs.StatusSucceeded || got.Result == nil ||
+		got.Result.Summary != "Published catalog release catalog-new. A cancel was requested, but publishing cannot be stopped once it has started." {
+		t.Fatalf("a finished publish is reported truthfully: %+v %+v", got, got.Result)
+	}
+}
+
+func TestReleasePublishInterruptedEndsFailedWithPartialReleaseMessage(t *testing.T) {
+	for name, cancel := range map[string]bool{"timeout": false, "timeout after cancel request": true} {
+		t.Run(name, func(t *testing.T) {
+			fx := newReleaseFixture()
+			fx.prepared()
+			started, finish := make(chan struct{}), make(chan struct{})
+			fx.releaser.publishFn = func(ctx context.Context) (PublishInfo, error) {
+				close(started)
+				<-finish
+				return PublishInfo{}, fmt.Errorf("release publish: %w: %w", ErrPublishInterrupted, context.DeadlineExceeded)
+			}
+			m, id := submitPublish(t, fx)
+			<-started
+			if cancel {
+				if err := m.Cancel(id); err != nil {
+					t.Fatal(err)
+				}
+			}
+			close(finish)
+			m.Wait(id)
+			got, _ := m.Get(id)
+			if got.Status != jobs.StatusFailed || got.Message != interruptedMessage {
+				t.Fatalf("job %+v", got)
+			}
+		})
+	}
+}
+
+func TestReleasePublishFailureAfterCancelRequestIsFailed(t *testing.T) {
+	fx := newReleaseFixture()
+	fx.prepared()
+	started, finish := make(chan struct{}), make(chan struct{})
+	fx.releaser.publishFn = func(context.Context) (PublishInfo, error) {
+		close(started)
+		<-finish
+		return PublishInfo{}, fmt.Errorf("release publish: exit status 1: %w", ErrReleasePrerequisite)
+	}
+	m, id := submitPublish(t, fx)
+	<-started
+	_ = m.Cancel(id)
+	close(finish)
+	m.Wait(id)
+	got, _ := m.Get(id)
+	if got.Status != jobs.StatusFailed || got.Message == "" || strings.Contains(got.Message, "exit status") {
+		t.Fatalf("job %+v", got)
+	}
+}
+
+func TestReleasePublishCancelBeforePublishStartsCancels(t *testing.T) {
+	fx := newReleaseFixture()
+	fx.prepared()
+	inLock, proceed := make(chan struct{}), make(chan struct{})
+	fx.locker.onLock = func() { close(inLock); <-proceed }
+	m, id := submitPublish(t, fx)
+	<-inLock
+	_ = m.Cancel(id)
+	close(proceed)
+	m.Wait(id)
+	got, _ := m.Get(id)
+	if got.Status != jobs.StatusCancelled || fx.published() != 0 {
+		t.Fatalf("a cancel before publishing starts stops the job: %+v %v", got, fx.log.get())
+	}
+}
+
+func TestPublishInterruptedSafeMessageNamesNoTagWithoutContext(t *testing.T) {
+	assertSafe(t, ErrPublishInterrupted, "interrupted")
 }

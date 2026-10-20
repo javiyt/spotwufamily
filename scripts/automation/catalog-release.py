@@ -12,6 +12,7 @@ import re
 import shutil
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import uuid
 
@@ -20,7 +21,9 @@ ASSETS = ("catalog.db.gz", "catalog.snapshot.sql.gz")
 
 
 def run(*args):
-    subprocess.run(args, check=True, cwd=ROOT)
+    # Child output (go/gh progress, paths, release URLs) goes to stderr so
+    # stdout carries only this script's own result lines.
+    subprocess.run(args, check=True, cwd=ROOT, stdout=sys.stderr)
 
 
 def sha256(path):

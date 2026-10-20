@@ -21,6 +21,9 @@ var (
 	// ErrNothingPrepared: there is no successful release-prepare for the
 	// current local content.
 	ErrNothingPrepared = errors.New("nothing prepared")
+	// ErrPublishInterrupted: the publish subprocess had started when it was
+	// stopped (timeout or cancel); a partial GitHub release may exist.
+	ErrPublishInterrupted = errors.New("publish interrupted")
 )
 
 // Prereq is the release script's preflight report. Empty strings mean the

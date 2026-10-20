@@ -57,10 +57,15 @@ func (f *fakeRefresh) Run(ctx context.Context, dryRun, force bool, progress func
 type fakeLocker struct {
 	log *callLog
 	err error
+	// onLock, when set, runs while the lock is being taken.
+	onLock func()
 }
 
 func (l *fakeLocker) TryLock() (func(), error) {
 	l.log.add("lock")
+	if l.onLock != nil {
+		l.onLock()
+	}
 	if l.err != nil {
 		return nil, l.err
 	}

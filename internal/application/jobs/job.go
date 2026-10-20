@@ -78,7 +78,17 @@ type Outcome struct {
 	Status    Status
 	Result    Result
 	Resumable bool
+	// Final records the outcome as returned even if a cancel was requested
+	// while the job ran: the job started work a cancel could not stop.
+	Final bool
 }
+
+// FinalError is a failure recorded as StatusFailed, with its message, even
+// if a cancel was requested while the job ran (see Outcome.Final).
+type FinalError struct{ Err error }
+
+func (e *FinalError) Error() string { return e.Err.Error() }
+func (e *FinalError) Unwrap() error { return e.Err }
 
 // Spec describes a job to submit.
 type Spec struct {

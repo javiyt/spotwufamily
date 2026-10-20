@@ -169,6 +169,19 @@ class CatalogReleaseTests(unittest.TestCase):
         self.assertIsNone(report["pinned_content_sha256"])
         self.assertIsNone(report["last_release_tag"])
 
+    def test_child_stdout_goes_to_stderr(self):
+        # The script's stdout carries only its own result lines; chatter of
+        # go/gh (paths, release URLs) is sent to stderr.
+        import subprocess
+        import sys
+        with patch.object(release.subprocess, "run", return_value=subprocess.CompletedProcess(["go"], 0)) as run:
+            release.run("go", "version")
+        args, kwargs = run.call_args
+        self.assertEqual(args, (("go", "version"),))
+        self.assertIs(kwargs["stdout"], sys.stderr)
+        self.assertTrue(kwargs["check"])
+        self.assertEqual(kwargs["cwd"], release.ROOT)
+
     def test_gh_authenticated_uses_exit_code_and_discards_output(self):
         import subprocess
         completed = subprocess.CompletedProcess(["gh"], 0)

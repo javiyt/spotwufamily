@@ -392,7 +392,16 @@ func requireChildKilled(t *testing.T, s *stub) {
 // a small database, stub gh and go first on PATH, and the real python3.
 type realScriptRepo struct {
 	root, ghLog string
+	// ghSlow, when it exists, makes `gh release create` hang; ghPid then
+	// holds the pid of its sleeping child.
+	ghSlow, ghPid string
 }
+
+// Chatter the stubs print on stdout, as the real go and gh do.
+const (
+	goChatterPath = "/Users/someone/private/catalog.snapshot.sql.gz"
+	ghChatterURL  = "https://github.com/javiyt/spotwufamily/releases/tag/"
+)
 
 func newRealScriptRepo(t *testing.T) realScriptRepo {
 	t.Helper()
@@ -401,7 +410,8 @@ func newRealScriptRepo(t *testing.T) realScriptRepo {
 		t.Skip("python3 not installed")
 	}
 	base := t.TempDir()
-	r := realScriptRepo{root: filepath.Join(base, "repo"), ghLog: filepath.Join(base, "gh.log")}
+	r := realScriptRepo{root: filepath.Join(base, "repo"), ghLog: filepath.Join(base, "gh.log"),
+		ghSlow: filepath.Join(base, "gh-slow"), ghPid: filepath.Join(base, "gh.pid")}
 	bin := filepath.Join(base, "bin")
 	for _, d := range []string{bin, filepath.Join(r.root, "scripts", "automation"), filepath.Join(r.root, "data")} {
 		require.NoError(t, os.MkdirAll(d, 0o755))
@@ -410,11 +420,17 @@ func newRealScriptRepo(t *testing.T) realScriptRepo {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(r.root, "scripts", "automation", "catalog-release.py"), src, 0o644))
 	require.NoError(t, os.Symlink(python, filepath.Join(bin, "python3")))
-	// Stub gh: authenticated, records every call, uploads nothing.
+	// Stub gh: authenticated, records every call, uploads nothing, and
+	// prints on stdout like the real one (a token hint, the release URL).
 	require.NoError(t, os.WriteFile(filepath.Join(bin, "gh"), []byte(fmt.Sprintf(`#!/bin/sh
 echo "$*" >> '%s'
+if [ "$1 $2" = "auth status" ]; then echo "Logged in to github.com account someone (keyring) Token: %s"; fi
+if [ "$1 $2" = "release create" ]; then
+  if [ -f '%s' ]; then sleep 30 & echo $! > '%s'; wait; fi
+  echo "%s$3"
+fi
 exit 0
-`, r.ghLog)), 0o755))
+`, r.ghLog, fakeToken, r.ghSlow, r.ghPid, ghChatterURL)), 0o755))
 	// Stub go: writes the snapshot file the script asks for.
 	require.NoError(t, os.WriteFile(filepath.Join(bin, "go"), []byte(`#!/bin/sh
 prev=""
@@ -422,6 +438,8 @@ for a in "$@"; do
   if [ "$prev" = "--snapshot" ] && [ "$3" = "db" ] && [ "$4" = "snapshot" ]; then printf 'fixture snapshot' > "$a"; fi
   prev="$a"
 done
+echo "database $4 written: `+goChatterPath+`"
+echo "database verified: `+goChatterPath+`"
 exit 0
 `), 0o755))
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+"/usr/bin:/bin")
@@ -494,4 +512,104 @@ func TestPublishUploadsThroughGhAndPinsManifest(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, pre.PinnedMatchesLocal)
 	require.Equal(t, info.Tag, pre.LastReleaseTag)
+}
+
+// requireNoChatter checks that nothing the stubs printed reached v.
+func requireNoChatter(t *testing.T, v any) {
+	t.Helper()
+	data, err := json.Marshal(v)
+	require.NoError(t, err)
+	for _, s := range []string{"/Users/someone", "database snapshot", "database verified", "https://", fakeToken} {
+		require.NotContains(t, string(data), s)
+	}
+}
+
+func TestPrepareAndPublishSucceedDespiteChildChatter(t *testing.T) {
+	r := newRealScriptRepo(t)
+	var logs bytes.Buffer
+	sc, err := New(Config{RepoRoot: r.root, Repo: testRepo, Logger: slog.New(slog.NewTextHandler(&logs, nil))})
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	info, err := sc.Prepare(ctx)
+	require.NoError(t, err, "go chatter on stdout must not break prepare")
+	require.Regexp(t, `^catalog-[A-Za-z0-9._-]+$`, info.Tag)
+	requireNoChatter(t, info)
+
+	res, err := sc.Publish(ctx)
+	require.NoError(t, err, "gh chatter on stdout must not break publish")
+	require.Equal(t, maintenance.PublishInfo{Tag: info.Tag, Published: true}, res)
+	requireNoChatter(t, res)
+	require.Empty(t, logs.String(), "nothing failed, nothing is logged")
+}
+
+func TestOutputIsParsedFromTheLastLine(t *testing.T) {
+	s := newStub(t)
+	s.answer(t, "preflight", okPreflight, "", 0)
+	s.answer(t, "prepare", "database snapshot written: /abs/x\ndatabase verified: /abs/x\nPrepared catalog-new in /abs/build\n\n", "", 0)
+	s.answer(t, "publish", "https://github.com/javiyt/spotwufamily/releases/tag/catalog-new\nPublished https://github.com/javiyt/spotwufamily/releases/tag/catalog-new\n", "", 0)
+	sc := s.script(t, nil)
+	info, err := sc.Prepare(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "catalog-new", info.Tag)
+	res, err := sc.Publish(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, maintenance.PublishInfo{Tag: "catalog-new", Published: true}, res)
+
+	// The final line is still required, and still checked against the repo.
+	for _, out := range []string{
+		"Published https://github.com/javiyt/spotwufamily/releases/tag/catalog-new\nsomething after\n",
+		"Published https://github.com/javiyt/spotwufamily/releases/tag/catalog-new\nPublished https://github.com/evil/repo/releases/tag/catalog-new\n",
+		"\n\n",
+	} {
+		s.answer(t, "publish", out, "", 0)
+		_, err := sc.Publish(context.Background())
+		require.ErrorIs(t, err, maintenance.ErrReleasePrerequisite, "%q", out)
+	}
+}
+
+func TestPublishTimeoutAfterStartIsReportedAsInterrupted(t *testing.T) {
+	r := newRealScriptRepo(t)
+	sc, err := New(Config{RepoRoot: r.root, Repo: testRepo})
+	require.NoError(t, err)
+	_, err = sc.Prepare(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(r.ghSlow, nil, 0o644))
+
+	sc.timeout = 3 * time.Second
+	start := time.Now()
+	_, err = sc.Publish(context.Background())
+	require.ErrorIs(t, err, maintenance.ErrPublishInterrupted)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, time.Since(start), 15*time.Second)
+	data, err := os.ReadFile(r.ghPid)
+	require.NoError(t, err, "gh release create had started")
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return syscall.Kill(pid, 0) != nil }, 5*time.Second, 50*time.Millisecond,
+		"gh and its children are killed with the process group")
+	_, statErr := os.Stat(filepath.Join(r.root, "data", "catalog.release.json"))
+	require.True(t, errors.Is(statErr, os.ErrNotExist), "an interrupted publish never pins the manifest")
+}
+
+func TestPublishCancelAfterStartIsReportedAsInterrupted(t *testing.T) {
+	s := newStub(t)
+	s.answer(t, "preflight", okPreflight, "", 0)
+	require.NoError(t, os.WriteFile(filepath.Join(s.dir, "sleep-publish"), nil, 0o644))
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(1500*time.Millisecond, cancel)
+	_, err := s.script(t, nil).Publish(ctx)
+	require.ErrorIs(t, err, maintenance.ErrPublishInterrupted)
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestPreflightInterruptedIsNotAPublishInterruption(t *testing.T) {
+	s := newStub(t)
+	require.NoError(t, os.WriteFile(filepath.Join(s.dir, "sleep-preflight"), nil, 0o644))
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(1500*time.Millisecond, cancel)
+	_, err := s.script(t, nil).Publish(ctx)
+	require.ErrorIs(t, err, context.Canceled)
+	require.NotErrorIs(t, err, maintenance.ErrPublishInterrupted, "publish never started")
+	require.Equal(t, []string{"preflight"}, s.calls(t))
 }

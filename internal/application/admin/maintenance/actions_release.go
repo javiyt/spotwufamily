@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -294,21 +295,7 @@ func (a *releaseAction) run(ctx context.Context, r jobs.Reporter, fp string) (jo
 		return jobs.Outcome{}, err
 	}
 	if a.publish {
-		r.Step("publishing")
-		info, err := a.deps.Releaser.Publish(ctx)
-		if err != nil {
-			return jobs.Outcome{}, a.fail(ctx, err)
-		}
-		var summary string
-		switch {
-		case info.NoChanges:
-			summary = "No catalog content changes; release " + info.Tag + " was not published."
-		case info.Published:
-			summary = "Published catalog release " + info.Tag + "."
-		default:
-			return jobs.Outcome{}, Safe(ErrReleasePrerequisite)
-		}
-		return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: summary}}, nil
+		return a.runPublish(ctx, r, p.PreparedTag)
 	}
 	r.Step("preparing package")
 	info, err := a.deps.Releaser.Prepare(ctx)
@@ -325,4 +312,42 @@ func (a *releaseAction) run(ctx context.Context, r jobs.Reporter, fp string) (jo
 			Rows:    [][]string{{info.Tag, info.ContentSHA256, strings.Join(info.Assets, " ")}},
 		},
 	}}, nil
+}
+
+// runPublish runs the publish subprocess. Once it has started it cannot be
+// cancelled: killing gh mid-upload could leave a partial GitHub release with
+// an unpinned manifest. It therefore runs detached from the job's cancel,
+// bounded only by the adapter's own timeout. A cancel requested meanwhile is
+// recorded and reported in the result, and the outcome is Final so the job
+// manager records what really happened instead of "cancelled".
+func (a *releaseAction) runPublish(ctx context.Context, r jobs.Reporter, tag string) (jobs.Outcome, error) {
+	r.Step("publishing")
+	info, err := a.deps.Releaser.Publish(context.WithoutCancel(ctx))
+	cancelRequested := ctx.Err() != nil
+	if err != nil {
+		if errors.Is(err, ErrPublishInterrupted) {
+			err = publishInterrupted(tag)
+		}
+		return jobs.Outcome{}, &jobs.FinalError{Err: Safe(err)}
+	}
+	var summary string
+	switch {
+	case info.NoChanges:
+		summary = "No catalog content changes; release " + info.Tag + " was not published."
+	case info.Published:
+		summary = "Published catalog release " + info.Tag + "."
+	default:
+		return jobs.Outcome{}, &jobs.FinalError{Err: Safe(ErrReleasePrerequisite)}
+	}
+	if cancelRequested {
+		summary += " A cancel was requested, but publishing cannot be stopped once it has started."
+	}
+	return jobs.Outcome{Status: jobs.StatusSucceeded, Final: true, Result: jobs.Result{Summary: summary}}, nil
+}
+
+// publishInterrupted names the tag (validated by the adapter), never a URL or
+// path.
+func publishInterrupted(tag string) error {
+	return &SafeError{Code: "interrupted", Message: "Publishing was interrupted; a partial release " + tag +
+		" may exist on GitHub — check the Releases page before retrying."}
 }

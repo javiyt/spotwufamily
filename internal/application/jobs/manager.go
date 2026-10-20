@@ -142,7 +142,9 @@ func (m *Manager) run(ctx context.Context, id string, fn Func, done chan struct{
 	outcome, err := m.invoke(ctx, fn, &reporter{m: m, id: id})
 
 	m.mu.Lock()
-	cancelled := job.Status == StatusCancelling
+	var finalErr *FinalError
+	// Work a cancel could not stop is recorded as it ended.
+	cancelled := job.Status == StatusCancelling && !outcome.Final && !errors.As(err, &finalErr)
 	switch {
 	case cancelled:
 		job.Status = StatusCancelled

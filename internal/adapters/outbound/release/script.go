@@ -205,7 +205,7 @@ func (s *Script) Prepare(ctx context.Context) (maintenance.PackageInfo, error) {
 	if err != nil {
 		return maintenance.PackageInfo{}, err
 	}
-	m := preparedLine.FindStringSubmatch(singleLine(out))
+	m := preparedLine.FindStringSubmatch(lastLine(out))
 	if m == nil {
 		return maintenance.PackageInfo{}, s.malformed(subPrepare)
 	}
@@ -233,7 +233,7 @@ func (s *Script) Publish(ctx context.Context) (maintenance.PublishInfo, error) {
 	if err != nil {
 		return maintenance.PublishInfo{}, err
 	}
-	line := singleLine(out)
+	line := lastLine(out)
 	if line == noChangesLine {
 		return maintenance.PublishInfo{Tag: p.PreparedTag, NoChanges: true}, nil
 	}
@@ -243,13 +243,17 @@ func (s *Script) Publish(ctx context.Context) (maintenance.PublishInfo, error) {
 	return maintenance.PublishInfo{}, s.malformed(subPublish)
 }
 
-// singleLine returns the output when it is exactly one line.
-func singleLine(out []byte) string {
-	s := strings.TrimSuffix(string(out), "\n")
-	if strings.ContainsAny(s, "\r\n") {
-		return ""
+// lastLine returns the last non-empty line of the output: the script's own
+// result line. Anything a child process printed before it is ignored (the
+// script sends child output to stderr, but this does not rely on that).
+func lastLine(out []byte) string {
+	lines := strings.Split(string(out), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if line := strings.TrimSpace(lines[i]); line != "" {
+			return line
+		}
 	}
-	return s
+	return ""
 }
 
 func (s *Script) malformed(sub subcommand) error {
@@ -280,25 +284,31 @@ func (s *Script) run(ctx context.Context, sub subcommand) ([]byte, error) {
 	killProcessGroup(cmd)
 
 	err := cmd.Run()
+	if err == nil {
+		// The script finished: its result counts even if the context
+		// ended at the same moment.
+		if stdout.truncated {
+			return nil, s.malformed(sub)
+		}
+		return stdout.Bytes(), nil
+	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		s.log(sub, "interrupted", "")
+		if sub == subPublish {
+			// gh may have been killed mid-upload.
+			return nil, fmt.Errorf("release %s: %w: %w", sub, maintenance.ErrPublishInterrupted, ctxErr)
+		}
 		return nil, fmt.Errorf("release %s: %w", sub, ctxErr)
 	}
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			s.log(sub, "failed", stderr.String())
-			return nil, fmt.Errorf("release %s: exit status %d: %w", sub, exitErr.ExitCode(), maintenance.ErrReleasePrerequisite)
-		}
-		// Not started (python3 missing, bad working directory): the
-		// error names no output, only the command.
-		s.log(sub, "could not start", "")
-		return nil, fmt.Errorf("release %s: could not run python3: %w", sub, maintenance.ErrReleasePrerequisite)
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		s.log(sub, "failed", stderr.String())
+		return nil, fmt.Errorf("release %s: exit status %d: %w", sub, exitErr.ExitCode(), maintenance.ErrReleasePrerequisite)
 	}
-	if stdout.truncated {
-		return nil, s.malformed(sub)
-	}
-	return stdout.Bytes(), nil
+	// Not started (python3 missing, bad working directory): the error
+	// names no output, only the command.
+	s.log(sub, "could not start", "")
+	return nil, fmt.Errorf("release %s: could not run python3: %w", sub, maintenance.ErrReleasePrerequisite)
 }
 
 // env is PATH, HOME and LANG plus GH_TOKEN/GITHUB_TOKEN only when already set

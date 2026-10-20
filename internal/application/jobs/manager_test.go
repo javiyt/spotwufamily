@@ -284,3 +284,58 @@ func TestRecoverKeepsTerminalJobs(t *testing.T) {
 		t.Fatalf("terminal jobs rewritten: %v", store.saved)
 	}
 }
+
+// finalAfterCancel waits for a cancel request, then returns out/err: work
+// that could not be stopped once started.
+func finalAfterCancel(started chan<- struct{}, out jobs.Outcome, err error) jobs.Func {
+	return func(ctx context.Context, r jobs.Reporter) (jobs.Outcome, error) {
+		close(started)
+		<-ctx.Done()
+		return out, err
+	}
+}
+
+func TestFinalOutcomeIsRecordedDespiteCancel(t *testing.T) {
+	m := newManager(&fakeStore{})
+	started := make(chan struct{})
+	out := jobs.Outcome{Status: jobs.StatusSucceeded, Final: true, Result: jobs.Result{Summary: "done anyway"}}
+	j, _ := m.Submit(context.Background(), jobs.Spec{Kind: "a", Resources: []string{"x"}, Run: finalAfterCancel(started, out, nil)})
+	<-started
+	if err := m.Cancel(j.ID); err != nil {
+		t.Fatal(err)
+	}
+	m.Wait(j.ID)
+	got, _ := m.Get(j.ID)
+	if got.Status != jobs.StatusSucceeded || got.Result == nil || got.Result.Summary != "done anyway" {
+		t.Fatalf("a final outcome must survive the cancel: %+v", got)
+	}
+}
+
+func TestFinalErrorIsRecordedAsFailedDespiteCancel(t *testing.T) {
+	m := newManager(&fakeStore{})
+	started := make(chan struct{})
+	j, _ := m.Submit(context.Background(), jobs.Spec{Kind: "a", Resources: []string{"x"},
+		Run: finalAfterCancel(started, jobs.Outcome{}, &jobs.FinalError{Err: safeErr{}})})
+	<-started
+	if err := m.Cancel(j.ID); err != nil {
+		t.Fatal(err)
+	}
+	m.Wait(j.ID)
+	got, _ := m.Get(j.ID)
+	if got.Status != jobs.StatusFailed || got.Message != "catalog is locked" {
+		t.Fatalf("a final error must be recorded as failed with its safe message: %+v", got)
+	}
+}
+
+func TestNonFinalOutcomeStillCancelled(t *testing.T) {
+	m := newManager(&fakeStore{})
+	started := make(chan struct{})
+	out := jobs.Outcome{Status: jobs.StatusSucceeded}
+	j, _ := m.Submit(context.Background(), jobs.Spec{Kind: "a", Resources: []string{"x"}, Run: finalAfterCancel(started, out, nil)})
+	<-started
+	_ = m.Cancel(j.ID)
+	m.Wait(j.ID)
+	if got, _ := m.Get(j.ID); got.Status != jobs.StatusCancelled {
+		t.Fatalf("got %+v", got)
+	}
+}

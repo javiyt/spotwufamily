@@ -53,6 +53,8 @@ func Safe(err error) error {
 		return &SafeError{"rate_limited", fmt.Sprintf("The source is rate limited; retry after %d seconds.", secs)}
 	}
 	switch {
+	case errors.Is(err, ErrPublishInterrupted):
+		return &SafeError{"interrupted", "Publishing was interrupted; a partial release may exist on GitHub — check the Releases page before retrying."}
 	case errors.Is(err, ErrGhNotAuthenticated):
 		return &SafeError{"credentials_missing", "GitHub CLI is not authenticated. Run `gh auth login` in a terminal."}
 	case errors.Is(err, ErrReleasePackageNotClean):
