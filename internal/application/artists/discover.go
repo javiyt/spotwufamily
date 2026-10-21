@@ -44,7 +44,10 @@ type DiscoverWuFamilyOptions struct {
 	CatalogPath string
 	LedgerPath  string
 	Apply       bool
-	Progress    func(DiscoverWuFamilyProgress)
+	// OnlySlugs, when non-nil, restricts Apply to the new candidates with
+	// these slugs (the set a user reviewed); others are reported, not added.
+	OnlySlugs []string
+	Progress  func(DiscoverWuFamilyProgress)
 }
 
 type DiscoverWuFamilyReport struct {
@@ -98,9 +101,13 @@ func (d DiscoverWuFamily) Run(ctx context.Context, options DiscoverWuFamilyOptio
 	}
 	report := buildDiscoverWuFamilyReport(c, discovered, ledger)
 	emitDiscoverWuFamilyProgress(options.Progress, DiscoverWuFamilyProgress{Stage: "compared", Found: report.Found, Existing: len(report.Existing), New: len(report.New)})
-	if options.Apply && len(report.New) > 0 {
+	toAdd := report.New
+	if options.OnlySlugs != nil {
+		toAdd = allowedCandidates(report.New, options.OnlySlugs)
+	}
+	if options.Apply && len(toAdd) > 0 {
 		nextOrder := nextEditorialOrder(c.Artists)
-		for _, candidate := range report.New {
+		for _, candidate := range toAdd {
 			nextOrder++
 			c.Artists = append(c.Artists, catalog.Artist{
 				Slug:           candidate.Slug,
@@ -126,6 +133,21 @@ func (d DiscoverWuFamily) Run(ctx context.Context, options DiscoverWuFamilyOptio
 	}
 
 	return report, nil
+}
+
+// allowedCandidates keeps the candidates whose slug is in only.
+func allowedCandidates(candidates []DiscoveryCandidate, only []string) []DiscoveryCandidate {
+	allowed := make(map[string]bool, len(only))
+	for _, slug := range only {
+		allowed[slug] = true
+	}
+	var out []DiscoveryCandidate
+	for _, c := range candidates {
+		if allowed[c.Slug] {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 func emitDiscoverWuFamilyProgress(progress func(DiscoverWuFamilyProgress), event DiscoverWuFamilyProgress) {

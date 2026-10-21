@@ -175,13 +175,13 @@ type discoverPort struct{ cfg MaintenanceActionsConfig }
 
 var _ maintenance.DiscoverPort = discoverPort{}
 
-func (p discoverPort) Run(ctx context.Context, apply bool, progress func(artists.DiscoverWuFamilyProgress)) (artists.DiscoverWuFamilyReport, error) {
+func (p discoverPort) Run(ctx context.Context, apply bool, only []string, progress func(artists.DiscoverWuFamilyProgress)) (artists.DiscoverWuFamilyReport, error) {
 	runner, closeFn, err := NewDiscoverRunner(ctx, p.cfg.CatalogPath, p.cfg.Options...)
 	if err != nil {
 		return artists.DiscoverWuFamilyReport{}, err
 	}
 	defer closeFn()
-	return runner.Run(ctx, artists.DiscoverWuFamilyOptions{LedgerPath: p.cfg.LedgerPath, Apply: apply, Progress: progress})
+	return runner.Run(ctx, artists.DiscoverWuFamilyOptions{LedgerPath: p.cfg.LedgerPath, Apply: apply, OnlySlugs: only, Progress: progress})
 }
 
 type refreshPort struct{ cfg MaintenanceActionsConfig }

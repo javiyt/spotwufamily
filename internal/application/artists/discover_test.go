@@ -67,6 +67,38 @@ func TestDiscoverWuFamilyApplyAddsNewArtistsDisabled(t *testing.T) {
 	require.Contains(t, added.Notes, "review before enabling")
 }
 
+func TestDiscoverWuFamilyApplyOnlyAddsAllowlistedSlugs(t *testing.T) {
+	newStore := func() *memoryStore {
+		return &memoryStore{catalog: catalog.EditorialCatalog{
+			Version: 1,
+			Artists: []catalog.Artist{
+				{Slug: "wu-tang-clan", Name: "Wu-Tang Clan", Category: catalog.CategoryCore, Roles: []catalog.Category{catalog.CategoryCore}, Aliases: []string{}, EditorialOrder: 1},
+			},
+		}}
+	}
+	source := fixedDiscoverySource{items: []artists.DiscoveredArtist{
+		{Name: "Tekitha", Category: catalog.CategoryAffiliateArtist, Source: "Wikipedia", SourceURL: "https://example/tekitha", SourceNote: "Singers"},
+		{Name: "Blue Raspberry", Category: catalog.CategoryAffiliateArtist, Source: "Wikipedia", SourceURL: "https://example/blue", SourceNote: "Singers"},
+	}}
+
+	store := newStore()
+	report, err := artists.NewDiscoverWuFamily(store, source).Run(context.Background(),
+		artists.DiscoverWuFamilyOptions{CatalogPath: "ignored", Apply: true, OnlySlugs: []string{"tekitha"}})
+	require.NoError(t, err)
+	require.Len(t, report.New, 2, "the report still lists every new candidate")
+	require.Len(t, report.Added, 1)
+	require.Equal(t, "tekitha", report.Added[0].Slug)
+	require.Len(t, store.catalog.Artists, 2)
+	require.Equal(t, "tekitha", store.catalog.Artists[1].Slug)
+
+	store = newStore()
+	report, err = artists.NewDiscoverWuFamily(store, source).Run(context.Background(),
+		artists.DiscoverWuFamilyOptions{CatalogPath: "ignored", Apply: true, OnlySlugs: []string{}})
+	require.NoError(t, err)
+	require.Empty(t, report.Added, "an empty allowlist adds nothing")
+	require.Len(t, store.catalog.Artists, 1)
+}
+
 func TestDiscoverWuFamilyMatchesSlashSeparatedAliases(t *testing.T) {
 	store := &memoryStore{catalog: catalog.EditorialCatalog{
 		Version: 1,

@@ -78,25 +78,43 @@ func staticDigest(d string) CatalogDigest {
 }
 
 type fakeDiscover struct {
-	mu     sync.Mutex
-	report artists.DiscoverWuFamilyReport
-	err    error
-	calls  []bool // apply flag of each call
+	mu       sync.Mutex
+	report   artists.DiscoverWuFamilyReport
+	err      error
+	applyErr error    // returned by apply calls only
+	calls    []bool   // apply flag of each call
+	only     []string // allowlist of the last apply call
+	// beforeApply, when set, runs at the start of an apply call.
+	beforeApply func()
 }
 
-func (f *fakeDiscover) Run(_ context.Context, apply bool, progress func(artists.DiscoverWuFamilyProgress)) (artists.DiscoverWuFamilyReport, error) {
+func (f *fakeDiscover) Run(_ context.Context, apply bool, only []string, progress func(artists.DiscoverWuFamilyProgress)) (artists.DiscoverWuFamilyReport, error) {
+	if apply && f.beforeApply != nil {
+		f.beforeApply()
+	}
 	f.mu.Lock()
 	f.calls = append(f.calls, apply)
+	if apply {
+		f.only = slices.Clone(only)
+	}
 	rep := f.report
+	err := f.err
+	if apply && f.applyErr != nil {
+		err = f.applyErr
+	}
 	f.mu.Unlock()
 	if progress != nil {
 		progress(artists.DiscoverWuFamilyProgress{Stage: "fetching"})
 		progress(artists.DiscoverWuFamilyProgress{Stage: "compared", Found: rep.Found})
 	}
-	if apply && f.err == nil {
-		rep.Added = slices.Clone(rep.New)
+	if apply && err == nil {
+		for _, c := range rep.New {
+			if only == nil || slices.Contains(only, c.Slug) {
+				rep.Added = append(rep.Added, c)
+			}
+		}
 	}
-	return rep, f.err
+	return rep, err
 }
 
 func (f *fakeDiscover) writes() int {
@@ -265,7 +283,7 @@ func TestDiscoverActionsRejectUnknownParams(t *testing.T) {
 }
 
 func TestDiscoverFailureIsSafe(t *testing.T) {
-	f := &fakeDiscover{err: errors.New("open /home/secret/artists.yaml: permission denied")}
+	f := &fakeDiscover{report: newDiscoveryReport(), applyErr: errors.New("open /home/secret/artists.yaml: permission denied")}
 	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d")})
 
 	_, _, _, err := runAction(t, a, Params{})
@@ -282,4 +300,77 @@ func scopeHas(pv Preview, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestDiscoverImportSpecRequiresVerifiedFingerprint(t *testing.T) {
+	f := &fakeDiscover{report: newDiscoveryReport()}
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1")})
+	if _, err := a.Spec(context.Background(), Params{}); !errors.Is(err, ErrConfirmationRequired) {
+		t.Fatalf("an unconfirmed import must fail closed, got %v", err)
+	}
+	if _, err := NewDiscoverPreview(DiscoverDeps{Runner: f, Digest: staticDigest("d1")}).Spec(context.Background(), Params{}); err != nil {
+		t.Fatalf("the dry run needs no confirmation: %v", err)
+	}
+}
+
+func TestDiscoverImportRefusesChangedCandidatesAfterConfirm(t *testing.T) {
+	f := &fakeDiscover{report: newDiscoveryReport()}
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1")})
+	spec, err := specFor(t, a, Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.report.New = append(f.report.New, artists.DiscoveryCandidate{Name: "Shyheim", Slug: "shyheim", Category: catalog.CategoryCore})
+	_, err = spec.Run(context.Background(), &recReporter{})
+	var se *SafeError
+	if !errors.As(Safe(err), &se) || se.Code != "stale_preview" {
+		t.Fatalf("want stale preview, got %v", err)
+	}
+	if f.writes() != 0 {
+		t.Fatalf("a stale import must write nothing, applied %d times", f.writes())
+	}
+}
+
+func TestDiscoverImportRefusesChangedCatalogAfterConfirm(t *testing.T) {
+	f := &fakeDiscover{report: newDiscoveryReport()}
+	digest := "d1"
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: func(context.Context) (string, error) { return digest, nil }})
+	spec, err := specFor(t, a, Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest = "d2"
+	if _, err := spec.Run(context.Background(), &recReporter{}); !errors.Is(err, ErrStalePreview) && Safe(err).(*SafeError).Code != "stale_preview" {
+		t.Fatalf("want stale preview, got %v", err)
+	}
+	if f.writes() != 0 {
+		t.Fatal("a stale import must write nothing")
+	}
+}
+
+func TestDiscoverImportAppliesOnlyThePreviewedSlugs(t *testing.T) {
+	f := &fakeDiscover{report: newDiscoveryReport()}
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1")})
+	spec, err := specFor(t, a, Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Wikipedia changes between the in-job check and the import.
+	f.beforeApply = func() {
+		f.mu.Lock()
+		f.report.New = append(f.report.New, artists.DiscoveryCandidate{Name: "Shyheim", Slug: "shyheim", Category: catalog.CategoryCore})
+		f.mu.Unlock()
+	}
+	out, err := spec.Run(context.Background(), &recReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(f.only, []string{"cappadonna", "killah-priest"}) {
+		t.Fatalf("allowlist %v", f.only)
+	}
+	for _, row := range out.Result.Report.Rows {
+		if row[0] == "added" && row[1] == "shyheim" {
+			t.Fatal("a candidate that was not previewed was imported")
+		}
+	}
 }

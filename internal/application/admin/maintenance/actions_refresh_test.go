@@ -387,3 +387,30 @@ func TestRefreshArtistErrorsEndPartial(t *testing.T) {
 		t.Fatalf("outcome %+v counts %v", out, r.counts)
 	}
 }
+
+func TestRefreshSpecRequiresVerifiedFingerprint(t *testing.T) {
+	fx := newRefreshFixture(true)
+	if _, err := NewRefreshMetadata(fx.deps).Spec(context.Background(), Params{}); !errors.Is(err, ErrConfirmationRequired) {
+		t.Fatalf("an unconfirmed refresh must fail closed, got %v", err)
+	}
+	if _, err := NewRefreshMetadataPreview(fx.deps).Spec(context.Background(), Params{}); err != nil {
+		t.Fatalf("the dry run needs no confirmation: %v", err)
+	}
+}
+
+func TestRefreshStaleFingerprintAfterLockIsRefused(t *testing.T) {
+	fx := newRefreshFixture(true)
+	spec, err := specFor(t, NewRefreshMetadata(fx.deps), Params{"force": "true"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fx.digest = "d2" // the catalog changed after the user confirmed
+	_, err = spec.Run(context.Background(), &recReporter{})
+	var se *SafeError
+	if !errors.As(err, &se) || se.Code != "stale_preview" {
+		t.Fatalf("want stale preview, got %v", err)
+	}
+	if got := fx.log.get(); !slices.Equal(got, []string{"lock", "release"}) {
+		t.Fatalf("nothing may be backed up or refreshed: %v", got)
+	}
+}
