@@ -219,7 +219,8 @@ func NewAdmin(ctx context.Context, cfg AdminConfig) (*Admin, func(), error) {
 			}
 		}),
 	)
-	if err := manager.Recover(ctx); err != nil {
+	interrupted, err := manager.Recover(ctx)
+	if err != nil {
 		return nil, nil, fmt.Errorf("recover admin jobs: %w", err)
 	}
 
@@ -259,6 +260,12 @@ func NewAdmin(ctx context.Context, cfg AdminConfig) (*Admin, func(), error) {
 		}),
 	)
 	svcRef.Store(svc)
+	// Jobs a previous process left running end as interrupted: record that
+	// in the operations log as their finished entry.
+	finish := svc.FinishHook()
+	for _, j := range interrupted {
+		finish(j)
+	}
 
 	core, closeCore, err := NewAdminService(cfg.CatalogPath, cfg.DBPath)
 	if err != nil {

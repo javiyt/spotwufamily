@@ -224,8 +224,12 @@ func TestRecoverMarksActiveJobsInterrupted(t *testing.T) {
 		{ID: "old-2", Status: jobs.StatusSucceeded},
 	}}
 	m := newManager(store)
-	if err := m.Recover(context.Background()); err != nil {
+	interrupted, err := m.Recover(context.Background())
+	if err != nil {
 		t.Fatal(err)
+	}
+	if len(interrupted) != 1 || interrupted[0].ID != "old-1" || interrupted[0].Status != jobs.StatusInterrupted || interrupted[0].Message == "" {
+		t.Fatalf("Recover must return the jobs it interrupted: %+v", interrupted)
 	}
 	a, _ := m.Get("old-1")
 	b, _ := m.Get("old-2")
@@ -243,8 +247,8 @@ func TestRecoverMarksRunningAndQueuedInterrupted(t *testing.T) {
 		{ID: "q", Status: jobs.StatusQueued},
 	}}
 	m := newManager(store)
-	if err := m.Recover(context.Background()); err != nil {
-		t.Fatal(err)
+	if interrupted, err := m.Recover(context.Background()); err != nil || len(interrupted) != 2 {
+		t.Fatalf("interrupted %+v err %v", interrupted, err)
 	}
 	for _, id := range []string{"r", "q"} {
 		j, _ := m.Get(id)
@@ -272,8 +276,8 @@ func TestRecoverKeepsTerminalJobs(t *testing.T) {
 		{ID: "b", Status: jobs.StatusPartial, Resumable: true, FinishedAt: fin},
 	}}
 	m := newManager(store)
-	if err := m.Recover(context.Background()); err != nil {
-		t.Fatal(err)
+	if interrupted, err := m.Recover(context.Background()); err != nil || len(interrupted) != 0 {
+		t.Fatalf("interrupted %+v err %v", interrupted, err)
 	}
 	a, _ := m.Get("a")
 	b, _ := m.Get("b")

@@ -354,7 +354,6 @@ func TestRestartMarksRunningJobInterrupted(t *testing.T) {
 	require.NoError(t, err)
 
 	release := make(chan struct{})
-	t.Cleanup(func() { close(release) })
 	started := make(chan struct{})
 	job, err := first.manager.Submit(context.Background(), jobs.Spec{
 		Kind: "sync", Resources: []string{"database"},
@@ -365,6 +364,13 @@ func TestRestartMarksRunningJobInterrupted(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	// The old process's job writes its journal and operations log under the
+	// temp dir when released: let it finish before the dir is removed.
+	t.Cleanup(func() {
+		close(release)
+		first.manager.Wait(job.ID)
+		closeFirst()
+	})
 	<-started
 	// Simulate a resumable job (a sync that already completed artists).
 	running, _ := first.Job(job.ID)
@@ -382,6 +388,19 @@ func TestRestartMarksRunningJobInterrupted(t *testing.T) {
 	rec := s.get("/jobs/" + job.ID)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, strings.ToLower(rec.Body.String()), "interrupted")
+
+	// The operations log records how the interrupted job ended.
+	entries, err := s.a.RecentOperations(context.Background(), 10)
+	require.NoError(t, err)
+	var finished []maintenance.OperationEntry
+	for _, e := range entries {
+		if e.JobID == job.ID && e.Kind == maintenance.EntryFinished {
+			finished = append(finished, e)
+		}
+	}
+	require.Len(t, finished, 1, "%+v", entries)
+	require.Equal(t, "interrupted", finished[0].Outcome)
+	require.Equal(t, "sync", finished[0].Action)
 
 	// Resources are not held: a conflicting job starts in the new process.
 	conflicting, err := s.a.manager.Submit(context.Background(), jobs.Spec{

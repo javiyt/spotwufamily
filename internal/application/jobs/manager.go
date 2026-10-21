@@ -279,16 +279,20 @@ func (m *Manager) Cancel(id string) error {
 	return nil
 }
 
-// Recover loads persisted jobs and marks any that were active as interrupted.
-func (m *Manager) Recover(ctx context.Context) error {
+// Recover loads persisted jobs, marks any that were active as interrupted
+// and returns snapshots of the jobs it interrupted (oldest first), so the
+// caller can record that they ended. OnFinish is not called for them: it may
+// not be ready while the composition root is still being built.
+func (m *Manager) Recover(ctx context.Context) ([]Job, error) {
 	loaded, err := m.store.Load(ctx)
 	if err != nil {
-		return fmt.Errorf("load jobs: %w", err)
+		return nil, fmt.Errorf("load jobs: %w", err)
 	}
 	sort.SliceStable(loaded, func(a, b int) bool { return loaded[a].CreatedAt.Before(loaded[b].CreatedAt) })
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	var interrupted []Job
 	for _, l := range loaded {
 		if _, exists := m.jobs[l.ID]; exists {
 			continue
@@ -299,8 +303,9 @@ func (m *Manager) Recover(ctx context.Context) error {
 			j.Message = "interrupted by server restart"
 			j.FinishedAt = m.now()
 			if err := m.store.Save(ctx, snapshot(&j)); err != nil {
-				return fmt.Errorf("persist interrupted job: %w", err)
+				return nil, fmt.Errorf("persist interrupted job: %w", err)
 			}
+			interrupted = append(interrupted, snapshot(&j))
 		}
 		if j.Counts == nil {
 			j.Counts = map[string]int{}
@@ -308,7 +313,7 @@ func (m *Manager) Recover(ctx context.Context) error {
 		m.jobs[j.ID] = &j
 		m.order = append(m.order, j.ID)
 	}
-	return nil
+	return interrupted, nil
 }
 
 // Wait blocks until the job finishes. Intended for tests.
