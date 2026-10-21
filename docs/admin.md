@@ -12,9 +12,11 @@ make admin ADMIN_PORT=9000
 go run ./cmd/spotwufamily admin serve --host 127.0.0.1 --port 8787 --catalog data/artists.yaml --db data/catalog.db
 ```
 
-The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?token=...`. Open it: the token is exchanged for an `HttpOnly`, `SameSite=Strict` session cookie and the URL redirects to the dashboard. Stop with Ctrl+C (graceful shutdown, 5 s).
+The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?token=...`. Open it: the token is exchanged for an `HttpOnly`, `SameSite=Strict` session cookie and the URL redirects to the dashboard. Stop with Ctrl+C (graceful shutdown, 5 s; running jobs are cancelled and waited for at most 5 s more, see *Maintenance state and restarts*).
 
-`make admin-smoke` starts the server on a spare port and checks: non-loopback bind refused, unauthenticated request rejected, launch URL authenticates, foreign `Host` rejected, cross-origin `POST` rejected. It needs `go` and `curl`, no Node and no Spotify credentials.
+Run it from the repository root: the maintenance workflows keep their state under `build/admin/` of the working directory, write exports to `site/…` there and run the release script from there (the same working-directory convention as every other CLI default). `--catalog` and `--db` keep their meaning; the snapshot is `catalog.snapshot.sql.gz` next to the database and the discovery ledger `wu-candidates.yaml` next to the catalog, which for the defaults are `data/catalog.snapshot.sql.gz` and `data/wu-candidates.yaml`. The release repository is `javiyt/spotwufamily` unless `SPOTWUFAMILY_RELEASE_REPO=owner/name` says otherwise; an invalid value, or `none`, registers no release action (the admin still starts).
+
+`make admin-smoke` starts the server on a spare port (with `SPOTWUFAMILY_RELEASE_REPO=none`, so no page runs `gh` or the release script) and checks: non-loopback bind refused, unauthenticated request rejected, launch URL authenticates, foreign `Host` rejected, cross-origin `POST` rejected, `/operations`, `/jobs`, `/publish` and `/api/v1/jobs` served to the session, `POST /operations/sync/preview` without a session rejected and a cross-origin `POST /operations/freshness` rejected. It needs `go` and `curl`, no Node, no Spotify credentials and no `gh`.
 
 ## Pages and API
 
@@ -142,9 +144,29 @@ All operation POSTs need the session, the CSRF token and a same-origin request. 
 
 The admin itself is never deployed to Pages: nothing in `site/` references it, only the static site and the pinned release reach Pages.
 
+## Maintenance state and restarts
+
+| What | Where |
+| --- | --- |
+| Job journal (every job's status, counts and result, append-only JSONL, `0600` in a `0700` directory) | `build/admin/jobs.jsonl` |
+| Database backups taken before a sync, metadata refresh, discovery import or reconcile apply (`VACUUM INTO`, never overwritten; same-second backups get a `-2`, `-3`… suffix) | `build/admin/backups/` |
+| Operations log (confirmed and finished entries: time, action, job, outcome, sanitized summary; no params or paths) | `<catalog>.operations.jsonl`, e.g. `data/artists.yaml.operations.jsonl` |
+| YAML backup of the previous catalog on every write | `<catalog>.bak` |
+| Release package | `build/catalog-release` |
+
+`build/` is git-ignored. Delete old backups by hand when they are no longer needed; the journal and the operations log are never pruned.
+
+- **Preview tokens** are HMAC-signed with a 32-byte secret drawn from `crypto/rand` at every start (the admin refuses to start if it cannot get one). A restart therefore invalidates every open preview: confirming one answers "The preview is out of date"; review it again.
+- **Restart semantics**: on start the admin reloads the journal. A job that was queued, running or cancelling when the previous process stopped is recorded as **interrupted** ("interrupted by server restart") and never as succeeded. Its resources (`catalog-yaml`, `database`, `release`) are free again, so new jobs can start; the database file lock held by the old process died with it.
+- **Recovering from `interrupted`**: open the job. If it says it can be resumed (a sync that had completed artists), **Resume/retry…** leads to the sync preview with `resume` ticked; the resumed run skips the artists the interrupted run completed (their checkpoints were committed per artist). Other interrupted jobs are simply previewed and run again: every action re-reads the current state and backs the database up again first. An interrupted `release-publish` is the exception: check the GitHub Releases page first (see *Publish*).
+- **Shutdown**: Ctrl+C cancels every running job and waits at most 5 seconds for them to stop at a safe point (a cancelled sync keeps its completed artists and is resumable). A started release publish is not cancellable; shutdown stops waiting after the bound instead of hanging, and the next start marks it interrupted.
+- **Job IDs** are random UUIDs.
+
 ## Offline mode
 
-The YAML catalog is read on every request, so edits show up on reload. If the database file is missing or unreadable the UI says so and keeps serving the catalog; the file is never created. The profile review workbench is the only part that can call Spotify or MusicBrainz, and only to answer a search or fill a card the cache cannot.
+The YAML catalog is read on every request, so edits show up on reload. If the database file is missing or unreadable the UI says so and keeps serving the catalog; the file is never created.
+
+The admin starts and serves every page with no database, no Spotify credentials, no `python3`, no `go` and no `gh`. Nothing needs them at start: credentials are read when an action runs, and the release prerequisites are checked in the background. Each action that needs something missing is listed as unavailable with its reason (e.g. "No database found; run the init workflow first", missing Spotify credentials, or "python3 or the release script is unavailable"); offline actions such as `sync-dry-run` and `audit-profiles` with `offline` stay available (discovery needs no credentials but reaches Wikipedia when it runs). The profile review workbench is the only part that can call Spotify or MusicBrainz, and only to answer a search or fill a card the cache cannot.
 
 ## Catalog releases
 
@@ -164,11 +186,16 @@ Both run the script as `python3 scripts/automation/catalog-release.py <preflight
 - Headers on every response: strict CSP (no inline script/style, `frame-ancestors 'none'`), `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: no-referrer`, COOP/CORP, `Cache-Control: no-store`.
 - Request bodies are capped at 64 KiB, headers at 16 KiB, with read/write/idle timeouts.
 - Templates are `html/template` with contextual escaping, so artist names and notes cannot inject script.
+- Maintenance actions run only through preview → confirm: the confirm form carries an HMAC preview token bound to the action, its parameters, a fingerprint of the state it previewed (catalog, database, plan checksum) and a 10-minute expiry, signed with the per-process secret. Destructive or large actions also need a typed phrase (`sync 42 artists`, `reconcile <slug>`, `publish release`). A changed state makes the token stale; a held resource answers `409` naming the holder.
+- The only subprocess is the release script, run with a fixed executable, script path and subcommand, a validated `--repo`, and a minimal environment. No action, edit or save ever publishes; only the `release-publish` step of `/publish` does, after its typed phrase.
+- Job messages, reports, summaries and API errors never contain paths, SQL, stack traces or secrets: unknown errors become "operation failed" / "An internal error occurred." and are logged server-side only.
 - `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` are used only inside the server process to talk to Spotify; values are not read into any response, template or log. The launch token is not logged (only request paths, never queries). The server proxies no URLs. The CSP allows images only from `'self'`, `data:` and the Spotify image CDNs (`*.scdn.co`, `*.spotifycdn.com`); a profile image from any other host is dropped before rendering.
 
 ## Layout
 
 - `internal/application/admin`: queries, the editing use cases (`ApplyChange`, `ApplyRelationship`), the profile review use cases (`ResolveQueue`, `ResolveWorkbench`, `PreviewResolution`, `ApplyResolution`), ports (`OperationsReader`, `CatalogUpdater`) and pagination.
 - `internal/adapters/inbound/httpadmin`: server, security middleware, handlers, embedded templates and CSS/JS (no Node build).
-- `internal/bootstrap`: shared composition root wiring YAML + SQLite into the admin service.
+- `internal/application/jobs`: background job manager (resource locks, cancellation, restart recovery).
+- `internal/application/admin/maintenance`: maintenance actions, preview tokens, freshness, operations log.
+- `internal/bootstrap`: shared composition root. `NewAdmin` (`admin_maintenance.go`) wires YAML + SQLite into the admin service and adds the job manager, every maintenance action, the release adapter, freshness and the operations log.
 - `internal/adapters/inbound/cli/admin.go`: the `admin serve` command.
