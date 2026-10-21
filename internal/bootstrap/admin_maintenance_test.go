@@ -513,6 +513,14 @@ func TestOfflineStartNoCredentialsNoDatabase(t *testing.T) {
 		require.NotContains(t, infos[name].UnavailableReason, root, "reasons never carry paths")
 	}
 	require.True(t, infos["sync-dry-run"].Available, "a dry sync needs neither Spotify nor the database")
+	for _, name := range []string{"release-prepare", "release-publish"} {
+		info, ok := infos[name]
+		require.True(t, ok, "%s is registered", name)
+		require.False(t, info.Available, "%s needs the release script, python3 and gh", name)
+		require.NotEmpty(t, info.UnavailableReason, name)
+		require.NotContains(t, info.UnavailableReason, root, "reasons never carry paths")
+		require.NotContains(t, info.UnavailableReason, "/", "reasons never carry paths")
+	}
 
 	audit := s.wait(s.startedJob(s.confirm("audit-profiles", maintenance.Params{"offline": "true"}, "", nil)))
 	require.NotEqual(t, jobs.StatusFailed, audit.Status, audit.Message)
