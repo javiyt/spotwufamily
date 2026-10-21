@@ -143,12 +143,14 @@ func (m *Manager) run(ctx context.Context, id string, fn Func, done chan struct{
 
 	m.mu.Lock()
 	var finalErr *FinalError
-	// Work a cancel could not stop is recorded as it ended.
-	cancelled := job.Status == StatusCancelling && !outcome.Final && !errors.As(err, &finalErr)
+	// A cancel request only wins when the job stopped with an error: work
+	// that finished anyway (an outcome with a nil error) is recorded as it
+	// ended, and so is a FinalError from work a cancel could not stop.
+	cancelled := job.Status == StatusCancelling && err != nil && !errors.As(err, &finalErr)
 	switch {
 	case cancelled:
 		job.Status = StatusCancelled
-		job.Resumable = err != nil && outcome.Resumable
+		job.Resumable = outcome.Resumable
 	case err != nil:
 		job.Status = StatusFailed
 		job.Message = m.sanitize(err)

@@ -78,8 +78,10 @@ type Outcome struct {
 	Status    Status
 	Result    Result
 	Resumable bool
-	// Final records the outcome as returned even if a cancel was requested
-	// while the job ran: the job started work a cancel could not stop.
+	// Final documents that the job started work a cancel could not stop.
+	// Any outcome returned with a nil error is recorded as returned even if
+	// a cancel was requested while the job ran; Final is kept for callers
+	// that state it explicitly (release publish).
 	Final bool
 }
 

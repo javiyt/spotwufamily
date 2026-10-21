@@ -327,15 +327,49 @@ func TestFinalErrorIsRecordedAsFailedDespiteCancel(t *testing.T) {
 	}
 }
 
-func TestNonFinalOutcomeStillCancelled(t *testing.T) {
+func TestOutcomeFinishedAfterCancelRequestIsKept(t *testing.T) {
 	m := newManager(&fakeStore{})
 	started := make(chan struct{})
-	out := jobs.Outcome{Status: jobs.StatusSucceeded}
+	out := jobs.Outcome{Status: jobs.StatusSucceeded, Resumable: false, Result: jobs.Result{Summary: "committed"}}
 	j, _ := m.Submit(context.Background(), jobs.Spec{Kind: "a", Resources: []string{"x"}, Run: finalAfterCancel(started, out, nil)})
 	<-started
 	_ = m.Cancel(j.ID)
 	m.Wait(j.ID)
-	if got, _ := m.Get(j.ID); got.Status != jobs.StatusCancelled {
+	got, _ := m.Get(j.ID)
+	if got.Status != jobs.StatusSucceeded || got.Result == nil || got.Result.Summary != "committed" {
+		t.Fatalf("work that finished after a cancel request must keep its outcome: %+v", got)
+	}
+}
+
+func TestPartialOutcomeAfterCancelRequestIsKept(t *testing.T) {
+	m := newManager(&fakeStore{})
+	started := make(chan struct{})
+	out := jobs.Outcome{Status: jobs.StatusPartial, Resumable: true, Result: jobs.Result{Summary: "some"}}
+	j, _ := m.Submit(context.Background(), jobs.Spec{Kind: "a", Resources: []string{"x"}, Run: finalAfterCancel(started, out, nil)})
+	<-started
+	_ = m.Cancel(j.ID)
+	m.Wait(j.ID)
+	got, _ := m.Get(j.ID)
+	if got.Status != jobs.StatusPartial || !got.Resumable || got.Result == nil || got.Result.Summary != "some" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestContextErrorAfterCancelRequestIsCancelledWithCounts(t *testing.T) {
+	m := newManager(&fakeStore{})
+	started := make(chan struct{})
+	j, _ := m.Submit(context.Background(), jobs.Spec{Kind: "a", Resources: []string{"x"},
+		Run: func(ctx context.Context, r jobs.Reporter) (jobs.Outcome, error) {
+			r.Count("done", 2)
+			close(started)
+			<-ctx.Done()
+			return jobs.Outcome{Status: jobs.StatusPartial, Resumable: true}, ctx.Err()
+		}})
+	<-started
+	_ = m.Cancel(j.ID)
+	m.Wait(j.ID)
+	got, _ := m.Get(j.ID)
+	if got.Status != jobs.StatusCancelled || got.Counts["done"] != 2 || !got.Resumable || got.Result != nil {
 		t.Fatalf("got %+v", got)
 	}
 }
