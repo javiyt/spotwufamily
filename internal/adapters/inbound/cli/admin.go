@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -98,12 +99,19 @@ func executeAdminServe(ctx context.Context, args []string, stdout, stderr io.Wri
 	}
 
 	addr := net.JoinHostPort(options.host, strconv.Itoa(options.port))
-	svc, closeDB, err := bootstrap.NewAdminService(options.catalogPath, options.dbPath)
+	// Maintenance files live under build/admin of the working directory (the
+	// repository root, as for every other CLI default).
+	svc, closeAdmin, err := bootstrap.NewAdmin(ctx, bootstrap.AdminConfig{
+		CatalogPath: options.catalogPath,
+		DBPath:      options.dbPath,
+		Logger:      slog.New(slog.NewTextHandler(stderr, nil)),
+	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "admin serve: %v\n", err)
 		return 1
 	}
-	defer closeDB()
+	// Runs after Serve returns: cancels running jobs and waits a bounded time.
+	defer closeAdmin()
 
 	server, err := httpadmin.New(svc, httpadmin.Options{Addr: addr, Token: token, AllowRemote: options.allowRemote, Log: stderr})
 	if err != nil {

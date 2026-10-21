@@ -1,6 +1,7 @@
 // Package httpadmin is the inbound HTTP adapter of the local admin UI. It is
 // keeps all business rules in internal/application/admin. Editing routes exist
-// only when the service also implements Editor.
+// only when the service also implements Editor; job pages only when it
+// implements Maintenance; maintenance actions only when it implements Operator.
 package httpadmin
 
 import (
@@ -47,6 +48,11 @@ type Server struct {
 	routes    map[string]route
 	editor    Editor
 	resolver  Resolver
+	maint     Maintenance
+	op        Operator
+	pub       Publisher
+	now       func() time.Time
+	fresh     freshnessCache
 	dynamic   *http.ServeMux
 	http      *http.Server
 
@@ -88,6 +94,10 @@ func New(svc Service, opts Options) (*Server, error) {
 		sessions: newSessions(),
 		limiter:  &failureLimiter{now: time.Now},
 		hosts:    hosts,
+		now:      opts.Now,
+	}
+	if s.now == nil {
+		s.now = time.Now
 	}
 	if s.templates, err = parseTemplates(); err != nil {
 		return nil, err
@@ -118,6 +128,14 @@ func New(svc Service, opts Options) (*Server, error) {
 	if rs, ok := svc.(Resolver); ok && rs.Resolvable() {
 		s.resolver = rs
 		s.registerResolver()
+	}
+	if m, ok := svc.(Maintenance); ok {
+		s.maint = m
+		s.registerMaintenance()
+	}
+	if o, ok := svc.(Operator); ok {
+		s.op = o
+		s.registerOperator()
 	}
 	s.http = &http.Server{
 		Handler:           s.Handler(),

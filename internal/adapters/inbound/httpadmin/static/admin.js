@@ -77,10 +77,17 @@
     if (!form.matches || !form.matches('form[method="post"]') || form.action.indexOf('/logout') !== -1) return;
     var msg = form.getAttribute('data-confirm');
     if (msg && !window.confirm(msg)) { e.preventDefault(); return; }
-    if (!window.fetch || !window.FormData) return;
+    // data-once buttons (e.g. "Confirm and run") are disabled once submitted;
+    // the server's conflict check still refuses a second run.
+    var once = form.querySelectorAll('button[data-once]');
+    if (!window.fetch || !window.FormData) {
+      setTimeout(function () { once.forEach(function (b) { b.disabled = true; }); }, 0);
+      return;
+    }
     e.preventDefault();
     var data = new URLSearchParams(new FormData(form));
     if (e.submitter && e.submitter.name) data.set(e.submitter.name, e.submitter.value);
+    once.forEach(function (b) { b.disabled = true; });
     fetch(form.action, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Admin-Fetch': '1' },
@@ -94,10 +101,20 @@
           setTimeout(function () { window.location.href = body.redirect || window.location.href; }, 700);
         });
       }
+      // A refusal (e.g. cancelling a finished job) is JSON with an error
+      // status: report it as an error, never as a success.
+      if (type.indexOf('application/json') !== -1) {
+        return res.json().then(function (body) {
+          var msg = body && body.error && body.error.message;
+          once.forEach(function (b) { b.disabled = false; });
+          toast(msg ? String(msg) : 'The request was refused.', 'err');
+        });
+      }
       return res.text().then(function (html) {
         document.open(); document.write(html); document.close();
       });
     }).catch(function () {
+      once.forEach(function (b) { b.disabled = false; });
       toast('The admin server could not be reached. Nothing was saved; your edits are still in the form.', 'err');
     });
   });
@@ -126,4 +143,94 @@
     set('evidence_url', b.getAttribute('data-fill-url'));
     set('evidence_rationale', b.getAttribute('data-fill-rationale'));
   });
+})();
+
+// Job progress: while a job is active, poll its JSON every 2 s and update the
+// page in place; reload once when it finishes so the server renders the final
+// state. Pages without a job section are left alone. Without JavaScript the
+// page refreshes itself through a <noscript> meta refresh instead.
+(function () {
+  'use strict';
+  var root = document.querySelector('[data-job-id]');
+  if (!root || !window.fetch) return;
+  var id = root.getAttribute('data-job-id');
+  var active = { queued: true, running: true, cancelling: true };
+  if (!id || !active[root.getAttribute('data-job-status')]) return;
+
+  var labels = {
+    queued: 'Queued', running: 'Running', cancelling: 'Cancelling', succeeded: 'Succeeded',
+    partial: 'Partially completed', failed: 'Failed', cancelled: 'Cancelled', interrupted: 'Interrupted'
+  };
+  var url = '/api/v1/jobs/' + encodeURIComponent(id);
+  var banner = document.getElementById('offline');
+  var reloading = false;
+
+  function setField(name, value) {
+    root.querySelectorAll('[data-job-field="' + name + '"]').forEach(function (el) { el.textContent = value; });
+  }
+
+  function update(job) {
+    setField('status', labels[job.status] || String(job.status));
+    setField('step', job.step ? String(job.step) : '—');
+    setField('done', String(job.done || 0));
+    setField('total', String(job.total || 0));
+    root.setAttribute('data-job-status', String(job.status));
+    var bar = root.querySelector('progress[data-job-progress]');
+    if (bar) {
+      if (job.total > 0) { bar.max = job.total; bar.value = job.done || 0; }
+      else { bar.removeAttribute('value'); bar.removeAttribute('max'); }
+    }
+    var body = root.querySelector('[data-job-counts]');
+    if (body && job.counts && typeof job.counts === 'object') {
+      var keys = Object.keys(job.counts).sort();
+      while (body.firstChild) body.removeChild(body.firstChild);
+      if (keys.length === 0) {
+        var empty = document.createElement('tr');
+        var td = document.createElement('td');
+        td.colSpan = 2;
+        td.textContent = 'No counts reported.';
+        empty.appendChild(td);
+        body.appendChild(empty);
+      }
+      keys.forEach(function (k) {
+        var tr = document.createElement('tr');
+        var th = document.createElement('th');
+        th.scope = 'row';
+        th.textContent = k;
+        var v = document.createElement('td');
+        v.textContent = String(job.counts[k]);
+        tr.appendChild(th);
+        tr.appendChild(v);
+        body.appendChild(tr);
+      });
+    }
+  }
+
+  function reloadOnce() {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  }
+
+  function poll() {
+    fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } })
+      .then(function (res) {
+        // Signed out or gone: let the server render what is true now.
+        if (res.status === 401 || res.status === 404) { reloadOnce(); return null; }
+        if (!res.ok) throw new Error('status ' + res.status);
+        return res.json();
+      })
+      .then(function (job) {
+        if (!job) return;
+        if (banner && navigator.onLine !== false) banner.hidden = true;
+        update(job);
+        if (!active[job.status]) { reloadOnce(); return; }
+        setTimeout(poll, 2000);
+      })
+      .catch(function () {
+        if (banner) banner.hidden = false;
+        setTimeout(poll, 2000);
+      });
+  }
+  setTimeout(poll, 2000);
 })();

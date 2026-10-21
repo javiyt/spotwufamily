@@ -1,0 +1,116 @@
+{{define "content"}}{{$csrf := .CSRF}}{{with .Data}}
+<p class="notice" role="note">Publishing a catalog release is always manual: prepare the package, review and publish it, then commit the updated pin through a pull request. Nothing on this page runs until you confirm it on the next page, and no edit or save ever publishes.</p>
+
+<section id="readiness" aria-labelledby="readiness-h">
+<h2 id="readiness-h">Data readiness</h2>
+{{with .Fresh}}{{if .Checked}}
+<p class="muted">Last checked <time datetime="{{.At}}">{{.At}}</time> (checked {{.Age}} ago).</p>
+{{if .Stale}}<p class="notice warn" role="status">Catalog changed since last check. Check again to see what needs refreshing.</p>{{end}}
+<div class="table-wrap"><table>
+<caption class="sr">Data readiness</caption>
+<tbody>
+<tr><th scope="row">Seed needed</th><td>{{if .SeedNeeded}}yes{{else}}no{{end}}</td></tr>
+<tr><th scope="row">Snapshot needed</th><td>{{if .SnapshotNeeded}}yes{{else}}no{{end}}</td></tr>
+<tr><th scope="row">Export needed</th><td>{{if .ExportNeeded}}yes{{else}}no{{end}}</td></tr>
+<tr><th scope="row">Database unreadable</th><td>{{if .Unreadable}}yes{{else}}no{{end}}</td></tr>
+<tr><th scope="row">Offline (no database)</th><td>{{if .Offline}}yes{{else}}no{{end}}</td></tr>
+<tr><th scope="row">Differs from the published catalog</th><td>{{if .DiffersFromPublished}}yes{{else}}no{{end}}</td></tr>
+</tbody></table></div>
+{{if .Reasons}}<ul>{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>{{else}}<p>Everything derived from the catalog is up to date.</p>{{end}}
+{{if or .SeedNeeded .SnapshotNeeded .ExportNeeded .RebuildNeeded}}<p class="notice warn">Refresh the data first (sync if the catalog changed, then <a href="/operations/refresh-export">refresh-export</a>), then prepare the package again.</p>{{end}}
+{{else}}<p class="muted">Freshness not checked yet. The check reads the whole database and can take a few seconds.</p>{{end}}{{end}}
+<form method="post" action="/operations/freshness">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<input type="hidden" name="from" value="publish">
+<button type="submit">Check data freshness</button>
+</form>
+</section>
+
+{{if .Release}}
+<section id="prerequisites" aria-labelledby="prereq-h">
+<h2 id="prereq-h">Prerequisites</h2>
+{{if .Checking}}<p class="notice" role="status">Checking… The release prerequisites are checked in the background; this page reloads until the check ends.</p>
+{{else}}
+<p class="muted">Last checked <time datetime="{{.CheckedAt}}">{{.CheckedAt}}</time> (checked {{.CheckedAge}} ago).{{if .Rechecking}} Re-checking… this page reloads until the check ends.{{end}}</p>
+<div class="table-wrap"><table>
+<caption class="sr">Release prerequisites</caption>
+<thead><tr><th scope="col">Check</th><th scope="col">Needed for</th><th scope="col">State</th><th scope="col">How to fix</th></tr></thead>
+<tbody>
+{{range .Prereqs}}<tr><td><span class="badge {{.Class}}">{{.State}}</span> {{.Name}}</td><td>{{.Needed}}</td><td>{{.Detail}}</td><td>{{if or .FixPre .FixCode}}{{.FixPre}}{{if .FixCode}}<code>{{.FixCode}}</code>{{end}}{{.FixPost}}{{else}}—{{end}}</td></tr>
+{{end}}</tbody></table></div>
+{{end}}
+<form method="post" action="/publish/recheck">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<button type="submit">Re-check</button>
+</form>
+</section>
+
+<section id="package" aria-labelledby="package-h">
+<h2 id="package-h">What will be published</h2>
+{{if .Checking}}<p class="muted">Known once the prerequisites check ends.</p>
+{{else if .CheckFailed}}<p class="notice bad">Unknown: the release script could not run.</p>
+{{else}}<div class="table-wrap"><table>
+<caption class="sr">Release content</caption>
+<tbody>
+<tr><th scope="row">Local content sha256</th><td><code>{{.LocalShort}}</code></td></tr>
+<tr><th scope="row">Pinned content sha256 ({{.ManifestName}})</th><td><code>{{.PinnedShort}}</code></td></tr>
+<tr><th scope="row">Last release</th><td>{{if .LastTag}}<code>{{.LastTag}}</code>{{else}}none{{end}}</td></tr>
+<tr><th scope="row">Differs from what Pages serves</th><td>{{.Differs}}</td></tr>
+<tr><th scope="row">Prepared package</th><td>{{if .PreparedTag}}<code>{{.PreparedTag}}</code> (content <code>{{.PreparedSHA}}</code>){{else}}none{{end}}</td></tr>
+</tbody></table></div>
+<p>{{.PreparedNote}}</p>
+<p class="muted">Pages serves the release pinned in {{.ManifestName}} on the default branch, so "differs" compares against that pin.</p>
+{{end}}
+</section>
+
+<section id="steps" aria-labelledby="steps-h">
+<h2 id="steps-h">Steps</h2>
+<h3>Step 1 – Prepare package</h3>
+<p>Builds the release package (complete database backup, snapshot and manifest) in <code>{{.PackageName}}</code>. Nothing is uploaded. After the prepare job finishes, come back here; if step 2 does not appear yet, press Re-check.</p>
+{{if .PrepareReady}}<form method="post" action="/operations/release-prepare/preview">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<input type="hidden" name="from" value="publish">
+<button type="submit">Prepare package…</button>
+</form>
+{{else}}<div class="notice warn"><p>Step 1 is not available right now:</p><ul>{{range .PrepareWhy}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+
+<h3>Step 2 – Publish release</h3>
+<p>Uploads the prepared package as a GitHub release in <code>{{.Repo}}</code> and updates {{.ManifestName}}. The next page shows exactly what will be published and asks you to type <code>publish release</code>.</p>
+{{if .DataWarning}}<p class="notice warn" role="status">Data may need refreshing — check freshness before publishing.</p>{{end}}
+{{if .PublishReady}}<form method="post" action="/operations/release-publish/preview">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<input type="hidden" name="from" value="publish">
+<button type="submit" class="primary">Review publish…</button>
+</form>
+{{else}}<div class="notice warn"><p>Step 2 is not available until a prepared package matches the local content and the prerequisites pass:</p><ul>{{range .PublishWhy}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+</section>
+{{else}}
+<section aria-labelledby="noresult-h">
+<h2 id="noresult-h">Release actions</h2>
+<p class="notice warn">Release actions are not configured in this admin. Use <code>make catalog-release-prepare</code> and the release script from a terminal instead.</p>
+</section>
+{{end}}
+
+<section id="manual" aria-labelledby="manual-h">
+<h2 id="manual-h">After publishing (manual)</h2>
+<ol>
+<li>Commit the updated pin <code>{{.ManifestName}}</code> together with the catalog changes it was built from (<code>data/artists.yaml</code> and its review log <code>data/artists.yaml.reviews.jsonl</code>, if changed) on one branch and open one pull request; merge it once CI passes. Committing the pin alone would publish a release whose catalog edits never reach the site.</li>
+<li>Wait for CI and the GitHub Pages deploy of the default branch to finish.</li>
+<li>Verify the site: open the published site, check that the artist count and a recently changed artist are right, and that it loads the new release.</li>
+</ol>
+<p class="muted">The admin is never deployed to Pages; only the static site is.</p>
+</section>
+
+<section id="release-log" aria-labelledby="release-log-h">
+<h2 id="release-log-h">Release operations</h2>
+{{if .RecentErr}}<p class="notice warn">{{.RecentErr}}</p>{{end}}
+{{if .Recent}}<div class="table-wrap"><table>
+<caption class="sr">Release operations, newest first</caption>
+<thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">Event</th><th scope="col">Outcome</th><th scope="col">Summary</th><th scope="col">Job</th></tr></thead>
+<tbody>
+{{range .Recent}}<tr><td>{{if .At}}<time datetime="{{.At}}">{{.At}}</time>{{end}}</td><td>{{.Action}}</td><td>{{.Event}}</td><td>{{.Outcome}}</td><td>{{.Summary}}</td><td>{{if .JobID}}<a href="/jobs/{{.JobID}}"><code>{{.ShortJobID}}</code></a>{{else}}—{{end}}</td></tr>
+{{end}}</tbody></table></div>
+{{else if not .RecentErr}}<p class="muted">No release operations recorded yet.</p>{{end}}
+<p><a href="/operations#recent">Full operations log</a> · <a href="/jobs">Jobs</a></p>
+</section>
+{{end}}{{end}}

@@ -100,6 +100,8 @@ type resolveEnv struct {
 	spotify *fakeProfiles
 	finder  *fakeFinder
 	logPath string
+	// wrap, when a tweak sets it, serves a composition of the real service.
+	wrap func(admin.Service) httpadmin.Service
 }
 
 func newResolveEnv(t *testing.T, tweak func(*resolveEnv, *admin.ResolutionDeps)) *resolveEnv {
@@ -148,7 +150,11 @@ func newResolveEnv(t *testing.T, tweak func(*resolveEnv, *admin.ResolutionDeps))
 	}
 
 	svc := admin.NewService(store, nil, func() bool { return true }, path).WithResolution(deps)
-	srv, err := httpadmin.New(svc, httpadmin.Options{Addr: host, Token: token})
+	var served httpadmin.Service = svc
+	if env.wrap != nil {
+		served = env.wrap(svc)
+	}
+	srv, err := httpadmin.New(served, httpadmin.Options{Addr: host, Token: token})
 	require.NoError(t, err)
 	h := srv.Handler()
 	cookie := login(t, h)

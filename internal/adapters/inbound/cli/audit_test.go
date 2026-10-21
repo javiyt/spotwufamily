@@ -107,3 +107,53 @@ artists:
 	require.Equal(t, 1, code)
 	require.Contains(t, stderr.String(), "snapshot is out of date")
 }
+
+// TestExecuteAuditStaleSnapshotOutputIsExact pins the audit's stale snapshot
+// output, which comes from the shared catalogaudit checks.
+func TestExecuteAuditStaleSnapshotOutputIsExact(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "artists.yaml")
+	dbPath := filepath.Join(dir, "catalog.db")
+	snapshotPath := filepath.Join(dir, "catalog.snapshot.sql")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`
+version: 1
+artists:
+  - slug: wu-tang-clan
+    name: Wu-Tang Clan
+    spotify_id: 34EP7KEpOjXcM2TCat1ISk
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: true
+    editorial_order: 1
+    notes: ""
+`), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	require.Equal(t, 0, cli.Execute([]string{"db", "migrate", "--db", dbPath}, &stdout, &stderr))
+	require.NoError(t, os.WriteFile(snapshotPath, []byte("stale"), 0o644))
+
+	stdout.Reset()
+	stderr.Reset()
+	code := cli.Execute([]string{
+		"audit", "--catalog", catalogPath, "--db", dbPath, "--snapshot", snapshotPath,
+		"--output", filepath.Join(dir, "generated"), "--static", filepath.Join(dir, "static"),
+		"--skip-site", "--skip-git-diff",
+	}, &stdout, &stderr)
+
+	require.Equal(t, 1, code)
+	require.Equal(t, "audit: snapshot is out of date: "+snapshotPath+"\n", stderr.String())
+	require.Equal(t, "audit: catalog ok ("+catalogPath+")\n", stdout.String())
+
+	// A missing snapshot reports the read error.
+	require.NoError(t, os.Remove(snapshotPath))
+	stdout.Reset()
+	stderr.Reset()
+	code = cli.Execute([]string{
+		"audit", "--catalog", catalogPath, "--db", dbPath, "--snapshot", snapshotPath,
+		"--output", filepath.Join(dir, "generated"), "--static", filepath.Join(dir, "static"),
+		"--skip-site", "--skip-git-diff",
+	}, &stdout, &stderr)
+	require.Equal(t, 1, code)
+	require.Equal(t, "audit: read snapshot "+snapshotPath+": open "+snapshotPath+": no such file or directory\n", stderr.String())
+}

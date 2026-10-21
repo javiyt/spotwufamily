@@ -2,6 +2,7 @@ package artists
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -18,6 +19,19 @@ type MetadataRefreshCheckpointStore interface {
 	LastArtistMetadataRefresh(context.Context, string) (time.Time, bool, error)
 	SaveArtistMetadataRefresh(context.Context, string, []string, time.Time) error
 }
+
+// ErrRefreshCompletedWithErrors marks a refresh that finished its run but
+// could not refresh some artists; the per-artist errors are in the report.
+// Any other error from Run aborted the run.
+var ErrRefreshCompletedWithErrors = errors.New("refresh genres completed with errors")
+
+type refreshErrorsError struct{ count int }
+
+func (e refreshErrorsError) Error() string {
+	return fmt.Sprintf("refresh genres completed with %d errors", e.count)
+}
+
+func (e refreshErrorsError) Unwrap() error { return ErrRefreshCompletedWithErrors }
 
 type RefreshGenres struct {
 	store   CatalogStore
@@ -210,7 +224,7 @@ func (r RefreshGenres) Run(ctx context.Context, options RefreshGenresOptions) (R
 	}
 
 	if len(report.Errors) > 0 {
-		return report, fmt.Errorf("refresh genres completed with %d errors", len(report.Errors))
+		return report, refreshErrorsError{count: len(report.Errors)}
 	}
 	if !options.DryRun {
 		if issues := catalog.ValidateEditorialCatalog(c); len(issues) > 0 {

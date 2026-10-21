@@ -12,9 +12,11 @@ make admin ADMIN_PORT=9000
 go run ./cmd/spotwufamily admin serve --host 127.0.0.1 --port 8787 --catalog data/artists.yaml --db data/catalog.db
 ```
 
-The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?token=...`. Open it: the token is exchanged for an `HttpOnly`, `SameSite=Strict` session cookie and the URL redirects to the dashboard. Stop with Ctrl+C (graceful shutdown, 5 s).
+The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?token=...`. Open it: the token is exchanged for an `HttpOnly`, `SameSite=Strict` session cookie and the URL redirects to the dashboard. Stop with Ctrl+C (graceful shutdown, 5 s; running jobs are cancelled and waited for at most 5 s more, see *Maintenance state and restarts*).
 
-`make admin-smoke` starts the server on a spare port and checks: non-loopback bind refused, unauthenticated request rejected, launch URL authenticates, foreign `Host` rejected, cross-origin `POST` rejected. It needs `go` and `curl`, no Node and no Spotify credentials.
+Run it from the repository root: the maintenance workflows keep their state under `build/admin/` of the working directory, write exports to `site/…` there and run the release script from there (the same working-directory convention as every other CLI default). `--catalog` and `--db` keep their meaning; the snapshot is `catalog.snapshot.sql.gz` next to the database and the discovery ledger `wu-candidates.yaml` next to the catalog, which for the defaults are `data/catalog.snapshot.sql.gz` and `data/wu-candidates.yaml`. The release repository is `javiyt/spotwufamily` unless `SPOTWUFAMILY_RELEASE_REPO=owner/name` says otherwise; an invalid value, or `none`, registers no release action (the admin still starts).
+
+`make admin-smoke` starts the server on a spare port (with `SPOTWUFAMILY_RELEASE_REPO=none`, so no page runs `gh` or the release script) and checks: non-loopback bind refused, unauthenticated request rejected, launch URL authenticates, foreign `Host` rejected, cross-origin `POST` rejected, `/operations`, `/jobs`, `/publish` and `/api/v1/jobs` served to the session, `POST /operations/sync/preview` without a session rejected and a cross-origin `POST /operations/freshness` rejected. It needs `go` and `curl`, no Node, no Spotify credentials and no `gh`.
 
 ## Pages and API
 
@@ -27,7 +29,9 @@ The command prints a one-time-per-run launch URL, `http://127.0.0.1:8787/auth?to
 | `/groups/new`, `/groups/{slug}` | | create / edit a group and its members |
 | `/review` | `/api/v1/review` | unverified Spotify profiles and proposed relationships |
 | `/resolve`, `/resolve/{slug}` | `/api/v1/resolve`, `/api/v1/resolve/{slug}` | Spotify profile review queue and side-by-side workbench (see below) |
-| `/operations` | | database/credential status and the CLI commands to run |
+| `/operations`, `/operations/{action}` | `/api/v1/operations`, `/api/v1/freshness` | status, data freshness, maintenance actions with preview and confirmation, recent operations (see below) |
+| `/jobs`, `/jobs/{id}` | `/api/v1/jobs`, `/api/v1/jobs/{id}` | background maintenance jobs: status, step, progress, counts, result and report downloads (see below) |
+| `/publish` | | guided publication checklist: data readiness, release prerequisites, what will be published, prepare and publish steps (see below) |
 
 List endpoints take `q`, `page` and `page_size` (default 25, max 100; out-of-range values are clamped). `/artists` and `/api/v1/artists` also take `category`, `enabled` (`yes`/`no`), `ids` (`verified`/`pending`/`unresolved`), `rel` (a relationship type, matches both endpoints), `archived=1`, `sort` (`name`, `slug`, `category`, `ids`, `order`) and `dir=desc`; unknown values are ignored. The API response adds `facets` with whole-catalog totals. Errors are always `{"error":{"code":"...","message":"..."}}` for `/api/*` and for clients sending `Accept: application/json`, and an HTML error page otherwise. Messages never include paths, stack traces or Go error text; details are logged server-side.
 
@@ -47,6 +51,7 @@ One backend record serves two pages: `/artists/{slug}` for individuals and `/gro
 - **Slug changes** need an explicit confirmation that lists the relationships that will be rewritten. Run `artists reconcile` afterwards so synced Spotify rows follow the new slug.
 - **Archive instead of delete**: archiving disables the entry and hides it from lists (`archived: true` in YAML, filter *Show archived*); relationships and synced albums/tracks are untouched, and restoring is one click. **Delete** removes only the catalog entry, is blocked while any relationship references it (the references are listed), and needs the slug typed to confirm. The admin never deletes database rows.
 - **Relationships** are edited inline on both pages through the same use cases as `artists relationship ...`: a verified relationship needs a reviewer, a confidence and at least one *independent* source (credits and name matches never count), a membership target must be a group, and cycles are rejected. New edges default to *proposed*; periods use `YYYY[-MM[-DD]]` plus an optional era. Existing evidence is kept; each edit can add one more source.
+- **Refresh hint**: after every successful save, archive, restore, delete, relationship change or Spotify profile decision the confirmation adds "Catalog changed — the database, snapshot and exports may need refreshing. Review in Operations." with a link to `/operations`. The hint is fixed text: nothing is computed, nothing is started, and nothing is ever published from an edit. The write also marks a cached freshness check as outdated, so the Operations and Publish panels say "Catalog changed since last check" and the next **Check data freshness** recomputes even inside its 60-second cache (`GET /api/v1/freshness` reports `"stale": true`).
 - **Feedback**: successful saves show a toast built from the server's confirmation (JSON when JavaScript submits the form, a one-shot flash otherwise), failures show an alert summary linking to the fields, and the page disables saving and says so when the browser is offline. Without JavaScript every form still works. Keyboard: `/` focuses search, `Ctrl/⌘+Enter` saves, `Esc` closes a details panel or toast, then cancels.
 
 ### How writes reach the file
@@ -54,6 +59,8 @@ One backend record serves two pages: `/artists/{slug}` for individuals and `/gro
 `Store.Update` (YAML adapter) takes an exclusive lock (`<catalog>.lock`, `flock`, so the CLI and several admin tabs are serialised), loads the current file, applies the change, writes a temp file in the same directory, `fsync`s it, copies the previous file to `<catalog>.bak` and renames the temp file over the catalog (then syncs the directory). Any failure before the rename leaves the catalog untouched and removes the temp file; the response is a generic error and the details are logged server-side. Output ordering is deterministic (struct field order, relationships sorted), and the leading header comments are re-emitted; other free-form comments are not preserved because the file is re-serialised from the domain model.
 
 Recovery: `cp data/artists.yaml.bak data/artists.yaml` restores the last version before the previous save. The Release backups of the catalog (`make catalog-release-prepare`) are never touched.
+
+Saves and maintenance jobs never interleave. While a job that rewrites the catalog (`refresh-metadata`, `discover-import`) holds the `catalog-yaml` resource, every editor and profile-review save (create, update, archive, restore, delete, relationship changes, profile decisions) is refused with `409` and "A maintenance job is updating the catalog; try again when it finishes." (JSON for API and `Accept: application/json` clients, an error page otherwise); nothing is written. Previews still work. Conversely, a job that needs `catalog-yaml` cannot start while a save is in progress: its confirm answers `409`.
 
 ## Spotify profile review
 
@@ -86,9 +93,92 @@ Rules the workbench enforces: an ID linked to or tracked by another artist is ne
 
 **Credentials** (`SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET`) are read once by the server process to build the Spotify client and are never placed in a template, JSON response, log line or error. Without them the workbench runs cache-only and disables name search. Tests use fake Spotify and MusicBrainz sources and need no network.
 
+## Jobs
+
+Maintenance operations run as background jobs. `/jobs` lists them newest first; `/jobs/{id}` shows the status, current step, progress (`done` of `total`), counts, resources, timestamps and the result summary. While a job is queued, running or cancelling the page refreshes itself every 3 seconds without JavaScript (`<noscript>` meta refresh); with JavaScript it polls `/api/v1/jobs/{id}` every 2 seconds instead, updates in place and reloads once when the job finishes. If polling fails the offline banner is shown until it succeeds again.
+
+- **Cancel** (`POST /jobs/{id}/cancel`, queued or running jobs) asks the job to stop at its next safe point. Cancelling a finished job changes nothing and says so. A job that finishes its work anyway (for example a reconcile apply or an export that was already committing when the cancel arrived) is recorded with its real outcome and result (`succeeded` or `partial`, with the reconcile restore details), not as cancelled; only a job that actually stopped reads `cancelled`.
+- **Resume/retry…** (`POST /jobs/{id}/retry`) is offered for failed jobs and for partial, interrupted or cancelled jobs that are resumable; the maintenance service decides (`ResumeEligible`), not the page. It starts nothing: it redirects to the operation's preview, `/operations/{action}?resume_of={id}`, where the run must be confirmed.
+- A refused cancel or retry (finished job, not resumable) answers `409` with the JSON error to API and in-page (fetch) clients, so it never shows as a success; plain forms get a redirect and a message.
+- An **interrupted** job is one the admin was running when it restarted. It never counts as a success; the page says whether it can be resumed. A **partial** job shows what completed, what is left and any retry-after hint.
+- Reports download from `/jobs/{id}/report.csv` and `/jobs/{id}/report.json` as `<action>-<first 8 characters of the id>.<ext>` attachments, byte-identical to the deterministic CSV/JSON report writers. The JSON API never inlines report rows; it reports `report_available` and links. Times are RFC 3339 UTC.
+
+Job IDs in paths must be hexadecimal with dashes; anything else is a 404 before any lookup.
+
+## Operations
+
+`/operations` shows the database, credential and last-sync status (with banners when there is no database or no Spotify credentials), a data freshness panel, the maintenance actions and the last 10 entries of the operations log, newest first. When the service has no maintenance actions (`Operator` not implemented) the page keeps the status block and lists the CLI commands instead, and every route below is absent (404).
+
+- **Actions** are grouped as Discover, Audit, Sync, Refresh/Export, Reconcile and Release. Each card shows the title, a one-line description, `NETWORK`/`DESTRUCTIVE` badges and either *Available* with a **Review…** link to `/operations/{action}` or the action's own unavailability reason. Release cards link to `/publish`. Nothing runs from the dashboard; in particular a sync is only ever started from its form and preview.
+- **`GET /operations/{action}`** is the parameter form: sync and sync-dry-run take `scope` (artist/selected/all), `artists` (comma-separated slugs) and `resume`; audit-profiles takes `artist` and `offline`; refresh-metadata(-preview) takes `force`; reconcile-* take `artist`; the rest take none. Unknown actions are 404; an unavailable action shows its reason and no form. `?resume_of={jobID}` shows "Resuming job …" (and ticks `resume` for sync) only when the service confirms that job exists, ran this action and is resumable or failed; otherwise it says so and is ignored.
+- **`POST /operations/{action}/preview`** shows the estimated impact (scope lines), warnings, badges and, for network or destructive actions, a quota/impact caveat. Form fields are passed to the service untouched and validated there; a validation error re-renders the form with the message. The confirmation form carries an opaque preview token and the validated parameters as hidden fields, and a typed-confirmation field only when the action requires one (e.g. `sync 42 artists` for a large sync, `refresh metadata` for a forced metadata refresh).
+- **`POST /operations/{action}/run`** (`token`, `typed`, the parameters) re-checks the preview and redirects `303` to `/jobs/{id}`. A missing, expired or mismatched token shows "The preview is out of date; review it again" with a button that re-previews the same parameters; a wrong phrase re-renders the preview with a message; a resource conflict answers `409` naming and linking the job that holds it (or, for `catalog-yaml`, saying that a catalog save is in progress). The confirm button disables itself on submit (JavaScript); the server's conflict check is what prevents double runs.
+- **Data freshness** is never computed on page load or by `GET /api/v1/freshness` (which returns the last result or `{"checked":false}`). **Check data freshness** (`POST /operations/freshness`) runs the comparison once — it reads the whole database and can take seconds — and caches the result for 60 seconds; concurrent clicks share one computation. The page shows the result with its age.
+- **Availability never blocks a page.** The dashboard and `GET /api/v1/operations` list actions through `Service.Actions()`, which never runs a costly check on the request: the release actions report their last preflight result (even if older than 30 s) and refresh it in one background check (bounded at 2 minutes), showing "Checking release prerequisites…" until the first check ends. The per-action pages (form, preview, run) look up only their own action (`Service.Action(name)`), so a slow `gh` or release script never affects other actions. The release actions' preview, job spec and in-lock re-check still run a fresh synchronous preflight.
+- `GET /api/v1/operations` lists every action with `name`, `title`, `group`, `description`, `available`, `unavailable_reason`, `uses_network`, `destructive` and a `page` link.
+
+All operation POSTs need the session, the CSRF token and a same-origin request. Preview tokens are never logged, and pages never show paths or Go error text.
+
+## Publish
+
+`/publish` is the guided publication checklist and the **only** page in the admin from which a release can be prepared or published. It works without JavaScript and never blocks: it never computes data freshness on load and never runs the release preflight on the request.
+
+- **Data readiness** shows the cached freshness check (same 60-second cache and **Check data freshness** button as Operations, which returns here): seed, snapshot or export needed, unreadable database, offline, differs from the published catalog, and the fixed reasons. If anything needs refreshing, refresh first and prepare again. Next to step 2 the page warns (without blocking) when freshness is unchecked, outdated by a catalog write, or says the database, snapshot or export needs work.
+- **Prerequisites** shows pass/fail rows for python3 and the release script, Go, the GitHub CLI login and an empty package directory (plus the local database) with the fix for each failure, e.g. "Run `gh auth login` in a terminal" or "Empty or remove `build/catalog-release`". The rows come from the release actions' cached preflight (`Service.ReleaseStatus()`); while no check has finished the page says "Checking…", lists that as the reason for both steps, and reloads itself every 3 seconds. **Re-check** (`POST /publish/recheck`) marks every release action's cached result as outdated and starts one background check for the publish action only (the prepare action re-checks on its next listing); it does not wait. Until that check ends the page keeps showing the previous result, marked "Re-checking…", and reloads itself. A release job that finishes also marks the cached result outdated, so the page picks up a new package without waiting for the 30-second cache; if step 2 does not appear right after preparing, press **Re-check**. A check that fails or panics is recorded (and a panic logged) as "python3 or the release script is unavailable" until the next check.
+- **What will be published** shows the local and pinned content hashes (first 12 characters), the last release tag, whether the local content differs from the pinned release Pages serves, and the prepared package (tag, content hash, and whether it matches the local content).
+- **Step 1 – Prepare package** and **Step 2 – Publish release** are plain forms leading to the usual preview and confirmation pages for `release-prepare` and `release-publish` (the latter needs the typed phrase `publish release`). A step is shown as a form only when the cached check says it can run; otherwise the page lists why. Step 2 needs a prepared package that matches the local content, an authenticated GitHub CLI and a working release script. The preview, the run and the job re-check everything with a fresh preflight regardless of what the page showed.
+- The generic routes of the release actions are reserved for this page: `GET /operations/release-prepare|release-publish` redirects (`303`) to `/publish`, and their `POST …/preview` and `POST …/run` redirect there too unless the form carries the hidden field `from=publish` that only this page's forms (and the preview pages they lead to) emit. That field is not a security boundary (anyone can type it); session, CSRF, same-origin, the preview token, the typed phrase and the service's re-checks are the real gates. It keeps the checklist the one way into publishing.
+- The page lists the last release entries of the operations log with links to their jobs, and the manual rollout steps below.
+
+**Manual rollout procedure**
+
+1. In Operations, run `refresh-export` (verify, snapshot, export, audit) and check data freshness until it reports nothing to refresh other than "Local data differs from the published catalog" (expected: that is what you are about to publish).
+2. On `/publish`, **Prepare package…** → review → confirm. The job writes the package to `build/catalog-release`.
+3. On `/publish`, **Review publish…** → type `publish release` → confirm. The job uploads the GitHub release and updates `data/catalog.release.json` locally.
+4. Commit the updated `data/catalog.release.json` pin **together with the catalog changes it was built from** (`data/artists.yaml` and, if changed, `data/artists.yaml.reviews.jsonl`) on one branch and open one pull request; merge it once CI passes. Pages builds from `data/artists.yaml`, so committing the pin alone would ship the new release without the edits.
+5. Wait for CI and the GitHub Pages deploy, then verify the site (artist count, a recently changed artist, the new release loaded).
+
+**Prerequisites**: `python3` (runs `scripts/automation/catalog-release.py`), `go` on `PATH` (prepare), and the GitHub CLI logged in with `gh auth login` (publish; an already exported `GH_TOKEN`/`GITHUB_TOKEN` also works). The repository is the one the admin was configured with.
+
+**Where things live**: the package (complete database backup, snapshot and manifest) is in `build/catalog-release` until published or removed; jobs and their results are in the admin's job journal (`/jobs`), and every confirmed and finished operation is in the operations log (`/operations#recent`, `/publish`). The YAML editor keeps `<catalog>.bak`, every sync takes its own database backup first, and a metadata refresh or discovery import also writes a timestamped copy of the catalog to `build/admin/backups/` first.
+
+**Recovery from `interrupted`**: a publish job that was running when the admin stopped, or that hit its timeout, never counts as a success. Check the repository's GitHub Releases page before retrying, as the job message says: if a partial release with the prepared tag exists, remove it there by hand, then return to `/publish`, **Re-check**, and publish again (the package is still in `build/catalog-release`). Do not edit the pin by hand. A prepare that was interrupted can simply be repeated after emptying `build/catalog-release`.
+
+The admin itself is never deployed to Pages: nothing in `site/` references it, only the static site and the pinned release reach Pages.
+
+## Maintenance state and restarts
+
+| What | Where |
+| --- | --- |
+| Job journal (every job's status, counts and result, append-only JSONL, `0600` in a `0700` directory) | `build/admin/jobs.jsonl` |
+| Database backups taken before a sync, metadata refresh or reconcile apply (`VACUUM INTO`, never overwritten; same-second backups get a `-2`, `-3`… suffix) | `build/admin/backups/` |
+| Catalog copies taken before a metadata refresh or discovery import writes the YAML (`<catalog base>-<UTC yyyymmddThhmmssZ>.yaml`, e.g. `artists-20261021T070809Z.yaml`, `0600`, never overwritten; same `-2`, `-3`… suffix). Restore one with `cp` to undo the whole job | `build/admin/backups/` |
+| Operations log (confirmed and finished entries: time, action, job, outcome, sanitized summary; no params or paths) | `<catalog>.operations.jsonl`, e.g. `data/artists.yaml.operations.jsonl` |
+| YAML backup of the previous catalog on every write (only the state before the last save: a job that saves once per artist overwrites it each time) | `<catalog>.bak` |
+| Release package | `build/catalog-release` |
+
+`build/` and `*.operations.jsonl` are git-ignored: the operations log is local, stays out of `git status` and is never part of a catalog pull request. Delete old backups by hand when they are no longer needed; the journal and the operations log are never pruned.
+
+- **Preview tokens** are HMAC-signed with a 32-byte secret drawn from `crypto/rand` at every start (the admin refuses to start if it cannot get one). A restart therefore invalidates every open preview: confirming one answers "The preview is out of date"; review it again.
+- **Restart semantics**: on start the admin reloads the journal. A job that was queued, running or cancelling when the previous process stopped is recorded as **interrupted** ("interrupted by server restart") and never as succeeded. An entry with outcome `interrupted` is added to the operations log for it. Its resources (`catalog-yaml`, `database`, `export-artifacts`, `release`) are free again, so new jobs can start; the database file lock held by the old process died with it.
+- **Recovering from `interrupted`**: open the job. If it says it can be resumed (a sync that had completed artists), **Resume/retry…** leads to the sync preview with `resume` ticked; the resumed run skips the artists the interrupted run completed (their checkpoints were committed per artist). Other interrupted jobs are simply previewed and run again: every action re-reads the current state and backs the database up again first. An interrupted `release-publish` is the exception: check the GitHub Releases page first (see *Publish*).
+- **Shutdown**: Ctrl+C cancels every running job and waits at most 5 seconds for them to stop at a safe point. A cancelled sync (any scope, from Cancel or from shutdown) stops before the next artist and records its run as `partial`, so it is resumable: a resume, and the 14-day freshness skip, see the artists completed before the cancel; the artist that was in flight is synced again. A started release publish is not cancellable; shutdown stops waiting after the bound instead of hanging, and the next start marks it interrupted.
+- **Job IDs** are random UUIDs.
+
 ## Offline mode
 
-The YAML catalog is read on every request, so edits show up on reload. If the database file is missing or unreadable the UI says so and keeps serving the catalog; the file is never created. The profile review workbench is the only part that can call Spotify or MusicBrainz, and only to answer a search or fill a card the cache cannot.
+The YAML catalog is read on every request, so edits show up on reload. If the database file is missing or unreadable the UI says so and keeps serving the catalog; the file is never created.
+
+The admin starts and serves every page with no database, no Spotify credentials, no `python3`, no `go` and no `gh`. Nothing needs them at start: credentials are read when an action runs, and the release prerequisites are checked in the background. Each action that needs something missing is listed as unavailable with its reason (e.g. "No database found; run the init workflow first", missing Spotify credentials, or "python3 or the release script is unavailable"); offline actions such as `sync-dry-run` and `audit-profiles` with `offline` stay available (discovery needs no credentials but reaches Wikipedia when it runs). The profile review workbench is the only part that can call Spotify or MusicBrainz, and only to answer a search or fill a card the cache cannot.
+
+## Catalog releases
+
+Publishing a catalog release is always manual and takes two maintenance actions; no other action, edit or save ever publishes.
+
+- `release-prepare` runs `catalog-release.py prepare` under the database lock and writes the package (backup, snapshot, manifest) to `build/catalog-release`. It uploads nothing and needs Go, a local database and an empty package directory; it does not need the GitHub CLI. Remove or publish an earlier package before preparing another.
+- `release-publish` runs `catalog-release.py publish`. It is listed only when `gh auth status` succeeds, needs the typed phrase `publish release`, and refuses unless the latest successful `release-prepare` in the admin job journal, and the verified package on disk, hold the current local content hash. It re-checks everything under the database lock. If the pinned `data/catalog.release.json` already has that content, nothing is uploaded and the manifest is not touched. Once the upload has started it cannot be cancelled, because stopping `gh` mid-upload could leave a partial release. A cancel request is noted in the result and the job reports what actually happened. If the upload hits its 30-minute timeout, the job fails with "Publishing was interrupted; a partial release <tag> may exist on GitHub — check the Releases page before retrying."
+
+Both run the script as `python3 scripts/automation/catalog-release.py <preflight|prepare|publish> --repo <owner/name>`, from the repository root, with only `PATH`, `HOME`, `LANG` and an already set `GH_TOKEN`/`GITHUB_TOKEN` in the environment. Script output is parsed, never shown; failures show a fixed message and log at most a short, redacted excerpt of stderr. The freshness view reads the pinned and local content hashes from the script's read-only `preflight`.
 
 ## Security model
 
@@ -99,11 +189,16 @@ The YAML catalog is read on every request, so edits show up on reload. If the da
 - Headers on every response: strict CSP (no inline script/style, `frame-ancestors 'none'`), `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: no-referrer`, COOP/CORP, `Cache-Control: no-store`.
 - Request bodies are capped at 64 KiB, headers at 16 KiB, with read/write/idle timeouts.
 - Templates are `html/template` with contextual escaping, so artist names and notes cannot inject script.
+- Maintenance actions run only through preview → confirm: the confirm form carries an HMAC preview token bound to the action, its parameters, a fingerprint of the state it previewed (catalog, database, plan checksum) and a 10-minute expiry, signed with the per-process secret. Destructive or large actions also need a typed phrase (`sync 42 artists`, `reconcile <slug>`, `refresh metadata` for a forced refresh, `publish release`). A changed state makes the token stale; the actions that write (`sync`, `refresh-metadata`, `discover-import`, `reconcile-apply`, `db-snapshot`, `export`, `refresh-export`, the release actions) also re-check the confirmed fingerprint inside the job, under their locks, and write nothing when it is stale; `discover-import` imports only the candidates the preview listed. A held resource answers `409` naming the holder.
+- The only subprocess is the release script, run with a fixed executable, script path and subcommand, a validated `--repo`, and a minimal environment. No action, edit or save ever publishes; only the `release-publish` step of `/publish` does, after its typed phrase.
+- Job messages, reports, summaries and API errors never contain paths, SQL, stack traces or secrets: unknown errors become "operation failed" / "An internal error occurred.". The underlying cause is logged server-side (at error level; a cancellation at info level) with credential values and token-like strings redacted; local paths are kept in that log because it stays on the operator's machine.
 - `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` are used only inside the server process to talk to Spotify; values are not read into any response, template or log. The launch token is not logged (only request paths, never queries). The server proxies no URLs. The CSP allows images only from `'self'`, `data:` and the Spotify image CDNs (`*.scdn.co`, `*.spotifycdn.com`); a profile image from any other host is dropped before rendering.
 
 ## Layout
 
 - `internal/application/admin`: queries, the editing use cases (`ApplyChange`, `ApplyRelationship`), the profile review use cases (`ResolveQueue`, `ResolveWorkbench`, `PreviewResolution`, `ApplyResolution`), ports (`OperationsReader`, `CatalogUpdater`) and pagination.
 - `internal/adapters/inbound/httpadmin`: server, security middleware, handlers, embedded templates and CSS/JS (no Node build).
-- `internal/bootstrap`: shared composition root wiring YAML + SQLite into the admin service.
+- `internal/application/jobs`: background job manager (resource locks, cancellation, restart recovery).
+- `internal/application/admin/maintenance`: maintenance actions, preview tokens, freshness, operations log.
+- `internal/bootstrap`: shared composition root. `NewAdmin` (`admin_maintenance.go`) wires YAML + SQLite into the admin service and adds the job manager, every maintenance action, the release adapter, freshness and the operations log.
 - `internal/adapters/inbound/cli/admin.go`: the `admin serve` command.

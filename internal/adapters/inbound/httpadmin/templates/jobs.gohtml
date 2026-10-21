@@ -1,0 +1,18 @@
+{{define "content"}}{{with .Data}}
+<p class="muted">Background maintenance operations, newest first. Start new ones from <a href="/operations">Operations</a>.</p>
+{{if .Jobs}}<div class="table-wrap"><table>
+<caption class="sr">Jobs</caption>
+<thead><tr><th scope="col">Job</th><th scope="col">Action</th><th scope="col">Status</th><th scope="col">Step</th><th scope="col">Progress</th><th scope="col">Started</th><th scope="col">Duration</th></tr></thead>
+<tbody>
+{{range .Jobs}}<tr>
+<th scope="row"><a href="{{.Page}}"><code>{{.ShortID}}</code></a></th>
+<td>{{.Kind}}</td>
+<td><span class="badge {{.StatusClass}}">{{.StatusLabel}}</span></td>
+<td>{{if .Step}}{{.Step}}{{else}}—{{end}}</td>
+<td>{{if .Total}}{{.Done}} / {{.Total}}{{else}}—{{end}}</td>
+<td>{{if .Started}}<time datetime="{{.Started}}">{{.Started}}</time>{{else}}not started{{end}}</td>
+<td>{{if .Duration}}{{.Duration}}{{else}}—{{end}}</td>
+</tr>
+{{end}}</tbody></table></div>
+{{else}}<p class="notice">No jobs yet. Jobs appear here once an operation is confirmed.</p>{{end}}
+{{end}}{{end}}

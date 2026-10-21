@@ -1,0 +1,39 @@
+{{define "content"}}{{$csrf := .CSRF}}{{with .Data}}{{$name := .Action.Name}}{{$from := .From}}{{$back := .Back}}
+{{if .Stale}}
+<p class="notice warn" role="alert">The preview is out of date; review it again. Nothing was started.</p>
+<form method="post" action="/operations/{{$name}}/preview">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+{{if $from}}<input type="hidden" name="from" value="{{$from}}">
+{{end}}{{range .Params}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
+{{end}}<div class="actions"><button type="submit" class="primary">Review again</button> <a href="{{$back}}">Change parameters</a></div>
+</form>
+{{else if .Conflict}}
+<p class="notice bad" role="alert">Another job is already using the resources this action needs, so nothing was started.{{if .HolderID}} It is job <a href="/jobs/{{.HolderID}}"><code>{{.Holder}}</code></a>; wait for it to finish or cancel it, then review this action again.{{end}}</p>
+<p><a href="/jobs">All jobs</a> · <a href="{{$back}}">Back to the form</a></p>
+{{else}}{{with .Preview}}
+<p class="notice" role="status">Nothing has run yet. This is what the action will do.</p>
+<p class="badges"><strong>{{.Title}}</strong>{{if .UsesNetwork}} <span class="badge warn">NETWORK</span>{{end}}{{if .Destructive}} <span class="badge bad">DESTRUCTIVE</span>{{end}}</p>
+<h2>Estimated impact</h2>
+{{if .Scope}}<div class="table-wrap"><table>
+<caption class="sr">Scope</caption>
+<tbody>{{range .Scope}}<tr><th scope="row">{{.Label}}</th><td>{{.Value}}</td></tr>
+{{end}}</tbody></table></div>{{else}}<p class="muted">No scope details.</p>{{end}}
+{{if .Warnings}}<h2>Warnings</h2><ul>{{range .Warnings}}<li>{{.}}</li>{{end}}</ul>{{end}}
+{{if or .UsesNetwork .Destructive}}<div class="notice warn" role="note">
+{{if .UsesNetwork}}<p><strong>Network:</strong> this calls external services. It uses API quota and can be rate limited; request counts above are estimates.</p>{{end}}
+{{if .Destructive}}<p><strong>Destructive:</strong> this changes local data. Backups are taken only where the scope above says so; check it carefully.</p>{{end}}
+</div>{{end}}
+{{end}}
+{{if .Error}}<p class="notice bad" role="alert">{{.Error}}</p>{{end}}
+<form method="post" action="/operations/{{$name}}/run" class="stack">
+<input type="hidden" name="csrf_token" value="{{$csrf}}">
+<input type="hidden" name="token" value="{{.Token}}">
+{{if $from}}<input type="hidden" name="from" value="{{$from}}">{{end}}
+{{range .Params}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
+{{end}}{{if .Preview.RequiresTyped}}<div class="field"><label for="typed">To confirm, type <code>{{.Preview.RequiresTyped}}</code></label>
+<input id="typed" type="text" name="typed" required autocomplete="off" spellcheck="false"></div>
+{{end}}<div class="actions"><button type="submit" class="primary" data-once>Confirm and run</button> <a href="{{$back}}" data-cancel>Cancel</a></div>
+</form>
+{{end}}
+<p>{{if $from}}<a href="{{$back}}">← Publication checklist</a>{{else}}<a href="/operations">← All operations</a>{{end}}</p>
+{{end}}{{end}}

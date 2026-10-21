@@ -13,7 +13,8 @@ import (
 const DriverName = "sqlite3"
 
 type Database struct {
-	db *sql.DB
+	db   *sql.DB
+	path string
 }
 
 func Open(path string) (*Database, error) {
@@ -27,7 +28,7 @@ func Open(path string) (*Database, error) {
 	}
 	db.SetMaxOpenConns(1)
 
-	database := &Database{db: db}
+	database := &Database{db: db, path: path}
 	if err := database.configure(); err != nil {
 		_ = db.Close()
 		return nil, err

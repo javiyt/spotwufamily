@@ -32,6 +32,7 @@ coverage.txt
 data/catalog.db-wal
 data/catalog.db-shm
 data/catalog.db-journal
+data/catalog.db.lock
 
 mock_*.go
 coverage.txt
@@ -42,6 +43,12 @@ data/artist-candidates.example.json
 # Catalog assets are backed up in GitHub Releases
 data/catalog.db
 data/catalog.snapshot.sql.gz
+# Previous snapshot kept by the admin db-snapshot action
+*.snapshot.sql.gz.prev
+# Staging directories of an in-progress admin export
+.export-staging-*/
+# Local operations log of the admin (<catalog>.operations.jsonl)
+*.operations.jsonl
 __pycache__/
 
 *.yaml.bak

@@ -74,7 +74,8 @@ func TestRefreshGenresDoesNotSaveWhenSpotifyErrors(t *testing.T) {
 
 	report, err := artists.NewRefreshGenres(store, fetcher).Run(context.Background(), artists.RefreshGenresOptions{CatalogPath: "ignored"})
 
-	require.Error(t, err)
+	require.ErrorIs(t, err, artists.ErrRefreshCompletedWithErrors)
+	require.EqualError(t, err, "refresh genres completed with 1 errors")
 	require.Len(t, report.Errors, 1)
 	require.Empty(t, store.catalog.Artists[0].Genres)
 	require.Zero(t, store.saveCount)

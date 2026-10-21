@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"time"
 )
 
 // MinTokenLength is the shortest accepted session token. Generated launch
@@ -23,6 +24,8 @@ type Options struct {
 	AllowRemote bool
 	// Log receives access and error lines. Nil discards them.
 	Log io.Writer
+	// Now is the clock (cache ages); nil means time.Now. Tests inject it.
+	Now func() time.Time
 }
 
 // ValidateListen rejects any bind that could expose the admin beyond the

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/admin"
+	"github.com/javiyt/spotwufamily/internal/application/admin/maintenance"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
@@ -26,29 +27,38 @@ var navItems = []struct{ Path, Label string }{
 	{"/operations", "Operations"},
 }
 
-// nav lists the pages, adding the profile review workbench when it is enabled.
+// nav lists the pages, adding the profile review workbench and the jobs page
+// when they are enabled.
 func (s *Server) nav() []struct{ Path, Label string } {
-	if s.resolver == nil {
+	if s.resolver == nil && s.maint == nil {
 		return navItems
 	}
-	out := make([]struct{ Path, Label string }, 0, len(navItems)+1)
+	out := make([]struct{ Path, Label string }, 0, len(navItems)+2)
 	for _, item := range navItems {
 		out = append(out, item)
-		if item.Path == "/review" {
+		if item.Path == "/review" && s.resolver != nil {
 			out = append(out, struct{ Path, Label string }{"/resolve", "Spotify profiles"})
+		}
+		if item.Path == "/operations" && s.maint != nil {
+			out = append(out, struct{ Path, Label string }{"/jobs", "Jobs"})
 		}
 	}
 	return out
 }
 
 type view struct {
-	Flash  string
+	Flash  flash
 	Title  string
 	Path   string
 	Nav    []struct{ Path, Label string }
 	Authed bool
 	CSRF   string
 	Data   any
+	// Refresh adds a no-JS auto refresh while a page shows live progress.
+	Refresh bool
+	// Reload adds an auto refresh for every client (JS or not) while a page
+	// waits for a background check it cannot poll for.
+	Reload bool
 }
 
 type pager struct {
@@ -158,15 +168,6 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "review", "Review queue", map[string]any{
 		"Resolver": s.resolver != nil, "Page": page, "Pager": newPager("/review", r.URL.Query(), page.Page, page.Pages, page.Total, page.PageSize, page.Search),
 	})
-}
-
-func (s *Server) handleOperations(w http.ResponseWriter, r *http.Request) {
-	d, err := s.svc.Dashboard(r.Context())
-	if err != nil {
-		s.internal(w, r, err)
-		return
-	}
-	s.render(w, r, "operations", "Operations", dashboardView(d))
 }
 
 type dashboardViewModel struct {
@@ -409,7 +410,7 @@ type relRowView struct {
 
 func parseTemplates() (map[string]*template.Template, error) {
 	out := map[string]*template.Template{}
-	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm"} {
+	for _, name := range []string{"dashboard", "artists", "groups", "review", "operations", "login", "error", "artist", "preview", "conflict", "resolve_queue", "resolve", "resolve_confirm", "jobs", "job", "operation", "operation_preview", "publish"} {
 		t, err := template.New("").Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.gohtml", "templates/"+name+".gohtml")
 		if err != nil {
 			return nil, err
@@ -425,6 +426,12 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title stri
 
 func (s *Server) renderStatus(w http.ResponseWriter, r *http.Request, status int, name, title string, data any) {
 	v := view{Title: title, Path: r.URL.Path, Nav: s.nav(), Data: data}
+	if rf, ok := data.(interface{ autoRefresh() bool }); ok {
+		v.Refresh = rf.autoRefresh()
+	}
+	if rl, ok := data.(interface{ reload() bool }); ok {
+		v.Reload = rl.reload()
+	}
 	if id := s.sessionID(r); s.sessions.valid(id) {
 		v.Authed, v.CSRF = true, s.sessions.csrf(id)
 		v.Flash = s.sessions.takeFlash(id)
@@ -462,8 +469,9 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, status int, code, 
 	_, _ = w.Write(buf.Bytes())
 }
 
-// internal logs the real error server-side and tells the client nothing more.
+// internal logs the real error server-side (the cause behind a safe error,
+// credentials redacted) and tells the client nothing more.
 func (s *Server) internal(w http.ResponseWriter, r *http.Request, err error) {
-	s.logger.Printf("internal error on %s %s: %v", r.Method, r.URL.Path, err)
+	s.logger.Printf("internal error on %s %s: %s", r.Method, r.URL.Path, maintenance.LogText(err))
 	s.fail(w, r, http.StatusInternalServerError, "internal", "internal error")
 }

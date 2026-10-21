@@ -99,6 +99,14 @@ func executeArtistsReconcile(ctx context.Context, args []string, stdout, stderr 
 		return 2
 	}
 
+	if options.apply || options.restore != "" {
+		release, ok := lockDatabase(options.dbPath, "artists reconcile", stderr)
+		if !ok {
+			return 1
+		}
+		defer release()
+	}
+
 	database, err := sqliteadapter.Open(options.dbPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists reconcile: %v\n", err)
@@ -195,7 +203,12 @@ func printPendingReconciliations(w io.Writer, pending []artists.PendingReconcili
 	}
 }
 
-func warnPendingReconciliations(ctx context.Context, w io.Writer, database *sqliteadapter.Database) {
+// pendingReconciliationReader is the database, or a runner that owns one.
+type pendingReconciliationReader interface {
+	PendingReconciliations(context.Context) ([]artists.PendingReconciliation, error)
+}
+
+func warnPendingReconciliations(ctx context.Context, w io.Writer, database pendingReconciliationReader) {
 	pending, err := database.PendingReconciliations(ctx)
 	if err != nil {
 		_, _ = fmt.Fprintf(w, "warning: cannot read pending reconciliations: %v\n", err)

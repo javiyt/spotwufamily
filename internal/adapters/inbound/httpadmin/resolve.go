@@ -334,8 +334,9 @@ func backURL(slug, q string) string {
 	return u
 }
 
-// postResolve parses a mutating request and checks its CSRF token.
-func (s *Server) postResolve(w http.ResponseWriter, r *http.Request) bool {
+// postChecked parses a mutating request and checks its CSRF token (no
+// editability check; see postForm for catalog writes).
+func (s *Server) postChecked(w http.ResponseWriter, r *http.Request) bool {
 	if err := r.ParseForm(); err != nil {
 		s.formError(w, r, err)
 		return false
@@ -348,7 +349,7 @@ func (s *Server) postResolve(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (s *Server) handleResolvePreview(w http.ResponseWriter, r *http.Request) {
-	if !s.postResolve(w, r) {
+	if !s.postChecked(w, r) {
 		return
 	}
 	slug := r.PathValue("slug")
@@ -377,7 +378,7 @@ func (s *Server) handleResolvePreview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleResolveApply(w http.ResponseWriter, r *http.Request) {
-	if !s.postResolve(w, r) {
+	if !s.postChecked(w, r) {
 		return
 	}
 	slug := r.PathValue("slug")
@@ -389,6 +390,9 @@ func (s *Server) handleResolveApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := s.resolver.ApplyResolution(r.Context(), req)
+	if s.catalogBusy(w, r, err) {
+		return
+	}
 	if err != nil {
 		status, message, overridable := s.classifyResolveError(err)
 		if status == 0 {
@@ -407,7 +411,7 @@ func (s *Server) handleResolveApply(w http.ResponseWriter, r *http.Request) {
 	if result.LogError != "" {
 		message += " Warning: " + result.LogError + "."
 	}
-	s.done(w, r, message, "/resolve/"+url.PathEscape(slug))
+	s.catalogChanged(w, r, message, "/resolve/"+url.PathEscape(slug))
 }
 
 // classifyResolveError maps a use-case error to a status and a message safe to
