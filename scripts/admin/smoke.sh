@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Smoke test for `spotwufamily admin serve`: loopback bind, auth, host check.
 # Needs only go and curl; no Spotify credentials and no network beyond loopback.
+# The release actions are turned off so no page ever runs gh or the release
+# script.
 set -euo pipefail
 
 CATALOG="${CATALOG:-data/artists.yaml}"
@@ -23,7 +25,7 @@ if "$BIN" admin serve --host 0.0.0.0 --port "$PORT" >/dev/null 2>&1; then
   echo "FAIL: non-loopback bind was accepted" >&2; exit 1
 fi
 
-"$BIN" admin serve --port "$PORT" --catalog "$CATALOG" --db "$DB" >"$work/out" 2>"$work/err" &
+SPOTWUFAMILY_RELEASE_REPO=none "$BIN" admin serve --port "$PORT" --catalog "$CATALOG" --db "$DB" >"$work/out" 2>"$work/err" &
 pid=$!
 
 url=""
@@ -43,5 +45,14 @@ code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 [ "$(code -b "$work/jar" -X POST -H "Origin: http://127.0.0.1:${PORT}" -d 'name=x' "http://127.0.0.1:${PORT}/artists")" = 403 ] || { echo "FAIL: edit without CSRF token accepted" >&2; exit 1; }
 [ "$(code -b "$work/jar" -H 'Host: evil.example' "http://127.0.0.1:${PORT}/")" = 403 ] || { echo "FAIL: foreign Host accepted" >&2; exit 1; }
 [ "$(code -b "$work/jar" -X POST -H 'Origin: https://evil.example' "http://127.0.0.1:${PORT}/logout")" = 403 ] || { echo "FAIL: cross-origin POST accepted" >&2; exit 1; }
+
+for page in /operations /jobs /publish /api/v1/jobs; do
+  [ "$(code -b "$work/jar" "http://127.0.0.1:${PORT}${page}")" = 200 ] || { echo "FAIL: ${page} unavailable" >&2; exit 1; }
+done
+case "$(code -X POST -H "Origin: http://127.0.0.1:${PORT}" -d 'scope=all' "http://127.0.0.1:${PORT}/operations/sync/preview")" in
+  401|403) ;;
+  *) echo "FAIL: preview without a session accepted" >&2; exit 1 ;;
+esac
+[ "$(code -b "$work/jar" -X POST -H 'Origin: https://evil.example' "http://127.0.0.1:${PORT}/operations/freshness")" = 403 ] || { echo "FAIL: cross-origin freshness POST accepted" >&2; exit 1; }
 
 echo "admin smoke test passed"
