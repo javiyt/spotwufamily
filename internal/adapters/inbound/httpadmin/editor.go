@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/javiyt/spotwufamily/internal/application/admin"
+	"github.com/javiyt/spotwufamily/internal/application/jobs"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
@@ -502,6 +503,20 @@ func (s *Server) catalogChanged(w http.ResponseWriter, r *http.Request, message,
 }
 
 // saveFailed reports a storage failure without leaking paths.
+// catalogBusyMessage answers a catalog write refused because a maintenance
+// job holds the catalog.
+const catalogBusyMessage = "A maintenance job is updating the catalog; try again when it finishes."
+
+// catalogBusy answers 409 when err says a maintenance job holds the catalog
+// (the write was refused before anything was written).
+func (s *Server) catalogBusy(w http.ResponseWriter, r *http.Request, err error) bool {
+	if !errors.Is(err, jobs.ErrConflict) {
+		return false
+	}
+	s.fail(w, r, http.StatusConflict, "job_running", catalogBusyMessage)
+	return true
+}
+
 func (s *Server) saveFailed(w http.ResponseWriter, r *http.Request, err error) {
 	s.logger.Printf("save failed on %s %s: %v", r.Method, r.URL.Path, err)
 	s.fail(w, r, http.StatusInternalServerError, "save_failed", "could not write the catalog; nothing was changed")
@@ -606,6 +621,9 @@ func (f artistFormValues) nameOr(slug string) string {
 func (s *Server) changeFailed(w http.ResponseWriter, r *http.Request, err error, page *artistPage, title string, req admin.ChangeRequest) bool {
 	if err == nil {
 		return false
+	}
+	if s.catalogBusy(w, r, err) {
+		return true
 	}
 	var (
 		invalid    *admin.ValidationError
@@ -782,6 +800,9 @@ func relationshipInput(v url.Values, slug string) admin.RelationshipInput {
 }
 
 func (s *Server) relationshipFailed(w http.ResponseWriter, r *http.Request, err error, page artistPage, v url.Values) {
+	if s.catalogBusy(w, r, err) {
+		return
+	}
 	var (
 		invalid  *admin.ValidationError
 		conflict *admin.ConflictError

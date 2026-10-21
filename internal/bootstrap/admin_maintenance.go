@@ -125,6 +125,54 @@ type Admin struct {
 	release bool
 }
 
+// holdCatalog takes the in-process catalog-yaml resource for one catalog
+// write, so an editor or resolver save never interleaves with a maintenance
+// job that rewrites the catalog from an in-memory copy (refresh-metadata,
+// discover-import), and such a job cannot start mid-save. It fails with a
+// *jobs.ConflictError while a job holds the catalog.
+func (a *Admin) holdCatalog() (func(), error) {
+	return a.manager.Acquire(maintenance.ResourceCatalogYAML)
+}
+
+// ApplyChange is admin.Service.ApplyChange serialised against maintenance
+// jobs; a dry run writes nothing and is never blocked.
+func (a *Admin) ApplyChange(ctx context.Context, req admin.ChangeRequest) (admin.ChangeResult, error) {
+	if req.DryRun {
+		return a.catalogService.ApplyChange(ctx, req)
+	}
+	release, err := a.holdCatalog()
+	if err != nil {
+		return admin.ChangeResult{}, err
+	}
+	defer release()
+	return a.catalogService.ApplyChange(ctx, req)
+}
+
+// ApplyRelationship is admin.Service.ApplyRelationship serialised against
+// maintenance jobs; a dry run writes nothing and is never blocked.
+func (a *Admin) ApplyRelationship(ctx context.Context, req admin.RelationshipRequest) (admin.RelationshipResult, error) {
+	if req.DryRun {
+		return a.catalogService.ApplyRelationship(ctx, req)
+	}
+	release, err := a.holdCatalog()
+	if err != nil {
+		return admin.RelationshipResult{}, err
+	}
+	defer release()
+	return a.catalogService.ApplyRelationship(ctx, req)
+}
+
+// ApplyResolution is admin.Service.ApplyResolution serialised against
+// maintenance jobs.
+func (a *Admin) ApplyResolution(ctx context.Context, req admin.ResolveRequest) (admin.ResolveResult, error) {
+	release, err := a.holdCatalog()
+	if err != nil {
+		return admin.ResolveResult{}, err
+	}
+	defer release()
+	return a.catalogService.ApplyResolution(ctx, req)
+}
+
 // Paths reports where the workflows keep their files.
 func (a *Admin) Paths() AdminPaths { return a.paths }
 

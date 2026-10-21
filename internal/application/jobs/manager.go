@@ -17,6 +17,10 @@ var ErrConflict = errors.New("resource is in use by another job")
 // ErrNotFound is returned when a job does not exist.
 var ErrNotFound = errors.New("job not found")
 
+// EditHolder is the HolderID of a ConflictError raised because a
+// synchronous edit (see Manager.Acquire) holds the resource.
+const EditHolder = "catalog-edit"
+
 // ConflictError identifies the job holding a contested resource.
 type ConflictError struct{ HolderID string }
 
@@ -56,6 +60,7 @@ type Manager struct {
 	jobs    map[string]*Job
 	order   []string
 	locks   map[string]string
+	edits   map[string]int // resources held by Acquire, with their holder count
 	cancels map[string]context.CancelFunc
 	done    map[string]chan struct{}
 }
@@ -69,6 +74,7 @@ func NewManager(store Store, now func() time.Time, newID func() string, opts ...
 		sanitize: defaultSanitize,
 		jobs:     map[string]*Job{},
 		locks:    map[string]string{},
+		edits:    map[string]int{},
 		cancels:  map[string]context.CancelFunc{},
 		done:     map[string]chan struct{}{},
 	}
@@ -99,6 +105,10 @@ func (m *Manager) Submit(ctx context.Context, s Spec) (Job, error) {
 			m.mu.Unlock()
 			return Job{}, &ConflictError{HolderID: holder}
 		}
+		if m.edits[r] > 0 {
+			m.mu.Unlock()
+			return Job{}, &ConflictError{HolderID: EditHolder}
+		}
 	}
 	job := &Job{
 		ID:        m.newID(),
@@ -127,6 +137,37 @@ func (m *Manager) Submit(ctx context.Context, s Spec) (Job, error) {
 
 	go m.run(runCtx, job.ID, s.Run, done)
 	return snap, nil
+}
+
+// Acquire holds resources for a synchronous edit made outside any job (for
+// example a catalog save from the editor) until the returned release is
+// called. It fails with a *ConflictError when a job holds one of them; while
+// held, Submit refuses jobs needing them. Edits share resources with each
+// other (they serialise on their own file lock). Release is idempotent.
+func (m *Manager) Acquire(resources ...string) (release func(), err error) {
+	resources = dedupe(resources)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, r := range resources {
+		if holder, held := m.locks[r]; held {
+			return nil, &ConflictError{HolderID: holder}
+		}
+	}
+	for _, r := range resources {
+		m.edits[r]++
+	}
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			for _, r := range resources {
+				if m.edits[r]--; m.edits[r] <= 0 {
+					delete(m.edits, r)
+				}
+			}
+		})
+	}, nil
 }
 
 func (m *Manager) run(ctx context.Context, id string, fn Func, done chan struct{}) {

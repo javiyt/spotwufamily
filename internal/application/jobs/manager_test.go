@@ -373,3 +373,69 @@ func TestContextErrorAfterCancelRequestIsCancelledWithCounts(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 }
+
+func TestAcquireConflictsWithARunningJob(t *testing.T) {
+	m := newManager(&fakeStore{})
+	started, release := make(chan struct{}), make(chan struct{})
+	j, err := m.Submit(context.Background(), jobs.Spec{Kind: "refresh", Resources: []string{"catalog-yaml"}, Run: blocking(started, release)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-started
+	if _, err := m.Acquire("catalog-yaml"); err == nil {
+		t.Fatal("an edit must not take the catalog while a job holds it")
+	} else {
+		var ce *jobs.ConflictError
+		if !errors.As(err, &ce) || ce.HolderID != j.ID || !errors.Is(err, jobs.ErrConflict) {
+			t.Fatalf("got %v", err)
+		}
+	}
+	close(release)
+	m.Wait(j.ID)
+	done, err := m.Acquire("catalog-yaml")
+	if err != nil {
+		t.Fatalf("free after the job: %v", err)
+	}
+	done()
+}
+
+func TestSubmitConflictsWithAnAcquiredResource(t *testing.T) {
+	m := newManager(&fakeStore{})
+	release, err := m.Acquire("catalog-yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = m.Submit(context.Background(), jobs.Spec{Kind: "discover-import", Resources: []string{"catalog-yaml"},
+		Run: func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
+			return jobs.Outcome{Status: jobs.StatusSucceeded}, nil
+		}})
+	var ce *jobs.ConflictError
+	if !errors.As(err, &ce) || ce.HolderID != jobs.EditHolder {
+		t.Fatalf("a job must not start while an edit holds the catalog: %v", err)
+	}
+	if len(m.List()) != 0 {
+		t.Fatal("nothing was started")
+	}
+	// Edits share the resource with each other.
+	second, err := m.Acquire("catalog-yaml")
+	if err != nil {
+		t.Fatalf("concurrent edits share the resource: %v", err)
+	}
+	release()
+	release() // idempotent
+	if _, err := m.Submit(context.Background(), jobs.Spec{Kind: "x", Resources: []string{"catalog-yaml"},
+		Run: func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
+			return jobs.Outcome{Status: jobs.StatusSucceeded}, nil
+		}}); err == nil {
+		t.Fatal("still held by the second edit")
+	}
+	second()
+	j, err := m.Submit(context.Background(), jobs.Spec{Kind: "x", Resources: []string{"catalog-yaml"},
+		Run: func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
+			return jobs.Outcome{Status: jobs.StatusSucceeded}, nil
+		}})
+	if err != nil {
+		t.Fatalf("free once every edit released: %v", err)
+	}
+	m.Wait(j.ID)
+}

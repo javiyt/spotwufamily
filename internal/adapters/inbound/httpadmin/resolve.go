@@ -390,6 +390,9 @@ func (s *Server) handleResolveApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := s.resolver.ApplyResolution(r.Context(), req)
+	if s.catalogBusy(w, r, err) {
+		return
+	}
 	if err != nil {
 		status, message, overridable := s.classifyResolveError(err)
 		if status == 0 {
