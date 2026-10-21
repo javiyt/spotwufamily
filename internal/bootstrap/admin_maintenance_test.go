@@ -638,13 +638,18 @@ func TestCloseCancelsJobsAndStopsWaitingAfterTheBound(t *testing.T) {
 		}})
 	require.NoError(t, err)
 	stuck := make(chan struct{})
-	t.Cleanup(func() { close(stuck) })
-	_, err = a.manager.Submit(context.Background(), jobs.Spec{Kind: "release-publish", Resources: []string{"release"},
+	stuckJob, err := a.manager.Submit(context.Background(), jobs.Spec{Kind: "release-publish", Resources: []string{"release"},
 		Run: func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
 			<-stuck // like a started publish: ignores cancellation
 			return jobs.Outcome{Status: jobs.StatusSucceeded, Final: true}, nil
 		}})
 	require.NoError(t, err)
+	// The stuck job writes its journal and operations log under the temp dir
+	// when released: let it finish before the dir is removed.
+	t.Cleanup(func() {
+		close(stuck)
+		a.manager.Wait(stuckJob.ID)
+	})
 
 	start := time.Now()
 	closeFn()
