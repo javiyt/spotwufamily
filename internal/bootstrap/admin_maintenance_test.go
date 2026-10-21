@@ -647,3 +647,18 @@ func TestInvalidReleaseRepoDisablesReleaseButStarts(t *testing.T) {
 	off := startStack(t, e2eConfig(e2eRoot(t, maintenanceCatalogYAML), envMap(map[string]string{ReleaseRepoEnv: ReleaseDisabled}), nil))
 	require.False(t, off.a.ReleaseConfigured())
 }
+
+func TestGitignoreCoversOperationsLogButNotReviewLog(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", ".gitignore"))
+	require.NoError(t, err)
+	const pattern = "*.operations.jsonl"
+	require.Contains(t, strings.Split(string(data), "\n"), pattern)
+	for name, ignored := range map[string]bool{
+		"artists.yaml.operations.jsonl": true,
+		"artists.yaml.reviews.jsonl":    false,
+	} {
+		ok, err := filepath.Match(pattern, name)
+		require.NoError(t, err)
+		require.Equal(t, ignored, ok, name)
+	}
+}

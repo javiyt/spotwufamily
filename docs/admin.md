@@ -154,7 +154,7 @@ The admin itself is never deployed to Pages: nothing in `site/` references it, o
 | YAML backup of the previous catalog on every write | `<catalog>.bak` |
 | Release package | `build/catalog-release` |
 
-`build/` is git-ignored. Delete old backups by hand when they are no longer needed; the journal and the operations log are never pruned.
+`build/` and `*.operations.jsonl` are git-ignored: the operations log is local, stays out of `git status` and is never part of a catalog pull request. Delete old backups by hand when they are no longer needed; the journal and the operations log are never pruned.
 
 - **Preview tokens** are HMAC-signed with a 32-byte secret drawn from `crypto/rand` at every start (the admin refuses to start if it cannot get one). A restart therefore invalidates every open preview: confirming one answers "The preview is out of date"; review it again.
 - **Restart semantics**: on start the admin reloads the journal. A job that was queued, running or cancelling when the previous process stopped is recorded as **interrupted** ("interrupted by server restart") and never as succeeded. Its resources (`catalog-yaml`, `database`, `release`) are free again, so new jobs can start; the database file lock held by the old process died with it.

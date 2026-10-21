@@ -47,6 +47,8 @@ data/catalog.snapshot.sql.gz
 *.snapshot.sql.gz.prev
 # Staging directories of an in-progress admin export
 .export-staging-*/
+# Local operations log of the admin (<catalog>.operations.jsonl)
+*.operations.jsonl
 __pycache__/
 
 *.yaml.bak

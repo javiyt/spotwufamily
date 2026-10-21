@@ -188,7 +188,7 @@ Safety properties, all enforced by the server:
 - **One job per resource.** `catalog-yaml`, `database` and `release` are held for the whole job; a second confirm for a held resource answers `409` naming the job that holds it (a double click never runs twice). Admin database jobs also take a cross-process lock (`<db>.lock`) that the CLI's `sync` and `artists reconcile --apply/--restore` take too, so those cannot run against the admin at the same time. Other CLI writers (`artists refresh-genres`, `db migrate`) do not take it yet: do not run them while an admin job holds the database.
 - **Backups first.** Every database write takes a `VACUUM INTO` backup in `build/admin/backups/`; YAML writes keep `<catalog>.bak`.
 - **Restartable.** Jobs are journaled in `build/admin/jobs.jsonl`. After a restart, jobs that were running read `interrupted` (never succeeded); a sync interrupted or stopped by a Spotify 429 resumes from its last completed artist.
-- **Auditable.** Every confirmed and finished job is appended to `<catalog>.operations.jsonl`; reports download as deterministic CSV/JSON from the job page.
+- **Auditable.** Every confirmed and finished job is appended to `<catalog>.operations.jsonl` (local and git-ignored, never committed); reports download as deterministic CSV/JSON from the job page.
 - **Never automatic publication.** No sync, edit, export or review publishes anything; publishing is only the explicit `/publish` step 2.
 - **Offline-safe.** Without credentials, database, `python3` or `gh`, the admin still starts; the actions that need them are disabled with the reason.
 
