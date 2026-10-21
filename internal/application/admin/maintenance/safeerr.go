@@ -19,10 +19,12 @@ var (
 	ErrUnavailable          = errors.New("unavailable")
 )
 
-// SafeError is an error whose message is safe to show to users.
+// SafeError is an error whose message is safe to show to users. The error
+// it was mapped from is kept as its cause for server-side logs only.
 type SafeError struct {
 	Code    string
 	Message string
+	cause   error
 }
 
 func (e *SafeError) Error() string { return e.Message }
@@ -30,8 +32,23 @@ func (e *SafeError) Error() string { return e.Message }
 // Safe returns the user-safe message.
 func (e *SafeError) Safe() string { return e.Message }
 
+// Cause returns the error Safe mapped, or nil. It is deliberately not
+// Unwrap: the cause never takes part in errors.Is/As matching, and its text
+// (local paths, SQL) is for server logs only, never for responses.
+func (e *SafeError) Cause() error { return e.cause }
+
+// CauseOf returns the cause of a *SafeError in err's chain, or err itself
+// when there is none.
+func CauseOf(err error) error {
+	var se *SafeError
+	if errors.As(err, &se) && se.cause != nil {
+		return se.cause
+	}
+	return err
+}
+
 // Safe maps err to a *SafeError; unknown errors become code "internal".
-// A nil error stays nil.
+// The original error is kept as the cause. A nil error stays nil.
 func Safe(err error) error {
 	if err == nil {
 		return nil
@@ -40,6 +57,13 @@ func Safe(err error) error {
 	if errors.As(err, &se) {
 		return se
 	}
+	se = classify(err)
+	se.cause = err
+	return se
+}
+
+// classify picks the fixed user-safe message for err.
+func classify(err error) *SafeError {
 	var (
 		jc *jobs.ConflictError
 		ac *admin.ConflictError
@@ -50,35 +74,35 @@ func Safe(err error) error {
 	)
 	if wait, ok := artists.RetryAfterOf(err); ok {
 		secs := int(math.Ceil(wait.Seconds()))
-		return &SafeError{"rate_limited", fmt.Sprintf("The source is rate limited; retry after %d seconds.", secs)}
+		return &SafeError{Code: "rate_limited", Message: fmt.Sprintf("The source is rate limited; retry after %d seconds.", secs)}
 	}
 	switch {
 	case errors.Is(err, ErrPublishInterrupted):
-		return &SafeError{"interrupted", "Publishing was interrupted; a partial release may exist on GitHub — check the Releases page before retrying."}
+		return &SafeError{Code: "interrupted", Message: "Publishing was interrupted; a partial release may exist on GitHub — check the Releases page before retrying."}
 	case errors.Is(err, ErrGhNotAuthenticated):
-		return &SafeError{"credentials_missing", "GitHub CLI is not authenticated. Run `gh auth login` in a terminal."}
+		return &SafeError{Code: "credentials_missing", Message: "GitHub CLI is not authenticated. Run `gh auth login` in a terminal."}
 	case errors.Is(err, ErrReleasePackageNotClean):
-		return &SafeError{"conflict", "The release package directory is not empty; publish or remove the prepared package before preparing another."}
+		return &SafeError{Code: "conflict", Message: "The release package directory is not empty; publish or remove the prepared package before preparing another."}
 	case errors.Is(err, ErrNothingPrepared):
-		return &SafeError{"validation", "Nothing is prepared for the current catalog content; run release-prepare first."}
+		return &SafeError{Code: "validation", Message: "Nothing is prepared for the current catalog content; run release-prepare first."}
 	case errors.Is(err, ErrReleasePrerequisite):
-		return &SafeError{"unavailable", "A release prerequisite is missing or the release script failed (python3, Go and the release script are required)."}
+		return &SafeError{Code: "unavailable", Message: "A release prerequisite is missing or the release script failed (python3, Go and the release script are required)."}
 	case errors.As(err, &jc), errors.Is(err, jobs.ErrConflict), errors.As(err, &ac), errors.As(err, &ar), errors.Is(err, ErrLocked):
-		return &SafeError{"conflict", "Another change or job is in progress for this resource."}
+		return &SafeError{Code: "conflict", Message: "Another change or job is in progress for this resource."}
 	case errors.As(err, &av), errors.Is(err, artists.ErrInvalidMapping):
-		return &SafeError{"validation", "The request is not valid."}
+		return &SafeError{Code: "validation", Message: "The request is not valid."}
 	case errors.Is(err, ErrCredentialsMissing):
-		return &SafeError{"credentials_missing", "Required credentials are not configured."}
+		return &SafeError{Code: "credentials_missing", Message: "Required credentials are not configured."}
 	case errors.Is(err, ErrStalePreview):
-		return &SafeError{"stale_preview", "The preview is out of date; generate it again."}
+		return &SafeError{Code: "stale_preview", Message: "The preview is out of date; generate it again."}
 	case errors.Is(err, ErrConfirmationRequired), errors.As(err, &ap), errors.Is(err, admin.ErrOverrideRequired):
-		return &SafeError{"confirmation_required", "Explicit confirmation is required."}
+		return &SafeError{Code: "confirmation_required", Message: "Explicit confirmation is required."}
 	case errors.As(err, &ps), errors.Is(err, artists.ErrSourceRateLimited):
-		return &SafeError{"rate_limited", "The source is rate limited; try again later."}
+		return &SafeError{Code: "rate_limited", Message: "The source is rate limited; try again later."}
 	case errors.Is(err, ErrUnavailable), errors.Is(err, artists.ErrSourceUnavailable):
-		return &SafeError{"unavailable", "The source is temporarily unavailable."}
+		return &SafeError{Code: "unavailable", Message: "The source is temporarily unavailable."}
 	case errors.Is(err, admin.ErrNotFound), errors.Is(err, artists.ErrSourceNotFound):
-		return &SafeError{"not_found", "The requested item was not found."}
+		return &SafeError{Code: "not_found", Message: "The requested item was not found."}
 	}
-	return &SafeError{"internal", "An internal error occurred."}
+	return &SafeError{Code: "internal", Message: "An internal error occurred."}
 }

@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -123,6 +124,46 @@ func TestSafeMapsKnown(t *testing.T) {
 		}
 	}
 	if Safe(nil) != nil {
+		t.Fatal("nil")
+	}
+}
+
+func TestSafeKeepsCauseWithoutUnwrapping(t *testing.T) {
+	raw := fmt.Errorf("open /Users/a/data.db: %w", context.Canceled)
+	se := Safe(raw).(*SafeError)
+	if se.Cause() != raw {
+		t.Fatalf("cause %v, want the original error", se.Cause())
+	}
+	if se.Error() != "An internal error occurred." || se.Safe() != se.Error() {
+		t.Fatalf("message changed: %q", se.Error())
+	}
+	if errors.Is(se, context.Canceled) {
+		t.Fatal("the cause must not take part in errors.Is matching")
+	}
+	again := Safe(se).(*SafeError)
+	if again.Cause() != raw {
+		t.Fatal("re-wrapping must keep the first cause")
+	}
+	if CauseOf(se) != raw || CauseOf(raw) != raw || CauseOf(nil) != nil {
+		t.Fatal("CauseOf")
+	}
+	if (&SafeError{Code: "validation", Message: "x"}).Cause() != nil {
+		t.Fatal("a literal has no cause")
+	}
+}
+
+func TestLogTextRedactsSecretsAndKeepsPaths(t *testing.T) {
+	err := Safe(errors.New("open /Users/a/data.db: token=abc123 with ghp_ABCDEFGHIJKLMNOPQRSTUV and s3cr3t-value\nnext"))
+	got := LogText(err, "s3cr3t-value", "")
+	for _, bad := range []string{"abc123", "ghp_ABCDEFGHIJKLMNOPQRSTUV", "s3cr3t-value", "\n"} {
+		if strings.Contains(got, bad) {
+			t.Fatalf("%q leaks %q", got, bad)
+		}
+	}
+	if !strings.Contains(got, "/Users/a/data.db") {
+		t.Fatalf("server logs keep the path: %q", got)
+	}
+	if LogText(nil) != "" {
 		t.Fatal("nil")
 	}
 }

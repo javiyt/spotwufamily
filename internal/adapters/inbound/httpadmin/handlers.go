@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/admin"
+	"github.com/javiyt/spotwufamily/internal/application/admin/maintenance"
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
@@ -468,8 +469,9 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, status int, code, 
 	_, _ = w.Write(buf.Bytes())
 }
 
-// internal logs the real error server-side and tells the client nothing more.
+// internal logs the real error server-side (the cause behind a safe error,
+// credentials redacted) and tells the client nothing more.
 func (s *Server) internal(w http.ResponseWriter, r *http.Request, err error) {
-	s.logger.Printf("internal error on %s %s: %v", r.Method, r.URL.Path, err)
+	s.logger.Printf("internal error on %s %s: %s", r.Method, r.URL.Path, maintenance.LogText(err))
 	s.fail(w, r, http.StatusInternalServerError, "internal", "internal error")
 }

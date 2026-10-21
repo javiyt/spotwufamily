@@ -164,14 +164,7 @@ func NewAdmin(ctx context.Context, cfg AdminConfig) (*Admin, func(), error) {
 	logger := cfg.Logger
 	var svcRef atomic.Pointer[maintenance.Service]
 	manager := jobs.NewManager(filesystem.NewJobJournal(paths.JournalPath), cfg.now, newJobID,
-		jobs.WithSanitizer(func(err error) string {
-			logger.Error("admin job failed", "err", err)
-			var s interface{ Safe() string }
-			if errors.As(err, &s) {
-				return s.Safe()
-			}
-			return "operation failed"
-		}),
+		jobs.WithSanitizer(jobErrorSanitizer(logger, cfg.Env)),
 		jobs.WithOnFinish(func(j jobs.Job) {
 			if s := svcRef.Load(); s != nil {
 				s.FinishHook()(j)
@@ -294,6 +287,39 @@ func (a *Admin) stopJobs(bound time.Duration) {
 	select {
 	case <-done:
 	case <-time.After(bound):
+	}
+}
+
+// secretEnvKeys name the credentials whose values are redacted from logs.
+var secretEnvKeys = []string{"SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "GH_TOKEN", "GITHUB_TOKEN"}
+
+// logSecrets returns the configured credential values to redact.
+func logSecrets(env EnvLookup) []string {
+	out := make([]string, 0, len(secretEnvKeys))
+	for _, k := range secretEnvKeys {
+		if v := env(k); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// jobErrorSanitizer turns a failed job's error into its user-safe message
+// and logs the underlying cause (credentials redacted) server-side. A
+// cancellation is logged at info level: it is an expected end.
+func jobErrorSanitizer(logger *slog.Logger, env EnvLookup) func(error) string {
+	return func(err error) string {
+		cause := maintenance.LogText(err, logSecrets(env)...)
+		if maintenance.IsCancellation(err) {
+			logger.Info("admin job stopped", "cause", cause)
+		} else {
+			logger.Error("admin job failed", "cause", cause)
+		}
+		var s interface{ Safe() string }
+		if errors.As(err, &s) {
+			return s.Safe()
+		}
+		return "operation failed"
 	}
 }
 

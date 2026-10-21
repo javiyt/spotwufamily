@@ -452,6 +452,29 @@ func TestOperationsPageDoesNotRenderSecretsOrPaths(t *testing.T) {
 	require.Contains(t, e.log.String(), "denied", "details are logged server-side")
 }
 
+func TestSafeErrorCauseIsLoggedButNeverRendered(t *testing.T) {
+	e := newOpsEnv(t)
+	e.svc.previewErr = maintenance.Safe(errors.New("open /Users/javi/private/catalog.db: disk I/O error; token=tok-abc"))
+	jsonReq := httptest.NewRequest(http.MethodPost, "/operations/sync-dry-run/preview", strings.NewReader(e.form("scope", "all").Encode()))
+	jsonReq.Host = host
+	jsonReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	jsonReq.Header.Set("Accept", "application/json")
+	jsonReq.Header.Set("Origin", "http://"+host)
+	jsonReq.AddCookie(e.cookie)
+	jsonRec := httptest.NewRecorder()
+	e.h.ServeHTTP(jsonRec, jsonReq)
+	for _, rec := range []*httptest.ResponseRecorder{
+		e.send("/operations/sync-dry-run/preview", e.form("scope", "all")),
+		jsonRec,
+	} {
+		require.Equal(t, http.StatusInternalServerError, rec.Code)
+		require.NotContains(t, rec.Body.String(), "/Users")
+		require.NotContains(t, rec.Body.String(), "disk I/O")
+	}
+	require.Contains(t, e.log.String(), "/Users/javi/private/catalog.db: disk I/O error", "the cause is logged server-side")
+	require.NotContains(t, e.log.String(), "tok-abc", "credentials are redacted from the log")
+}
+
 func TestStaleTokenPageKeepsParams(t *testing.T) {
 	e := newOpsEnv(t)
 	rec := e.send("/operations/sync-dry-run/run", e.form("scope", "selected", "artists", "rza,gza", "token", "expired"))
