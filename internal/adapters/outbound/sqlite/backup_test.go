@@ -66,16 +66,19 @@ func TestBackupToNeverOverwrites(t *testing.T) {
 	existing := filepath.Join(dir, "catalog-20261020T070807Z.db")
 	require.NoError(t, os.WriteFile(existing, []byte("keep me"), 0o600))
 
-	_, err := database.BackupTo(ctx, dir)
-	require.Error(t, err)
+	name, err := database.BackupTo(ctx, dir)
+	require.NoError(t, err, "a taken name is skipped, never replaced")
+	require.Equal(t, "catalog-20261020T070807Z-2.db", name)
 	data, err := os.ReadFile(existing)
 	require.NoError(t, err)
 	require.Equal(t, "keep me", string(data))
 
-	// A second backup within the same second also refuses to replace the first.
+	// Backups within the same second (two jobs back to back) each get a name.
 	other := t.TempDir()
-	_, err = database.BackupTo(ctx, other)
+	first, err := database.BackupTo(ctx, other)
 	require.NoError(t, err)
-	_, err = database.BackupTo(ctx, other)
-	require.Error(t, err)
+	second, err := database.BackupTo(ctx, other)
+	require.NoError(t, err)
+	require.Equal(t, "catalog-20261020T070807Z.db", first)
+	require.Equal(t, "catalog-20261020T070807Z-2.db", second)
 }

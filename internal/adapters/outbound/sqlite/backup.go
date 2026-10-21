@@ -14,12 +14,16 @@ import (
 
 const backupTimeLayout = "20060102T150405Z"
 
+// maxBackupNameAttempts bounds the suffixes tried for one second's backups.
+const maxBackupNameAttempts = 100
+
 // backupNow is the clock used to name backups; tests replace it.
 var backupNow = time.Now
 
 // BackupTo writes a consistent copy of the database to
-// <dir>/<base>-<UTC yyyymmddThhmmssZ>.db with mode 0600, verifies the copy and
-// returns its file name. It never replaces an existing file.
+// <dir>/<base>-<UTC yyyymmddThhmmssZ>.db (with a -2, -3... suffix when backups
+// share a second) with mode 0600, verifies the copy and returns its file
+// name. It never replaces an existing file.
 func (d *Database) BackupTo(ctx context.Context, dir string) (string, error) {
 	if err := d.withContext(ctx); err != nil {
 		return "", err
@@ -32,12 +36,27 @@ func (d *Database) BackupTo(ctx context.Context, dir string) (string, error) {
 	}
 
 	base := strings.TrimSuffix(filepath.Base(d.path), filepath.Ext(d.path))
-	name := base + "-" + backupNow().UTC().Format(backupTimeLayout) + ".db"
-	path := filepath.Join(dir, name)
+	stamp := base + "-" + backupNow().UTC().Format(backupTimeLayout)
 
 	// Creating the empty target exclusively reserves the name and fixes its
-	// mode; VACUUM INTO accepts an existing empty file.
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	// mode; VACUUM INTO accepts an existing empty file. A name already taken
+	// (two backups within one second) is skipped, never replaced.
+	var (
+		name, path string
+		file       *os.File
+		err        error
+	)
+	for attempt := 1; attempt <= maxBackupNameAttempts; attempt++ {
+		name = stamp + ".db"
+		if attempt > 1 {
+			name = fmt.Sprintf("%s-%d.db", stamp, attempt)
+		}
+		path = filepath.Join(dir, name)
+		file, err = os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if !errors.Is(err, os.ErrExist) {
+			break
+		}
+	}
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return "", fmt.Errorf("backup %s already exists; refusing to overwrite", name)
