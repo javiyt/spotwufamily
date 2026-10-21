@@ -263,8 +263,14 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 	report.RunID = runID
 	progress(options.Progress, ProgressEvent{Stage: ProgressRunStarted, RunID: runID})
 
-	var abortErr error
+	var abortErr, cancelErr error
 	for index, configuredArtist := range artists {
+		// A cancelled run stops between artists: completed artists keep
+		// their checkpoints and the run is finished as partial below.
+		if err := ctx.Err(); err != nil {
+			cancelErr = err
+			break
+		}
 		event := ProgressEvent{
 			Stage:       ProgressArtistStarted,
 			ArtistSlug:  configuredArtist.Slug,
@@ -303,15 +309,24 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 	}
 	report.ArtistsSkipped += len(editorialCatalog.Artists) - len(eligibleArtists)
 
+	if cancelErr == nil {
+		cancelErr = ctx.Err()
+	}
+
 	status := "success"
-	if report.ArtistsFailed > 0 {
+	if report.ArtistsFailed > 0 || cancelErr != nil {
 		status = "partial"
 	}
-	if err := s.repository.FinishSyncRun(ctx, runID, status, report.Stats); err != nil {
+	// The run record is finished even after a cancel, so a resume (and the
+	// freshness skip) sees the artists completed before it.
+	if err := s.repository.FinishSyncRun(context.WithoutCancel(ctx), runID, status, report.Stats); err != nil {
 		return report, fmt.Errorf("finish sync run: %w", err)
 	}
 	progress(options.Progress, ProgressEvent{Stage: ProgressRunFinished, RunID: runID, Stats: report.Stats})
 
+	if cancelErr != nil {
+		return report, fmt.Errorf("sync cancelled; progress saved as partial run: %w", cancelErr)
+	}
 	if abortErr != nil {
 		return report, &PartialSyncError{Err: abortErr}
 	}

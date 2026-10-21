@@ -273,6 +273,41 @@ func TestSyncCatalogAbortsAfterSpotifyQuotaExceeded(t *testing.T) {
 	require.Len(t, report.Errors, 1)
 }
 
+func TestSyncCatalogCancelledFinishesRunAsPartial(t *testing.T) {
+	store := fakeStore{catalog: catalog.EditorialCatalog{
+		ProfileSyncPolicy: catalog.SyncAllowUnreviewed,
+		Version:           1,
+		Artists: []catalog.Artist{
+			enabledArtist("wu-tang-clan", "34EP7KEpOjXcM2TCat1ISk"),
+			func() catalog.Artist {
+				artist := enabledArtist("gravediggaz", "0CH4f9m2L3TRaA5oErU2p0")
+				artist.Name = "Gravediggaz"
+				return artist
+			}(),
+		},
+	}}
+	fetcher := &fakeFetcher{artist: catalog.ArtistCandidate{Name: "Wu-Tang Clan", SpotifyID: "34EP7KEpOjXcM2TCat1ISk"}}
+	repository := &fakeRepository{}
+	usecase := catalogsync.NewSyncCatalog(store, fetcher, repository, fixedClock{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	report, err := usecase.Run(ctx, catalogsync.Options{CatalogPath: "ignored", Progress: func(e catalogsync.ProgressEvent) {
+		if e.Stage == catalogsync.ProgressArtistFinished {
+			cancel() // the user cancels after the first artist
+		}
+	}})
+
+	require.ErrorIs(t, err, context.Canceled)
+	var partialErr *catalogsync.PartialSyncError
+	require.False(t, errors.As(err, &partialErr), "a cancel is not a rate-limit abort")
+	require.Equal(t, 1, report.ArtistsProcessed)
+	require.Equal(t, []string{"34EP7KEpOjXcM2TCat1ISk"}, fetcher.artistIDs, "no artist starts after the cancel")
+	require.Equal(t, []string{"wu-tang-clan"}, repository.checkpointedArtists)
+	require.Equal(t, "partial", repository.finishedStatus, "the run is finished as partial so a resume finds it")
+	require.NoError(t, repository.finishCtxErr, "finishing the run record must not be cancelled")
+}
+
 func requireProgressStages(t *testing.T, events []catalogsync.ProgressEvent, stages ...catalogsync.ProgressStage) {
 	t.Helper()
 
@@ -333,6 +368,7 @@ type fakeRepository struct {
 	lastArtistSyncs     map[string]artistSyncCheckpoint
 	checkpointedArtists []string
 	finishedStatus      string
+	finishCtxErr        error
 }
 
 type artistSyncCheckpoint struct {
@@ -357,8 +393,9 @@ func (f *fakeRepository) LastArtistSyncCheckpoint(_ context.Context, artist cata
 	return checkpoint.finishedAt, checkpoint.spotifyIDs, ok, nil
 }
 
-func (f *fakeRepository) FinishSyncRun(_ context.Context, _ int64, status string, _ catalogsync.SyncStats) error {
+func (f *fakeRepository) FinishSyncRun(ctx context.Context, _ int64, status string, _ catalogsync.SyncStats) error {
 	f.finishedStatus = status
+	f.finishCtxErr = ctx.Err()
 	return nil
 }
 
