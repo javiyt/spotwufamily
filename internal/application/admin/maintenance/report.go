@@ -9,6 +9,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
 )
@@ -25,8 +26,13 @@ func sortedCopy(r jobs.Report) jobs.Report {
 	return out
 }
 
+// formulaStarters are the leading characters spreadsheets may treat as the
+// start of a formula (OWASP CSV injection), including their full-width forms.
+const formulaStarters = "=+-@\t\r\uFF1D\uFF0B\uFF0D\uFF20"
+
 func guard(cell string) string {
-	if cell != "" && strings.ContainsRune("=+-@", rune(cell[0])) {
+	first, _ := utf8.DecodeRuneInString(cell)
+	if cell != "" && strings.ContainsRune(formulaStarters, first) {
 		return "'" + cell
 	}
 	return cell

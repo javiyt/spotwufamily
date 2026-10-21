@@ -45,6 +45,19 @@ func TestCSVEscapesFormulaInjection(t *testing.T) {
 	}
 }
 
+func TestCSVEscapesTabCarriageReturnAndFullWidth(t *testing.T) {
+	for _, cell := range []string{"\t=1+1", "\r=1+1", "\uFF1D1+1", "\uFF0B1", "\uFF0D1", "\uFF201"} {
+		if got := guard(cell); got != "'"+cell {
+			t.Errorf("guard(%q) = %q, want quote prefix", cell, got)
+		}
+	}
+	for _, cell := range []string{"ok", "", "é=1", "1-2"} {
+		if got := guard(cell); got != cell {
+			t.Errorf("guard(%q) = %q, want unchanged", cell, got)
+		}
+	}
+}
+
 func TestWriteJSON(t *testing.T) {
 	r := jobs.Report{Name: "n", Columns: []string{"b", "a"}, Rows: [][]string{{"2", "1"}}}
 	var buf bytes.Buffer
