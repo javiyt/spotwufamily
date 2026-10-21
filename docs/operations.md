@@ -166,12 +166,12 @@ The local admin (`make admin`, see [Local admin](admin.md)) runs the same use ca
 | CLI / Makefile | Admin action | Notes |
 | --- | --- | --- |
 | `make artists-discover-wu` | `discover-preview` | Wikipedia; writes the ledger only |
-| `make artists-discover-wu-apply` | `discover-import` | adds discovered artists to the YAML disabled; YAML `.bak` |
+| `make artists-discover-wu-apply` | `discover-import` | adds the previewed candidates to the YAML disabled; timestamped catalog copy in `build/admin/backups/` first |
 | `make artists-audit-profiles` (`OFFLINE=1`) | `audit-profiles` (`offline`) | read-only; offline needs no credentials |
 | `make artists-refresh-metadata-dry-run` | `refresh-metadata-preview` | read-only |
-| `make artists-refresh-metadata` | `refresh-metadata` | database lock + backup first |
+| `make artists-refresh-metadata` | `refresh-metadata` | database lock, database backup and timestamped catalog copy first; typed `refresh metadata` when forced |
 | `make sync-dry-run` | `sync-dry-run` | no Spotify, no database |
-| `make sync-artist ARTIST=…`, `make sync`, `sync --resume` | `sync` (`scope`, `artists`, `resume`) | database lock + backup; typed phrase for `all` or many artists; 429 → `partial`, resumable |
+| `make sync-artist ARTIST=…`, `make sync`, `sync --resume` | `sync` (`scope`, `artists`, `resume`) | database lock + backup; typed phrase for `all` or many artists; 429 → `partial`, resumable; cancel → `cancelled`, resumable |
 | `make db-verify` | `db-verify` | read-only |
 | `make db-snapshot` | `db-snapshot` | atomic write; previous kept as `.prev` |
 | `make export` | `export` | atomic; deterministic |
@@ -184,10 +184,10 @@ The local admin (`make admin`, see [Local admin](admin.md)) runs the same use ca
 
 Safety properties, all enforced by the server:
 
-- **Preview, then confirm.** Nothing runs from a list or a link. The confirm carries a preview token (HMAC, per-process secret, 10-minute expiry) bound to the action, its parameters and a fingerprint of what was previewed; if the catalog, database or plan changed since, the run is refused as stale. Destructive or large runs need the typed phrase shown on the preview.
-- **One job per resource.** `catalog-yaml`, `database` and `release` are held for the whole job; a second confirm for a held resource answers `409` naming the job that holds it (a double click never runs twice). Admin database jobs also take a cross-process lock (`<db>.lock`) that the CLI's `sync` and `artists reconcile --apply/--restore` take too, so those cannot run against the admin at the same time. Other CLI writers (`artists refresh-genres`, `db migrate`) do not take it yet: do not run them while an admin job holds the database.
-- **Backups first.** Every database write takes a `VACUUM INTO` backup in `build/admin/backups/`; YAML writes keep `<catalog>.bak`.
-- **Restartable.** Jobs are journaled in `build/admin/jobs.jsonl`. After a restart, jobs that were running read `interrupted` (never succeeded); a sync interrupted or stopped by a Spotify 429 resumes from its last completed artist.
+- **Preview, then confirm.** Nothing runs from a list or a link. The confirm carries a preview token (HMAC, per-process secret, 10-minute expiry) bound to the action, its parameters and a fingerprint of what was previewed; if the catalog, database or plan changed since, the run is refused as stale, and the writing actions re-check that fingerprint again inside the job under their locks. Destructive or large runs need the typed phrase shown on the preview.
+- **One job per resource.** `catalog-yaml`, `database`, `export-artifacts` and `release` are held for the whole job; a second confirm for a held resource answers `409` naming the job that holds it (a double click never runs twice). Editor and profile-review saves take `catalog-yaml` for the duration of the save, so they are refused (`409`) while `refresh-metadata` or `discover-import` runs, and those jobs cannot start mid-save. Admin database jobs also take a cross-process lock (`<db>.lock`) that the CLI's `sync` and `artists reconcile --apply/--restore` take too, so those cannot run against the admin at the same time. Other CLI writers (`artists refresh-genres`, `db migrate`) do not take it yet: do not run them while an admin job holds the database.
+- **Backups first.** Every database write takes a `VACUUM INTO` backup in `build/admin/backups/`. `refresh-metadata` and `discover-import` also copy the catalog there (`artists-<UTC timestamp>.yaml`) before their first write, because `<catalog>.bak` only keeps the state before the last save.
+- **Restartable.** Jobs are journaled in `build/admin/jobs.jsonl`. After a restart, jobs that were running read `interrupted` (never succeeded); a sync interrupted, cancelled or stopped by a Spotify 429 resumes from its last completed artist.
 - **Auditable.** Every confirmed and finished job is appended to `<catalog>.operations.jsonl` (local and git-ignored, never committed); reports download as deterministic CSV/JSON from the job page.
 - **Never automatic publication.** No sync, edit, export or review publishes anything; publishing is only the explicit `/publish` step 2.
 - **Offline-safe.** Without credentials, database, `python3` or `gh`, the admin still starts; the actions that need them are disabled with the reason.
