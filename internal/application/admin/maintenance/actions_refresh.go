@@ -26,6 +26,8 @@ type RefreshDeps struct {
 	Credentials CredentialsChecker
 	Locker      Locker
 	Backuper    Backuper
+	// CatalogBackuper backs up the catalog before a real refresh rewrites it.
+	CatalogBackuper CatalogBackuper
 }
 
 // refreshTypedPhrase confirms a forced refresh, which ignores checkpoints.
@@ -86,7 +88,7 @@ func (a *refreshAction) Preview(ctx context.Context, p Params) (Preview, error) 
 	if force {
 		checkpoints = "ignored (every artist is fetched again)"
 	}
-	writes := "catalog metadata (previous file kept as .bak) and refresh checkpoints; database backed up first"
+	writes := "catalog metadata and refresh checkpoints; the database is backed up and " + catalogBackupNote
 	if a.dryRun {
 		writes = "none (dry run)"
 	}
@@ -166,6 +168,13 @@ func (a *refreshAction) run(ctx context.Context, r jobs.Reporter, force bool, ve
 		}
 		r.Step("backing up database")
 		if err := a.deps.Backuper.Backup(ctx); err != nil {
+			if ctx.Err() != nil {
+				return jobs.Outcome{}, ctx.Err()
+			}
+			return jobs.Outcome{}, Safe(err)
+		}
+		r.Step("backing up catalog")
+		if err := backupCatalog(ctx, a.deps.CatalogBackuper); err != nil {
 			if ctx.Err() != nil {
 				return jobs.Outcome{}, ctx.Err()
 			}

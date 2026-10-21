@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/musicbrainz"
@@ -30,7 +31,8 @@ type MaintenanceActionsConfig struct {
 	// SnapshotPath receives the database snapshot written after a sync.
 	SnapshotPath string
 	// BackupDir receives the database backup taken before a metadata refresh
-	// or a sync.
+	// or a sync, and the timestamped catalog copy taken before a metadata
+	// refresh or a discovery import.
 	BackupDir string
 	// Export roots written by the export actions (catalogexport options).
 	ExportOutputDir  string
@@ -49,13 +51,15 @@ func NewDiscoveryAuditRefreshActions(cfg MaintenanceActionsConfig) []maintenance
 		return cfg.Env("SPOTIFY_CLIENT_ID") != "" && cfg.Env("SPOTIFY_CLIENT_SECRET") != ""
 	}
 	digest := fileDigest(cfg.CatalogPath, cfg.LedgerPath)
-	discover := maintenance.DiscoverDeps{Runner: discoverPort{cfg}, Digest: digest}
+	catalogBackup := catalogBackuper{path: cfg.CatalogPath, dir: cfg.BackupDir}
+	discover := maintenance.DiscoverDeps{Runner: discoverPort{cfg}, Digest: digest, CatalogBackuper: catalogBackup}
 	refresh := maintenance.RefreshDeps{
-		Runner:      refreshPort{cfg},
-		Digest:      digest,
-		Credentials: credentials,
-		Locker:      databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
-		Backuper:    databaseBackuper{dbPath: cfg.DBPath, dir: cfg.BackupDir},
+		Runner:          refreshPort{cfg},
+		Digest:          digest,
+		Credentials:     credentials,
+		Locker:          databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
+		Backuper:        databaseBackuper{dbPath: cfg.DBPath, dir: cfg.BackupDir},
+		CatalogBackuper: catalogBackup,
 	}
 	return []maintenance.Action{
 		maintenance.NewDiscoverPreview(discover),
@@ -169,6 +173,17 @@ func fileDigest(paths ...string) maintenance.CatalogDigest {
 		}
 		return hex.EncodeToString(h.Sum(nil)), nil
 	}
+}
+
+// catalogBackuper copies the catalog YAML to the backup directory as
+// <base>-<UTC timestamp>.yaml (mode 0600) before a job rewrites it.
+type catalogBackuper struct{ path, dir string }
+
+var _ maintenance.CatalogBackuper = catalogBackuper{}
+
+func (b catalogBackuper) BackupCatalog(context.Context) error {
+	_, err := filesystem.BackupFile(b.path, b.dir, time.Now())
+	return err
 }
 
 type discoverPort struct{ cfg MaintenanceActionsConfig }

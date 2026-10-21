@@ -192,7 +192,7 @@ func TestDiscoverPreviewDoesNotWrite(t *testing.T) {
 
 func TestDiscoverImportAppliesAndReportsCounts(t *testing.T) {
 	f := &fakeDiscover{report: newDiscoveryReport()}
-	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1")})
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1"), CatalogBackuper: nopCatalogBackup{}})
 	if a.Name() != "discover-import" {
 		t.Fatalf("name %q", a.Name())
 	}
@@ -284,7 +284,7 @@ func TestDiscoverActionsRejectUnknownParams(t *testing.T) {
 
 func TestDiscoverFailureIsSafe(t *testing.T) {
 	f := &fakeDiscover{report: newDiscoveryReport(), applyErr: errors.New("open /home/secret/artists.yaml: permission denied")}
-	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d")})
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d"), CatalogBackuper: nopCatalogBackup{}})
 
 	_, _, _, err := runAction(t, a, Params{})
 	var se *SafeError
@@ -350,7 +350,7 @@ func TestDiscoverImportRefusesChangedCatalogAfterConfirm(t *testing.T) {
 
 func TestDiscoverImportAppliesOnlyThePreviewedSlugs(t *testing.T) {
 	f := &fakeDiscover{report: newDiscoveryReport()}
-	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1")})
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1"), CatalogBackuper: nopCatalogBackup{}})
 	spec, err := specFor(t, a, Params{})
 	if err != nil {
 		t.Fatal(err)
@@ -372,5 +372,74 @@ func TestDiscoverImportAppliesOnlyThePreviewedSlugs(t *testing.T) {
 		if row[0] == "added" && row[1] == "shyheim" {
 			t.Fatal("a candidate that was not previewed was imported")
 		}
+	}
+}
+
+// orderedCatalogBackuper records whether the catalog was backed up before
+// the import's apply call.
+type orderedCatalogBackuper struct {
+	f        *fakeDiscover
+	err      error
+	calls    int
+	appliedB int // apply calls seen when the backup ran
+}
+
+func (b *orderedCatalogBackuper) BackupCatalog(context.Context) error {
+	b.calls++
+	b.appliedB = b.f.writes()
+	return b.err
+}
+
+func TestDiscoverImportBacksUpTheCatalogBeforeWriting(t *testing.T) {
+	f := &fakeDiscover{report: newDiscoveryReport()}
+	b := &orderedCatalogBackuper{f: f}
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1"), CatalogBackuper: b})
+	pv, err := a.Preview(context.Background(), Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !scopeHas(pv, "timestamped copy of the catalog") || !scopeHas(pv, ".bak keeps only the last save") {
+		t.Fatalf("scope %+v", pv.Scope)
+	}
+	if _, _, _, err := runAction(t, a, Params{}); err != nil {
+		t.Fatal(err)
+	}
+	if b.calls != 1 || b.appliedB != 0 || f.writes() != 1 {
+		t.Fatalf("backup calls %d (applies before it %d), applies %d", b.calls, b.appliedB, f.writes())
+	}
+
+	// The dry run writes nothing and takes no backup.
+	p := &orderedCatalogBackuper{f: f}
+	if _, _, _, err := runAction(t, NewDiscoverPreview(DiscoverDeps{Runner: f, Digest: staticDigest("d1"), CatalogBackuper: p}), Params{}); err != nil {
+		t.Fatal(err)
+	}
+	if p.calls != 0 {
+		t.Fatal("a dry run must not back up")
+	}
+}
+
+func TestDiscoverImportCatalogBackupFailureWritesNothing(t *testing.T) {
+	f := &fakeDiscover{report: newDiscoveryReport()}
+	b := &orderedCatalogBackuper{f: f, err: errors.New("open /secret/backups: read-only file system")}
+	a := NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1"), CatalogBackuper: b})
+	_, _, _, err := runAction(t, a, Params{})
+	var se *SafeError
+	if !errors.As(err, &se) || strings.Contains(se.Error(), "secret") {
+		t.Fatalf("want safe error, got %v", err)
+	}
+	if f.writes() != 0 {
+		t.Fatal("no import without the catalog backup")
+	}
+}
+
+type nopCatalogBackup struct{}
+
+func (nopCatalogBackup) BackupCatalog(context.Context) error { return nil }
+
+func TestDiscoverImportWithoutCatalogBackuperFailsClosed(t *testing.T) {
+	f := &fakeDiscover{report: newDiscoveryReport()}
+	_, _, _, err := runAction(t, NewDiscoverImport(DiscoverDeps{Runner: f, Digest: staticDigest("d1")}), Params{})
+	if err == nil || f.writes() != 0 {
+		t.Fatalf("err %v, applies %d", err, f.writes())
 	}
 }

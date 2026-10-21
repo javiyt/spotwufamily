@@ -23,6 +23,8 @@ type DiscoverPort interface {
 type DiscoverDeps struct {
 	Runner DiscoverPort
 	Digest CatalogDigest
+	// CatalogBackuper backs up the catalog before an import writes it.
+	CatalogBackuper CatalogBackuper
 }
 
 var discoverColumns = []string{"status", "slug", "name", "category", "reason"}
@@ -84,7 +86,7 @@ func (a *discoverAction) Preview(ctx context.Context, _ Params) (Preview, error)
 	}
 	pv.Scope = append(pv.Scope,
 		ScopeLine{Label: "New candidates", Value: strconv.Itoa(len(slugs))},
-		ScopeLine{Label: "Writes", Value: "catalog (new artists added disabled; previous file kept as .bak)"},
+		ScopeLine{Label: "Writes", Value: "catalog (new artists added disabled); " + catalogBackupNote},
 	)
 	if len(slugs) > 0 {
 		pv.Scope = append(pv.Scope, ScopeLine{Label: "Artists", Value: joinLimited(slugs, 20)})
@@ -166,6 +168,13 @@ func (a *discoverAction) run(ctx context.Context, r jobs.Reporter, verified stri
 		// Only the previewed candidates are imported, even if the source
 		// changes between this check and the import.
 		only = slugs
+		r.Step("backing up catalog")
+		if err := backupCatalog(ctx, a.deps.CatalogBackuper); err != nil {
+			if ctx.Err() != nil {
+				return jobs.Outcome{}, ctx.Err()
+			}
+			return jobs.Outcome{}, Safe(err)
+		}
 	}
 	report, err := a.deps.Runner.Run(ctx, a.apply, only, func(e artists.DiscoverWuFamilyProgress) {
 		r.Step(e.Stage)

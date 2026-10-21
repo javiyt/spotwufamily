@@ -82,6 +82,16 @@ func (b *fakeBackuper) Backup(context.Context) error {
 	return b.err
 }
 
+type fakeCatalogBackuper struct {
+	log *callLog
+	err error
+}
+
+func (b *fakeCatalogBackuper) BackupCatalog(context.Context) error {
+	b.log.add("catalog-backup")
+	return b.err
+}
+
 type retryAfterErr struct{ d time.Duration }
 
 func (e retryAfterErr) Error() string             { return "429 from https://api.spotify.com with token xyz" }
@@ -92,6 +102,7 @@ type refreshFixture struct {
 	runner   *fakeRefresh
 	locker   *fakeLocker
 	backuper *fakeBackuper
+	catalog  *fakeCatalogBackuper
 	digest   string
 	deps     RefreshDeps
 }
@@ -103,6 +114,7 @@ func newRefreshFixture(creds bool) *refreshFixture {
 		runner:   &fakeRefresh{log: log, report: artists.RefreshGenresReport{ArtistsWithIDs: 2, Updated: 1, Unchanged: 1}},
 		locker:   &fakeLocker{log: log},
 		backuper: &fakeBackuper{log: log},
+		catalog:  &fakeCatalogBackuper{log: log},
 		digest:   "d1",
 	}
 	fx.runner.events = []artists.RefreshGenresProgress{
@@ -110,11 +122,12 @@ func newRefreshFixture(creds bool) *refreshFixture {
 		{Stage: "artist_unchanged", ArtistSlug: "gza", ArtistIndex: 2, ArtistTotal: 2, Unchanged: true},
 	}
 	fx.deps = RefreshDeps{
-		Runner:      fx.runner,
-		Digest:      func(context.Context) (string, error) { return fx.digest, nil },
-		Credentials: credentials(creds),
-		Locker:      fx.locker,
-		Backuper:    fx.backuper,
+		Runner:          fx.runner,
+		Digest:          func(context.Context) (string, error) { return fx.digest, nil },
+		Credentials:     credentials(creds),
+		Locker:          fx.locker,
+		Backuper:        fx.backuper,
+		CatalogBackuper: fx.catalog,
 	}
 	return fx
 }
@@ -195,7 +208,7 @@ func TestRefreshTakesLockAndBackupBeforeRunning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := fx.log.get(); !slices.Equal(got, []string{"lock", "backup", "refresh", "release"}) {
+	if got := fx.log.get(); !slices.Equal(got, []string{"lock", "backup", "catalog-backup", "refresh", "release"}) {
 		t.Fatalf("call order %v", got)
 	}
 	if !slices.Contains(spec.Resources, "database") {
@@ -412,5 +425,37 @@ func TestRefreshStaleFingerprintAfterLockIsRefused(t *testing.T) {
 	}
 	if got := fx.log.get(); !slices.Equal(got, []string{"lock", "release"}) {
 		t.Fatalf("nothing may be backed up or refreshed: %v", got)
+	}
+}
+
+func TestRefreshCatalogBackupFailureStopsBeforeRunning(t *testing.T) {
+	fx := newRefreshFixture(true)
+	fx.catalog.err = errors.New("open /secret/artists.yaml: permission denied")
+
+	_, _, _, err := runAction(t, NewRefreshMetadata(fx.deps), Params{})
+	var se *SafeError
+	if !errors.As(err, &se) || strings.Contains(se.Error(), "secret") {
+		t.Fatalf("want safe error, got %v", err)
+	}
+	if got := fx.log.get(); !slices.Equal(got, []string{"lock", "backup", "catalog-backup", "release"}) {
+		t.Fatalf("nothing may be refreshed without the catalog backup: %v", got)
+	}
+}
+
+func TestRefreshPreviewDescribesTheCatalogBackup(t *testing.T) {
+	fx := newRefreshFixture(true)
+	pv, err := NewRefreshMetadata(fx.deps).Preview(context.Background(), Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var writes string
+	for _, l := range pv.Scope {
+		if l.Label == "Writes" {
+			writes = l.Value
+		}
+	}
+	if !strings.Contains(writes, "timestamped copy of the catalog") || !strings.Contains(writes, "admin backup folder") ||
+		!strings.Contains(writes, ".bak keeps only the last save") || strings.ContainsAny(writes, `/\`) {
+		t.Fatalf("writes %q", writes)
 	}
 }

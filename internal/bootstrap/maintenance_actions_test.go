@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -89,9 +90,11 @@ func TestOfflineAuditActionNeedsNoCredentialsOrDatabase(t *testing.T) {
 	require.NoFileExists(t, paths.db, "an offline audit never creates the database")
 }
 
-func TestRefreshActionLocksAndBacksUpDatabase(t *testing.T) {
+func TestRefreshActionLocksAndBacksUpDatabaseAndCatalog(t *testing.T) {
 	cfg, paths := newActionsConfig(t, credentials, withArtistFetcher(stubArtistFetcher{}))
 	refresh := actionsByName(cfg)["refresh-metadata"]
+	before, err := os.ReadFile(paths.catalog)
+	require.NoError(t, err)
 
 	out, err := runSpec(t, refresh, maintenance.Params{})
 	require.NoError(t, err)
@@ -99,7 +102,17 @@ func TestRefreshActionLocksAndBacksUpDatabase(t *testing.T) {
 
 	backups, err := os.ReadDir(cfg.BackupDir)
 	require.NoError(t, err)
-	require.Len(t, backups, 1)
+	require.Len(t, backups, 2, "a database backup and a catalog copy: %v", backups)
+	var catalogCopy string
+	for _, b := range backups {
+		if strings.HasSuffix(b.Name(), ".yaml") {
+			catalogCopy = b.Name()
+		}
+	}
+	require.Regexp(t, `^artists-\d{8}T\d{6}Z\.yaml$`, catalogCopy)
+	saved, err := os.ReadFile(filepath.Join(cfg.BackupDir, catalogCopy))
+	require.NoError(t, err)
+	require.Equal(t, before, saved, "the copy holds the catalog as it was before the refresh")
 
 	release, err := filesystem.NewResourceLock(paths.db + ".lock").TryLock()
 	require.NoError(t, err, "the job releases the database lock")

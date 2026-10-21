@@ -40,6 +40,28 @@ type Backuper interface {
 	Backup(ctx context.Context) error
 }
 
+// CatalogBackuper writes a timestamped copy of the catalog YAML to the admin
+// backup folder. Jobs that rewrite the catalog call it first: the store's
+// .bak only keeps the state before the last save.
+type CatalogBackuper interface {
+	BackupCatalog(ctx context.Context) error
+}
+
+// errNoCatalogBackup fails a catalog-writing job closed when no backuper is
+// wired.
+var errNoCatalogBackup = errors.New("catalog backup is not configured")
+
+// backupCatalog takes the catalog backup, failing closed without a backuper.
+func backupCatalog(ctx context.Context, b CatalogBackuper) error {
+	if b == nil {
+		return errNoCatalogBackup
+	}
+	return b.BackupCatalog(ctx)
+}
+
+// catalogBackupNote describes the catalog backup in previews; it names no path.
+const catalogBackupNote = "a timestamped copy of the catalog is written to the admin backup folder first (.bak keeps only the last save)"
+
 // fingerprint hashes parts unambiguously.
 func fingerprint(parts ...string) string {
 	h := sha256.New()
