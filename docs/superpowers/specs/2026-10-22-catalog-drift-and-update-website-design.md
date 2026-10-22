@@ -61,7 +61,7 @@ Today the operator must know which of reconcile / sync / verify / snapshot / exp
 - **Sync-required rule:** changes to a profile's Spotify ID set, order, verified or enabled state require sync. Group member lists, relationships and metadata do not.
 - **PR title/body:** generated from the change list (slugs and change categories, no paths, no account details).
 - **Digest storage:** applied-catalog digest, and the DB digest used for snapshot/export/release, are stored in SQLite (small provenance table, migration adds it empty -> "unknown / needs check").
-- **Spotify sync is required only when** Spotify IDs, verified/enabled state of a profile, or profile membership change; metadata-only and relationship-only edits need reconcile but not sync (shown as "not needed").
+- **Spotify sync is required only when** Spotify IDs, verified/enabled state of a profile, or profile membership change; metadata-only and relationship-only edits need neither sync nor association reconcile (shown as "not needed"); they only need the database seed/refresh so SQLite matches the YAML.
 - **Pending-change classification** is computed by diffing current YAML against the last applied catalog content recorded in SQLite provenance (not against git).
 
 ## Left to the builder
