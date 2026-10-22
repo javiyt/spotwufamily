@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
 // AssociationKind tells whether an association links a configured artist to an
@@ -295,12 +297,7 @@ func (r ReconcileArtist) Run(ctx context.Context, in ReconcileInput) (ReconcileR
 	var artist *editorialArtist
 	for i := range c.Artists {
 		if c.Artists[i].Slug == in.Slug {
-			a := c.Artists[i]
-			artist = &editorialArtist{
-				linked:   a.AllSpotifyIDs(),
-				syncable: a.SyncableSpotifyIDs(c.ProfileSyncPolicy),
-				enabled:  a.Enabled,
-			}
+			artist = newEditorialArtist(c, c.Artists[i])
 			break
 		}
 	}
@@ -368,8 +365,19 @@ func (r ReconcileArtist) Run(ctx context.Context, in ReconcileInput) (ReconcileR
 		return report, fmt.Errorf("backup before reconcile: %w", err)
 	}
 
+	request := applyRequest(report, artist, token, backup)
+	if err := r.store.ApplyReconciliation(ctx, request); err != nil {
+		return report, fmt.Errorf("apply reconciliation (database unchanged, backup kept at %s): %w", backup.Path, err)
+	}
+	markApplied(&report, request, backup)
+
+	return report, nil
+}
+
+// applyRequest turns a reviewed plan into the store request applying it.
+func applyRequest(report ReconcileReport, artist *editorialArtist, token string, backup BackupInfo) ApplyRequest {
 	request := ApplyRequest{
-		Slug:              in.Slug,
+		Slug:              report.Slug,
 		Token:             token,
 		PreviousIDs:       report.Identity.Previous,
 		TargetIDs:         report.Identity.Current,
@@ -391,11 +399,13 @@ func (r ReconcileArtist) Run(ctx context.Context, in ReconcileInput) (ReconcileR
 			request.TrackIDs = append(request.TrackIDs, item.SpotifyID)
 		}
 	}
-	if err := r.store.ApplyReconciliation(ctx, request); err != nil {
-		return report, fmt.Errorf("apply reconciliation (database unchanged, backup kept at %s): %w", backup.Path, err)
-	}
+	return request
+}
 
-	report.RetiredAt = token
+// markApplied records a committed request on its report.
+func markApplied(report *ReconcileReport, request ApplyRequest, backup BackupInfo) {
+	report.DryRun = false
+	report.RetiredAt = request.Token
 	report.Backup = &backup
 	report.Status = "applied"
 	if report.ResyncRequired {
@@ -405,14 +415,20 @@ func (r ReconcileArtist) Run(ctx context.Context, in ReconcileInput) (ReconcileR
 		Albums: report.Before.Albums - len(request.AlbumIDs),
 		Tracks: report.Before.Tracks - len(request.TrackIDs),
 	}
-
-	return report, nil
 }
 
 type editorialArtist struct {
 	linked   []string
 	syncable []string
 	enabled  bool
+}
+
+func newEditorialArtist(c catalog.EditorialCatalog, a catalog.Artist) *editorialArtist {
+	return &editorialArtist{
+		linked:   a.AllSpotifyIDs(),
+		syncable: a.SyncableSpotifyIDs(c.ProfileSyncPolicy),
+		enabled:  a.Enabled,
+	}
 }
 
 // plan computes the write-free report for one artist.

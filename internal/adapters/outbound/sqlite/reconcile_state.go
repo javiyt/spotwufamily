@@ -286,7 +286,44 @@ func (d *Database) ApplyReconciliation(ctx context.Context, req artists.ApplyReq
 		return fmt.Errorf("begin reconciliation: %w", err)
 	}
 	defer rollbackUnlessCommitted(tx)
+	if err := applyReconciliation(ctx, tx, req); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit reconciliation: %w", err)
+	}
 
+	return nil
+}
+
+// ApplyReconciliations applies every request, in order, in one transaction:
+// either every artist's reconciliation lands or none does.
+func (d *Database) ApplyReconciliations(ctx context.Context, reqs []artists.ApplyRequest) error {
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		slug := ""
+		if len(reqs) > 0 {
+			slug = reqs[0].Slug
+		}
+		return &artists.BulkApplyError{Slug: slug, Err: fmt.Errorf("begin reconciliation: %w", err)}
+	}
+	defer rollbackUnlessCommitted(tx)
+	for _, req := range reqs {
+		if err := ctx.Err(); err != nil {
+			return &artists.BulkApplyError{Slug: req.Slug, Err: err}
+		}
+		if err := applyReconciliation(ctx, tx, req); err != nil {
+			return &artists.BulkApplyError{Slug: req.Slug, Err: err}
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return &artists.BulkApplyError{Err: err}
+	}
+
+	return nil
+}
+
+func applyReconciliation(ctx context.Context, tx *sql.Tx, req artists.ApplyRequest) error {
 	for _, id := range req.AlbumIDs {
 		if _, err := tx.ExecContext(ctx, `
 UPDATE artist_albums SET active = 0, missing_since = ?
@@ -312,7 +349,7 @@ WHERE artist_slug = ? AND status = 'completed' AND spotify_ids <> ?`, invalidate
 
 	invalidated := ""
 	var refreshedAt, refreshIDs string
-	err = tx.QueryRowContext(ctx, `SELECT refreshed_at, spotify_ids FROM artist_metadata_refreshes WHERE artist_slug = ?`, req.Slug).Scan(&refreshedAt, &refreshIDs)
+	err := tx.QueryRowContext(ctx, `SELECT refreshed_at, spotify_ids FROM artist_metadata_refreshes WHERE artist_slug = ?`, req.Slug).Scan(&refreshedAt, &refreshIDs)
 	switch {
 	case err == nil && refreshIDs != req.CurrentRefreshIDs:
 		data, _ := json.Marshal(artists.MetadataRefresh{RefreshedAt: refreshedAt, SpotifyIDs: refreshIDs})
@@ -357,10 +394,6 @@ ON CONFLICT(artist_slug) DO UPDATE SET
 		); err != nil {
 			return fmt.Errorf("record reconciliation: %w", err)
 		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit reconciliation: %w", err)
 	}
 
 	return nil
