@@ -79,3 +79,46 @@ ON CONFLICT(stage) DO UPDATE SET catalog_digest = excluded.catalog_digest, db_di
 
 	return nil
 }
+
+// HasProvenance reports whether the provenance tables exist (false on a
+// database predating the provenance migration).
+func (d *Database) HasProvenance(ctx context.Context) (bool, error) {
+	for _, table := range []string{"catalog_applied", "stage_checkpoints"} {
+		exists, err := d.tableExists(ctx, table)
+		if err != nil || !exists {
+			return false, err
+		}
+	}
+
+	return true, nil
+}
+
+// ClearProvenance forgets the applied catalog and every stage checkpoint, so
+// a database whose content was replaced or rolled back reads as unknown. It
+// is a no-op on a database without the provenance tables.
+func (d *Database) ClearProvenance(ctx context.Context) error {
+	has, err := d.HasProvenance(ctx)
+	if err != nil || !has {
+		return err
+	}
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin clear provenance: %w", err)
+	}
+	defer rollbackUnlessCommitted(tx)
+	if err := clearProvenance(ctx, tx); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func clearProvenance(ctx context.Context, tx *sql.Tx) error {
+	for _, stmt := range []string{`DELETE FROM catalog_applied`, `DELETE FROM stage_checkpoints`} {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("clear provenance: %w", err)
+		}
+	}
+
+	return nil
+}

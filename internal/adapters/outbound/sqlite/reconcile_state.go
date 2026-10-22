@@ -370,6 +370,10 @@ ON CONFLICT(artist_slug) DO UPDATE SET
 // associations, invalidated checkpoints and the metadata cache come back and
 // the artist returns to the drifted state until it is reconciled again.
 func (d *Database) RestoreAssociations(ctx context.Context, slug, retiredAt string) (int, int, error) {
+	hasProvenance, err := d.HasProvenance(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, 0, fmt.Errorf("begin restore associations: %w", err)
@@ -421,6 +425,13 @@ UPDATE artist_reconciliations
 SET status = 'drifted', retired_at = '', resync_fingerprint = '', invalidated = '', last_error = '', updated_at = ?
 WHERE artist_slug = ?`, now, slug); err != nil {
 			return 0, 0, fmt.Errorf("reopen reconciliation of %s: %w", slug, err)
+		}
+	}
+	// The restored associations no longer match what was recorded as
+	// applied: the database reads as unknown until it is checked again.
+	if hasProvenance {
+		if err := clearProvenance(ctx, tx); err != nil {
+			return 0, 0, err
 		}
 	}
 

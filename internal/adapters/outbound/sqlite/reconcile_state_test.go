@@ -292,3 +292,25 @@ func TestReconciliationStateSurvivesSnapshotRebuild(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, pending, 1)
 }
+
+func TestReconcileRestoreForgetsProvenance(t *testing.T) {
+	ctx := context.Background()
+	database, _ := seedDriftedFixture(t, ctx, filepath.Join(t.TempDir(), "catalog.db"))
+	use := artists.NewReconcileArtist(replacementCatalog(), database)
+	dry, err := use.Run(ctx, artists.ReconcileInput{Slug: "streetlife"})
+	require.NoError(t, err)
+	applied, err := use.Run(ctx, artists.ReconcileInput{Slug: "streetlife", Apply: true, ConfirmChecksum: dry.PlanChecksum, BackupDir: t.TempDir(), Now: reconcileNow})
+	require.NoError(t, err)
+	require.NoError(t, database.RecordApplied(ctx, artists.AppliedCatalog{Digest: "d", AppliedAt: "2026-10-22T10:00:00Z"}))
+	require.NoError(t, database.RecordCheckpoint(ctx, artists.StageCheckpoint{Stage: artists.StageReconcile, CatalogDigest: "c", DBDigest: "d", At: "2026-10-22T10:00:00Z"}))
+
+	_, err = use.Run(ctx, artists.ReconcileInput{Slug: "streetlife", RestoreRetiredAt: applied.RetiredAt})
+	require.NoError(t, err)
+
+	_, ok, err := database.AppliedCatalog(ctx)
+	require.NoError(t, err)
+	require.False(t, ok, "a restored database must read as unknown, not trusted")
+	_, ok, err = database.Checkpoint(ctx, artists.StageReconcile)
+	require.NoError(t, err)
+	require.False(t, ok)
+}

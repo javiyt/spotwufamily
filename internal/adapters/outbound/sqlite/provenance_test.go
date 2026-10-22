@@ -91,3 +91,40 @@ func TestProvenanceExcludedFromSnapshot(t *testing.T) {
 	require.NotContains(t, string(after), "catalog_applied")
 	require.NotContains(t, string(after), "stage_checkpoints")
 }
+
+func TestClearProvenanceForgetsAppliedAndCheckpoints(t *testing.T) {
+	ctx := context.Background()
+	database, err := sqliteadapter.Open(filepath.Join(t.TempDir(), "catalog.db"))
+	require.NoError(t, err)
+	defer func() { require.NoError(t, database.Close()) }()
+	require.NoError(t, database.Migrate(ctx))
+	has, err := database.HasProvenance(ctx)
+	require.NoError(t, err)
+	require.True(t, has)
+
+	require.NoError(t, database.RecordApplied(ctx, artists.AppliedCatalog{Digest: "d", AppliedAt: "2026-10-22T10:00:00Z"}))
+	require.NoError(t, database.RecordCheckpoint(ctx, artists.StageCheckpoint{Stage: artists.StageSync, CatalogDigest: "c", DBDigest: "d", At: "2026-10-22T10:00:00Z"}))
+	require.NoError(t, database.ClearProvenance(ctx))
+
+	_, ok, err := database.AppliedCatalog(ctx)
+	require.NoError(t, err)
+	require.False(t, ok)
+	_, ok, err = database.Checkpoint(ctx, artists.StageSync)
+	require.NoError(t, err)
+	require.False(t, ok)
+}
+
+func TestClearProvenanceIsNoOpOnLegacyDB(t *testing.T) {
+	ctx := context.Background()
+	database, err := sqliteadapter.Open(filepath.Join(t.TempDir(), "catalog.db"))
+	require.NoError(t, err)
+	defer func() { require.NoError(t, database.Close()) }()
+	migrations, err := sqliteadapter.EmbeddedMigrations()
+	require.NoError(t, err)
+	require.NoError(t, sqliteadapter.ApplyMigrations(database.DB(), migrations[:6]))
+
+	has, err := database.HasProvenance(ctx)
+	require.NoError(t, err)
+	require.False(t, has)
+	require.NoError(t, database.ClearProvenance(ctx))
+}

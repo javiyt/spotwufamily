@@ -70,10 +70,73 @@ func FingerprintCatalog(c catalog.EditorialCatalog) AppliedCatalog {
 	}
 	sort.Slice(artists, func(i, j int) bool { return artists[i].Slug < artists[j].Slug })
 
+	return AppliedCatalog{Digest: fingerprintsDigest(artists), Artists: artists}
+}
+
+// fingerprintsDigest is the digest of fingerprints already sorted by slug.
+func fingerprintsDigest(artists []ArtistFingerprint) string {
 	raw, _ := json.Marshal(artists)
 	sum := sha256.Sum256(raw)
 
-	return AppliedCatalog{Digest: hex.EncodeToString(sum[:]), Artists: artists}
+	return hex.EncodeToString(sum[:])
+}
+
+// MergeApplied returns prev with the fingerprints of slugs taken from used
+// (dropped when used no longer has the artist) and the digest recomputed.
+// Every other artist keeps its previously applied fingerprint. AppliedAt is
+// left empty for the caller to set.
+func MergeApplied(prev, used AppliedCatalog, slugs []string) AppliedCatalog {
+	byUsed := map[string]ArtistFingerprint{}
+	for _, a := range used.Artists {
+		byUsed[a.Slug] = a
+	}
+	replace := map[string]bool{}
+	for _, s := range slugs {
+		replace[s] = true
+	}
+	out := make([]ArtistFingerprint, 0, len(prev.Artists)+len(slugs))
+	for _, a := range prev.Artists {
+		if !replace[a.Slug] {
+			out = append(out, a)
+		}
+	}
+	for s := range replace {
+		if a, ok := byUsed[s]; ok {
+			out = append(out, a)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Slug < out[j].Slug })
+
+	return AppliedCatalog{Digest: fingerprintsDigest(out), Artists: out}
+}
+
+// MergeReconciled merges what a reconcile applies for one artist: its
+// Spotify IDs and verified/enabled state. Metadata and relationships keep
+// their previously applied values, since reconcile does not write them.
+// ok=false when either catalog lacks the artist (no baseline to keep).
+func MergeReconciled(prev, used AppliedCatalog, slug string) (AppliedCatalog, bool) {
+	var (
+		before, after ArtistFingerprint
+		hasBefore     bool
+		hasAfter      bool
+	)
+	for _, a := range prev.Artists {
+		if a.Slug == slug {
+			before, hasBefore = a, true
+		}
+	}
+	for _, a := range used.Artists {
+		if a.Slug == slug {
+			after, hasAfter = a, true
+		}
+	}
+	if !hasBefore || !hasAfter {
+		return AppliedCatalog{}, false
+	}
+	after.Metadata = before.Metadata
+	after.Relationships = before.Relationships
+
+	return MergeApplied(prev, AppliedCatalog{Artists: []ArtistFingerprint{after}}, []string{slug}), true
 }
 
 func normalizeRelationship(rel catalog.Relationship) catalog.Relationship {

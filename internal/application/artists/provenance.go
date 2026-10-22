@@ -8,7 +8,10 @@ const (
 	StageSync      = "sync"
 	StageSnapshot  = "snapshot"
 	StageExport    = "export"
-	StageRelease   = "release"
+	// StageReleasePrepare is a prepared (not yet published) release package;
+	// StageRelease is a published (or already current) release.
+	StageReleasePrepare = "release-prepare"
+	StageRelease        = "release"
 )
 
 // ArtistFingerprint summarises the editorial inputs of one artist. Metadata is
