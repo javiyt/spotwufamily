@@ -1,3 +1,15 @@
+{{define "evrow"}}<fieldset class="evrow" data-evidence-row>
+<legend>Source <span class="badge{{if and .Known (not .Independent)}} contextual{{end}}" data-independence>{{if not .Known}}type not chosen{{else if .Independent}}independent{{else}}contextual (not independent){{end}}</span></legend>
+<div class="grid">
+<div class="field"><label>Source type <select name="evidence_type" data-evidence-type>{{$r := .Row}}{{range .Types}}<option value="{{.Value}}"{{if eq .Value $r.Type}} selected{{end}}>{{.Label}}</option>{{end}}</select></label></div>
+<div class="field"><label>Source URL (https) <input name="evidence_url" type="url" maxlength="2048" autocomplete="off" value="{{.Row.URL}}"></label></div>
+</div>
+<div class="field"><label>What the source shows <textarea name="evidence_rationale" rows="2" maxlength="1000">{{.Row.Rationale}}</textarea></label></div>
+<input type="hidden" name="evidence_release_id" value="{{.Row.ReleaseID}}">
+<input type="hidden" name="evidence_track_id" value="{{.Row.TrackID}}">
+<button type="submit" name="remove_row" value="{{.Index}}" formaction="{{.Edit}}" formnovalidate data-remove-row>Remove this source</button>
+</fieldset>{{end}}
+
 {{define "card"}}{{$c := .Card}}{{$p := .Page}}
 <article class="pcard{{if $c.Owner}} owned{{end}}" aria-labelledby="c-{{$c.SpotifyID}}-{{.Zone}}">
 <header>
@@ -52,34 +64,43 @@
 {{if $c.Reviewer}}<p class="muted">Last decision by <strong>{{$c.Reviewer}}</strong>{{if $c.ReviewedAt}} on {{$c.ReviewedAt}}{{end}}.</p>{{end}}
 {{if $c.Evidence}}<details><summary>Stored evidence ({{len $c.Evidence}})</summary><ul class="evidence">{{range $c.Evidence}}<li><span class="badge">{{label (printf "%s" .Type)}}</span> {{.Rationale}}{{if .URL}} <a href="{{.URL}}" rel="noopener noreferrer" target="_blank">source</a>{{end}}</li>{{end}}</ul></details>{{end}}
 
-{{if and $c.Actions $p.WB.Editable}}
-<details class="decide"><summary>Decide</summary>
+{{if and $c.Actions $p.WB.Editable}}{{$d := .Draft}}{{$edit := printf "/resolve/%s/edit" $p.WB.Artist.Slug}}
+<details class="decide"{{if $d}} open{{end}}><summary>Decide</summary>
 <form method="post" action="/resolve/{{$p.WB.Artist.Slug}}/preview" class="stack">
+{{with index $c.Actions 0}}<button type="submit" name="action" value="{{.Name}}" class="sr" tabindex="-1" aria-hidden="true">{{.Label}}</button>{{end}}
 <input type="hidden" name="csrf_token" value="{{$p.CSRF}}">
 <input type="hidden" name="spotify_id" value="{{$c.SpotifyID}}">
-<input type="hidden" name="revision" value="{{$p.WB.Revision}}">
+<input type="hidden" name="revision" value="{{if and $d $d.Revision}}{{$d.Revision}}{{else}}{{$p.WB.Revision}}{{end}}">
 <input type="hidden" name="q" value="{{$p.Query}}">
+{{if and $d $d.Override}}<input type="hidden" name="override_reason" value="{{$d.Override}}">{{end}}
 <div class="field"><label for="rv-{{$c.SpotifyID}}-{{.Zone}}">Your name (recorded with the decision)</label>
 <input id="rv-{{$c.SpotifyID}}-{{.Zone}}" name="reviewer" required maxlength="100" autocomplete="off" data-reviewer value="{{$p.Reviewer}}"></div>
 <div class="field"><label for="nt-{{$c.SpotifyID}}-{{.Zone}}">Note (required to reject, quarantine or mark inconclusive)</label>
-<textarea id="nt-{{$c.SpotifyID}}-{{.Zone}}" name="note" rows="2" maxlength="1000"></textarea></div>
-<fieldset><legend>Independent evidence (required to verify)</legend>
-{{if $c.Suggestions}}<p class="muted">Found by the audit:
-{{range $c.Suggestions}}<button type="button" class="link" data-fill-type="{{.Type}}" data-fill-url="{{.URL}}" data-fill-rationale="{{.Rationale}}">use {{label (printf "%s" .Type)}}</button> {{end}}</p>{{end}}
-{{if $c.Credits.Suggestions}}<p class="muted">Credits with verified groups (supporting, not independent):
-{{range $c.Credits.Suggestions}}<button type="button" class="link" data-fill-type="credit" data-fill-url="{{.URL}}" data-fill-release="{{.ReleaseID}}" data-fill-track="{{.TrackID}}" data-fill-rationale="{{.Rationale}}">Use as supporting credit</button> <span class="muted">({{.GroupName}} · {{.TrackName}})</span> {{end}}</p>{{end}}
-<input type="hidden" name="evidence_release_id" value="">
-<input type="hidden" name="evidence_track_id" value="">
-<div class="grid">
-<div class="field"><label>Source type</label><select name="evidence_type">{{range $p.EvidenceTypes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
-<div class="field"><label>Source URL (https)</label><input name="evidence_url" type="url" maxlength="2048" autocomplete="off"></div>
+<textarea id="nt-{{$c.SpotifyID}}-{{.Zone}}" name="note" rows="2" maxlength="1000">{{if $d}}{{$d.Note}}{{end}}</textarea></div>
+<fieldset data-evidence><legend>Evidence (an independent source is required to verify)</legend>
+{{if .Suggestions}}<h5>Found by the audit</h5>
+<p class="muted">Add the sources you want to record. Nothing is applied until you preview and confirm.</p>
+<ul class="evidence suggestions" data-suggestions>{{range .Suggestions}}<li>
+<span class="badge {{if not .Independent}}contextual{{end}}">{{if .Independent}}independent{{else}}contextual{{end}}</span>
+<strong>{{label (printf "%s" .Evidence.Type)}}</strong>{{if .Title}} · {{.Title}}{{end}}{{if .Detail}} <span class="muted">on {{.Detail}}</span>{{end}}
+— {{.Evidence.Rationale}}
+{{if .Evidence.URL}}<a href="{{.Evidence.URL}}" rel="noopener noreferrer" target="_blank">source</a>{{end}}{{if .ReleaseURL}} <a href="{{.ReleaseURL}}" rel="noopener noreferrer" target="_blank">release</a>{{end}}
+{{if .Limitation}}<br><span class="muted">{{.Limitation}}</span>{{end}}
+<br>{{if .Added}}<span class="badge" data-added>Added</span> <button type="submit" class="link" disabled>Added</button>{{else}}<button type="submit" class="link" name="add_suggestion" value="{{.Key}}" formaction="{{$edit}}" formnovalidate
+data-add-suggestion data-key="{{.Key}}" data-type="{{.Evidence.Type}}" data-url="{{.Evidence.URL}}" data-rationale="{{.Evidence.Rationale}}" data-release="{{.Evidence.ReleaseID}}" data-track="{{.Evidence.TrackID}}" data-independent="{{if .Independent}}1{{else}}0{{end}}"
+aria-label="Add evidence: {{label (printf "%s" .Evidence.Type)}}{{if .Title}}, {{.Title}}{{end}}">Add evidence</button>{{end}}
+</li>{{end}}</ul>{{end}}
+<h5>Evidence to record</h5>
+<div data-evidence-rows>
+{{if $d}}{{range $i, $row := $d.Rows}}{{template "evrow" (rowCtx $row $i $p)}}{{end}}{{else}}{{template "evrow" (rowCtx (blankRow) 0 $p)}}{{end}}
 </div>
-<div class="field"><label>What the source shows</label><textarea name="evidence_rationale" rows="2" maxlength="1000"></textarea></div>
-<p class="muted">A shared name, a track credit or a group membership is not independent evidence.</p>
+<template data-evidence-template>{{template "evrow" (rowCtx (blankRow) 0 $p)}}</template>
+<p><button type="submit" name="add_row" value="1" formaction="{{$edit}}" formnovalidate data-add-row>Add another source</button></p>
+<p class="muted">At most 20 items. <strong>Independent</strong> evidence (for example a matching MusicBrainz release group) can verify a profile; <strong>contextual</strong> evidence (a shared track credit, a name match) only supports it. A shared name, a track credit or a group membership is not independent evidence.</p>
 </fieldset>
 {{if or (eq (index $c.Actions 0).Name "accept_primary") (eq (index $c.Actions 0).Name "verify")}}
-<p class="check"><input id="vf-{{$c.SpotifyID}}-{{.Zone}}" type="checkbox" name="verify" value="1"><label for="vf-{{$c.SpotifyID}}-{{.Zone}}">Verify with the evidence above (otherwise it is only linked as a candidate and not synced)</label></p>
-<p class="check"><input id="en-{{$c.SpotifyID}}-{{.Zone}}" type="checkbox" name="enable" value="1"><label for="en-{{$c.SpotifyID}}-{{.Zone}}">Also enable the artist (only works when verified)</label></p>
+<p class="check"><input id="vf-{{$c.SpotifyID}}-{{.Zone}}" type="checkbox" name="verify" value="1"{{if and $d $d.Verify}} checked{{end}}><label for="vf-{{$c.SpotifyID}}-{{.Zone}}">Verify with the evidence above (otherwise it is only linked as a candidate and not synced)</label></p>
+<p class="check"><input id="en-{{$c.SpotifyID}}-{{.Zone}}" type="checkbox" name="enable" value="1"{{if and $d $d.Enable}} checked{{end}}><label for="en-{{$c.SpotifyID}}-{{.Zone}}">Also enable the artist (only works when verified)</label></p>
 {{end}}
 <div class="actions">{{range $c.Actions}}<button type="submit" name="action" value="{{.Name}}">{{.Label}}</button>
 {{end}}</div>

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,6 +37,7 @@ func (s *Server) registerResolver() {
 	}
 	s.dynamic.HandleFunc("GET /resolve/{slug}", s.handleWorkbench)
 	s.dynamic.HandleFunc("GET /api/v1/resolve/{slug}", s.apiWorkbench)
+	s.dynamic.HandleFunc("POST /resolve/{slug}/edit", s.handleResolveEdit)
 	s.dynamic.HandleFunc("POST /resolve/{slug}/preview", s.handleResolvePreview)
 	s.dynamic.HandleFunc("POST /resolve/{slug}/apply", s.handleResolveApply)
 }
@@ -142,6 +144,9 @@ type workbenchPage struct {
 	// Reviewer is the name last typed, echoed back after a failed submission.
 	Reviewer string
 	CSRF     string
+	// Draft is the decision being edited, set when the page is rendered from a
+	// form (adding or removing evidence, or going back from a confirmation).
+	Draft *decisionDraft
 }
 
 // cardView is what the card template renders: one profile plus its page.
@@ -149,6 +154,10 @@ type cardView struct {
 	Card admin.Card
 	Page workbenchPage
 	Zone string
+	// Draft is the page's draft when it belongs to this card, else nil.
+	Draft *decisionDraft
+	// Suggestions are the typed sources offered for this card.
+	Suggestions []suggestionView
 }
 
 func (s *Server) workbenchPage(r *http.Request, wb admin.Workbench, q string) workbenchPage {
@@ -205,6 +214,19 @@ func (s *Server) apiWorkbench(w http.ResponseWriter, r *http.Request) {
 		s.resolveFailed(w, r, err)
 		return
 	}
+	type sugg struct {
+		Key         string `json:"key"`
+		Type        string `json:"type"`
+		URL         string `json:"url"`
+		Rationale   string `json:"rationale"`
+		Independent bool   `json:"independent"`
+		Title       string `json:"title,omitempty"`
+		Release     string `json:"release,omitempty"`
+		ReleaseID   string `json:"release_id,omitempty"`
+		TrackID     string `json:"track_id,omitempty"`
+		ReleaseURL  string `json:"release_url,omitempty"`
+		Limitation  string `json:"limitation,omitempty"`
+	}
 	type card struct {
 		SpotifyID      string   `json:"spotify_id"`
 		URI            string   `json:"uri"`
@@ -229,6 +251,8 @@ func (s *Server) apiWorkbench(w http.ResponseWriter, r *http.Request) {
 		Missing        []string `json:"missing_evidence"`
 		Warnings       []string `json:"warnings"`
 		Actions        []string `json:"actions"`
+		Suggestions    []sugg   `json:"suggestions"`
+		Credits        []sugg   `json:"credit_suggestions"`
 	}
 	conv := func(in []admin.Card) []card {
 		out := make([]card, 0, len(in))
@@ -239,7 +263,16 @@ func (s *Server) apiWorkbench(w http.ResponseWriter, r *http.Request) {
 				ReviewedAt: c.ReviewedAt, Owner: c.Owner, Score: c.Score, Confidence: c.Confidence,
 				Classification: string(c.Audit.Classification), Explanation: c.Audit.Explanation,
 				Contradictions: nonNilStrings(c.Audit.Contradictions), Missing: nonNilStrings(c.Audit.MissingEvidence),
-				Warnings: nonNilStrings(c.Warnings), Actions: []string{},
+				Warnings: nonNilStrings(c.Warnings), Actions: []string{}, Suggestions: []sugg{}, Credits: []sugg{},
+			}
+			for _, sg := range suggestionsOf(c) {
+				e := sg.Evidence
+				row := sugg{sg.Key, string(e.Type), e.URL, e.Rationale, sg.Independent, sg.Title, sg.Detail, e.ReleaseID, e.TrackID, sg.ReleaseURL, sg.Limitation}
+				if e.Type == catalog.EvidenceCredit {
+					item.Credits = append(item.Credits, row)
+				} else {
+					item.Suggestions = append(item.Suggestions, row)
+				}
 			}
 			if c.Gate != nil {
 				item.GateStatus, item.GateReasons = string(c.Gate.Status), nonNilStrings(c.Gate.Reasons)
@@ -280,6 +313,10 @@ type confirmPage struct {
 	// Confirmable is false when the preview failed and there is nothing to apply.
 	Confirmable bool
 	ActionLabel string
+	// Independent says, per Evidence row, whether it can verify on its own.
+	Independent []bool
+	// Edit is where "Edit decision" posts: the same slug's edit step.
+	Edit string
 }
 
 var actionLabels = map[string]string{
@@ -289,8 +326,10 @@ var actionLabels = map[string]string{
 }
 
 // resolveForm reads a decision. Every value is length-capped; domain rules are
-// left to the use case.
-func resolveForm(slug string, v url.Values) (admin.ResolveRequest, string) {
+// left to the use case. Evidence arrives as repeated evidence_* keys (one group
+// per row; a single group is the legacy form). The error is set when the rows
+// themselves are unusable: too many, or the same item twice.
+func resolveForm(slug string, v url.Values) (admin.ResolveRequest, string, error) {
 	field := func(name string) string {
 		value := strings.TrimSpace(v.Get(name))
 		if len(value) > maxFormText {
@@ -303,20 +342,21 @@ func resolveForm(slug string, v url.Values) (admin.ResolveRequest, string) {
 		Reviewer: field("reviewer"), Note: field("note"), OverrideReason: field("override_reason"),
 		Verify: v.Get("verify") != "", Enable: v.Get("enable") != "",
 	}
-	if t, u, rationale := field("evidence_type"), field("evidence_url"), field("evidence_rationale"); t != "" || u != "" || rationale != "" {
-		req.Evidence = []catalog.Evidence{{Type: catalog.EvidenceType(t), URL: u, Rationale: rationale,
-			ReleaseID: field("evidence_release_id"), TrackID: field("evidence_track_id")}}
+	rows, err := filledEvidence(readEvidenceRows(v))
+	for _, row := range rows {
+		req.Evidence = append(req.Evidence, row.evidence())
 	}
 	q := field("q")
 	if len(q) > maxQueryLen {
 		q = q[:maxQueryLen]
 	}
-	return req, q
+	return req, q, err
 }
 
+// echoDecision carries a decision through the confirmation page and back.
 func echoDecision(v url.Values) []hiddenField {
 	var out []hiddenField
-	for _, name := range []string{"spotify_id", "action", "revision", "reviewer", "note", "evidence_type", "evidence_url", "evidence_rationale", "evidence_release_id", "evidence_track_id", "verify", "enable", "q"} {
+	for _, name := range []string{"spotify_id", "action", "revision", "reviewer", "note", "verify", "enable", "q"} {
 		if value := v.Get(name); value != "" {
 			if len(value) > maxFormText {
 				value = value[:maxFormText]
@@ -324,8 +364,10 @@ func echoDecision(v url.Values) []hiddenField {
 			out = append(out, hiddenField{name, value})
 		}
 	}
-	return out
+	return append(out, echoEvidence(readEvidenceRows(v))...)
 }
+
+func editURL(slug string) string { return "/resolve/" + url.PathEscape(slug) + "/edit" }
 
 func backURL(slug, q string) string {
 	u := "/resolve/" + url.PathEscape(slug)
@@ -354,15 +396,20 @@ func (s *Server) handleResolvePreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slug := r.PathValue("slug")
-	req, q := resolveForm(slug, r.PostForm)
-	preview, err := s.resolver.PreviewResolution(r.Context(), req)
+	req, q, rowsErr := resolveForm(slug, r.PostForm)
+	var preview admin.ResolvePreview
+	err := rowsErr
+	if err == nil {
+		preview, err = s.resolver.PreviewResolution(r.Context(), req)
+	}
 
 	page := confirmPage{
 		Preview: preview, Fields: echoDecision(r.PostForm), Query: q, Back: backURL(slug, q),
-		ActionLabel: actionLabels[req.Action], Override: req.OverrideReason,
+		ActionLabel: actionLabels[req.Action], Override: req.OverrideReason, Edit: editURL(slug),
 	}
 	for _, e := range req.Evidence {
 		page.Evidence = append(page.Evidence, evidenceRow{string(e.Type), e.URL, e.Rationale})
+		page.Independent = append(page.Independent, e.Independent())
 	}
 	if err == nil {
 		page.Confirmable = true
@@ -383,14 +430,18 @@ func (s *Server) handleResolveApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slug := r.PathValue("slug")
-	req, q := resolveForm(slug, r.PostForm)
+	req, q, rowsErr := resolveForm(slug, r.PostForm)
 	req.OverrideReason = strings.TrimSpace(r.PostForm.Get("override_reason"))
 	req.Confirm = r.PostForm.Get("confirm") == "1"
 	if !req.Confirm {
 		s.fail(w, r, http.StatusUnprocessableEntity, "confirmation_required", "the change must be confirmed")
 		return
 	}
-	result, err := s.resolver.ApplyResolution(r.Context(), req)
+	var result admin.ResolveResult
+	err := rowsErr
+	if err == nil {
+		result, err = s.resolver.ApplyResolution(r.Context(), req)
+	}
 	if s.catalogBusy(w, r, err) {
 		return
 	}
@@ -413,6 +464,69 @@ func (s *Server) handleResolveApply(w http.ResponseWriter, r *http.Request) {
 		message += " Warning: " + result.LogError + "."
 	}
 	s.catalogChanged(w, r, message, "/resolve/"+url.PathEscape(slug))
+}
+
+// handleResolveEdit re-renders the review page around a decision in progress:
+// the form is server-rendered, so adding a suggestion, adding or removing a row
+// and going back from a confirmation all work without JavaScript. Nothing is
+// written; the decision still goes through preview and confirmation.
+func (s *Server) handleResolveEdit(w http.ResponseWriter, r *http.Request) {
+	if !s.postChecked(w, r) {
+		return
+	}
+	slug := r.PathValue("slug")
+	_, q, _ := resolveForm(slug, r.PostForm)
+	wb, err := s.resolver.ResolveWorkbench(r.Context(), slug, q)
+	if err != nil {
+		s.resolveFailed(w, r, err)
+		return
+	}
+	draft := newDraft(r.PostForm)
+	var problem string
+	switch {
+	case r.PostForm.Get("add_suggestion") != "":
+		key := strings.TrimSpace(r.PostForm.Get("add_suggestion"))
+		found := false
+		for _, c := range allCards(wb) {
+			if c.SpotifyID != draft.SpotifyID {
+				continue
+			}
+			for _, sg := range suggestionsOf(c) {
+				if sg.Key == key {
+					found, problem = true, draft.add(sg)
+				}
+			}
+		}
+		if !found {
+			problem = "That suggestion is no longer offered for this profile, so nothing was added."
+		}
+	case r.PostForm.Get("add_row") != "":
+		problem = draft.addBlank()
+	case r.PostForm.Get("remove_row") != "":
+		if i, err := strconv.Atoi(r.PostForm.Get("remove_row")); err == nil {
+			draft.remove(i)
+		}
+	}
+	page := s.workbenchPage(r, wb, q)
+	page.Draft = draft
+	page.Reviewer = strings.TrimSpace(r.PostForm.Get("reviewer"))
+	if len(page.Reviewer) > 100 {
+		page.Reviewer = page.Reviewer[:100]
+	}
+	title := "Review " + wb.Artist.Name
+	if problem == "" {
+		s.render(w, r, "resolve", title, page)
+		return
+	}
+	page.Error = problem
+	s.renderStatus(w, r, http.StatusUnprocessableEntity, "resolve", title, page)
+}
+
+func allCards(wb admin.Workbench) []admin.Card {
+	out := make([]admin.Card, 0, len(wb.Attached)+len(wb.Candidates)+len(wb.History))
+	out = append(out, wb.Attached...)
+	out = append(out, wb.Candidates...)
+	return append(out, wb.History...)
 }
 
 // classifyResolveError maps a use-case error to a status and a message safe to

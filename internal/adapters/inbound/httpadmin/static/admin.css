@@ -96,3 +96,6 @@ button.link{border:0;background:none;color:inherit;text-decoration:underline;cur
 .job .actions form{margin:0}
 .op-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:1rem}
 .op-cards .pcard{margin:0}.op-cards p{margin:.35rem 0}
+.badge.contextual{border-style:dashed}
+.evrow{margin:.5rem 0}.evrow legend{font-size:.9rem}
+.suggestions{list-style:none;padding-left:0}.suggestions li{margin:.5rem 0;padding:.5rem;border:1px solid var(--line);border-radius:8px}
