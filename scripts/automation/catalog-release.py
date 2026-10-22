@@ -239,6 +239,9 @@ def install(directory, manifest, db_path, snapshot_path, force=False):
         check_database(backup)
         if content_hash(backup) != manifest["content_sha256"]:
             raise ValueError("Catalog content checksum mismatch")
+        # Older packages may still carry the publisher's provenance.
+        with closing(sqlite3.connect(backup)) as db:
+            strip_provenance(db)
         # Validate the gzip stream before replacing either local file.
         with gzip.open(Path(directory) / ASSETS[1], "rb") as stream:
             for _ in iter(lambda: stream.read(1024 * 1024), b""):

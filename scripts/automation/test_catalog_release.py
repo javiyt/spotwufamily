@@ -245,6 +245,17 @@ class CatalogReleaseTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT COUNT(*) FROM catalog_applied").fetchone(), (1,),
                              "the local database keeps its provenance")
 
+    def test_install_drops_provenance_of_older_packages(self):
+        # A package prepared before provenance was stripped still carries it.
+        self.add_provenance()
+        with patch.object(release, "strip_provenance", side_effect=lambda db: None):
+            manifest = self.prepare()
+        restored = self.root / "restored.db"
+        release.install(self.package, manifest, restored, self.root / "snapshot.gz")
+        with sqlite3.connect(restored) as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM catalog_applied").fetchone(), (0,))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM stage_checkpoints").fetchone(), (0,))
+
 
 if __name__ == "__main__":
     unittest.main()
