@@ -55,3 +55,33 @@ func TestSafeSpotifyImageURL(t *testing.T) {
 		require.Empty(t, catalog.SafeSpotifyImageURL(bad), bad)
 	}
 }
+
+func TestSafeSpotifyReleaseURL(t *testing.T) {
+	const id = "4eSQgbY6VJglgaRVlNPa8Q"
+	want := "https://open.spotify.com/album/" + id
+	for name, c := range map[string]struct{ raw, id, want string }{
+		"canonical url":       {want, id, want},
+		"query is dropped":    {want + "?si=abc", id, want},
+		"locale prefix":       {"https://open.spotify.com/intl-es/album/" + id, "", want},
+		"missing url uses id": {"", id, want},
+		"padded url":          {"  " + want + " ", "", want},
+		"url wins over id":    {want, "3wA9siXD12mPM77pU0567n", want},
+		"no url and no id":    {"", "", ""},
+		"malformed id":        {"", "short", ""},
+		"javascript scheme":   {"javascript:alert(1)", "", ""},
+		"http scheme":         {"http://open.spotify.com/album/" + id, "", ""},
+		"foreign host":        {"https://evil.example/album/" + id, "", ""},
+		"lookalike host":      {"https://open.spotify.com.evil.example/album/" + id, "", ""},
+		"userinfo":            {"https://open.spotify.com@evil.example/album/" + id, "", ""},
+		"track url":           {"https://open.spotify.com/track/" + id, "", ""},
+		"artist url":          {"https://open.spotify.com/artist/" + id, "", ""},
+		"bad id in url":       {"https://open.spotify.com/album/not-an-id", "", ""},
+		"bad url good id":     {"https://evil.example/x", id, want},
+		"odd port":            {"https://open.spotify.com:8443/album/" + id, "", ""},
+		"extra path":          {want + "/../../x", "", ""},
+		"data url":            {"data:text/html,<script>1</script>", "", ""},
+		"malicious url no id": {"https://open.spotify.com/album/" + id + `"><script>`, "", ""},
+	} {
+		require.Equal(t, c.want, catalog.SafeSpotifyReleaseURL(c.raw, c.id), name)
+	}
+}

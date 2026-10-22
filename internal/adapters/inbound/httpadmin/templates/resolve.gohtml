@@ -36,7 +36,7 @@
 <section aria-label="Releases">
 <h4>Albums <span class="muted">({{$c.Audit.ReleaseCount}})</span></h4>
 {{if $c.Albums}}<ul class="evidence">{{range $c.Albums}}<li>{{.Name}}{{if .Date}} <span class="muted">{{.Date}}</span>{{end}}{{if .URL}} <a href="{{.URL}}" rel="noopener noreferrer" target="_blank">open</a>{{end}}</li>{{end}}</ul>{{else}}<p class="muted">No albums in the catalog for this profile.</p>{{end}}
-{{if $c.Singles}}<h4>Singles</h4><ul class="evidence">{{range $c.Singles}}<li>{{.Name}}{{if .Date}} <span class="muted">{{.Date}}</span>{{end}}</li>{{end}}</ul>{{end}}
+{{if $c.Singles}}<h4>Singles</h4><ul class="evidence">{{range $c.Singles}}<li>{{.Name}}{{if .Date}} <span class="muted">{{.Date}}</span>{{end}}{{if .URL}} <a href="{{.URL}}" rel="noopener noreferrer" target="_blank">open</a>{{end}}</li>{{end}}</ul>{{end}}
 {{if $c.Tracks}}<h4>Representative tracks and credits</h4><ul class="evidence">{{range $c.Tracks}}<li>{{.Name}} <span class="muted">on {{.Release}}</span>{{if .Credits}} — {{join .Credits ", "}}{{end}}</li>{{end}}</ul>{{end}}
 </section>
 
