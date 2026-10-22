@@ -241,3 +241,20 @@ Serve locally while editing templates:
 ```bash
 make serve
 ```
+
+## Local Setup, Backup And Rollback
+
+Prerequisites on macOS (`brew install go hugo python3 gh`) and Linux (distribution packages or the official Go and Hugo extended releases): Go 1.25, Hugo extended, Python 3; `gh` only for release publishing. No Spotify credentials are needed to run CI, the integrity gate, the admin or any offline fixture test.
+
+```bash
+git clone https://github.com/javiyt/spotwufamily && cd spotwufamily
+make catalog-fetch        # pinned catalog release, refuses to overwrite local files
+make ci                   # format, validate, integrity gate, db verify, export, site build, audit, tests, vet, build
+make admin                # 127.0.0.1 only; stop with Ctrl+C (graceful shutdown); see docs/admin.md
+```
+
+Back up before any write-heavy workflow: `make catalog-release-prepare RELEASE_PACKAGE=build/catalog-backup-YYYYMMDD-HHMMSS`. To restore, check out the previous `data/catalog.release.json`, run `make catalog-fetch` into an empty `data/` and `make db-verify`. Releases are never overwritten.
+
+Rollback of a catalog edit: `git checkout -- data/artists.yaml data/artists.yaml.reviews.jsonl`. Rollback of a schema migration: restore the previous manifest (migrations are additive; see `docs/database.md`). Rollback of a Spotify mapping reconciliation: restore the backup path and checksum printed by `artists reconcile`.
+
+Publishing: merge to `main`; the Pages workflow runs `export` and `hugo` from the pinned release. The site contains no admin code (enforced by `TestPublishedSiteContainsNoAdminSurface`).

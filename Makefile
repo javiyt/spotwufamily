@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help admin admin-smoke setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-import-candidates artists-import-candidates-apply artists-stage-candidates artists-revert-candidates artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums artists-audit-profiles sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
+.PHONY: help admin admin-smoke setup format lint test test-race version validate artists-validate artists-enable-with-ids artists-enable-with-ids-dry-run artists-discover-wu artists-discover-wu-apply artists-import-candidates artists-import-candidates-apply artists-stage-candidates artists-revert-candidates artists-refresh-metadata artists-refresh-metadata-dry-run artists-refresh-genres artists-refresh-genres-dry-run artists-seed-db artists-resolve-report artists-resolve-apply artists-resolve-interactive artists-review-interactive artists-resolve-offline artists-audit-albums artists-audit-profiles artists-audit-integrity sync sync-all sync-dry-run sync-artist export build serve audit audit-fast db-verify db-migrate db-snapshot db-rebuild catalog-fetch catalog-release-prepare catalog-release-publish site-build init-from-yaml refresh-from-spotify refresh-all-from-spotify ci
 
 CLI := ./cmd/spotwufamily
 BUILD_DIR := build
@@ -142,6 +142,9 @@ artists-audit-albums:
 artists-audit-profiles:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) artists audit-profiles $(if $(ARTIST_FILTER),--artist $(ARTIST_FILTER)) $(if $(OFFLINE),--offline) --catalog $(CATALOG) --db $(DB) --market $(MARKET) --report $(PROFILE_REPORT)
 
+artists-audit-integrity:
+	go run $(CLI) artists audit-integrity --offline --catalog $(CATALOG)
+
 sync:
 	SPOTIFY_MARKET=$(MARKET) go run $(CLI) sync --resume --catalog $(CATALOG) --db $(DB) --snapshot $(SNAPSHOT) --market $(MARKET)
 
@@ -205,4 +208,4 @@ refresh-from-spotify: artists-resolve-apply artists-validate sync-artist db-veri
 
 refresh-all-from-spotify: artists-refresh-metadata artists-enable-with-ids artists-validate sync-all db-verify export site-build audit-fast
 
-ci: format artists-validate db-verify export site-build audit-fast test lint build
+ci: format artists-validate artists-audit-integrity db-verify export site-build audit-fast test lint build

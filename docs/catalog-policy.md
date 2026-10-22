@@ -249,3 +249,22 @@ No Spotify IDs were guessed, and no staged entry is enabled.
 - **Review**: `status` is `proposed`, `verified` or `rejected`. `verified` needs a reviewer, a confidence and at least one *independent* evidence item; `credit` and `name_match` evidence never count, so a track credit or a shared name can never create a membership. Only `verified` edges are exported (`relationships/index.json`); proposed/rejected claims stay in the YAML. The export reads them from the editorial YAML, not from SQLite, so no database migration is involved and the pinned release backup is never touched.
 - **Seed**: the ten Wu-Tang Clan members, RZA in Gravediggaz, the accepted `member` entries of the candidate ledger, and `associated_with` for affiliate groups listed on Wikipedia's *List of Wu-Tang Clan affiliates*. Affiliate groups are associated with Wu-Tang Clan, and their members are *not* Wu-Tang Clan members.
 - **Safety**: all edits go through `artists relationships ...` / `artists rename`, which validate the whole catalog, only fail on issues the change introduces, support `--dry-run`, and save atomically (the previous file is kept as `artists.yaml.bak`). Renaming a slug rewrites every reference; renaming onto an existing slug is blocked. An artist that is still referenced cannot be removed.
+
+## Integrity gate
+
+`artists audit-integrity --offline` (`make artists-audit-integrity`, part of `make ci`) reads only `data/artists.yaml`: no network, database or credentials, and it never writes. Findings are sorted by severity, code, artist, subject and message, so `--format json` output is deterministic.
+
+| Severity | Code | Meaning |
+| --- | --- | --- |
+| error | `schema` | Any `artists validate` issue: unknown categories, verified profiles or relationships without independent evidence (name matches and credits never count), `member_of` to a non-group, duplicate IDs, cycles. |
+| error | `rejected_enabled_mapping` | An enabled artist links a Spotify ID that any artist rejected. |
+| warning | `pending_profile` | Candidate, needs_review or unreviewed profiles awaiting a decision; they are never synced. |
+| warning | `unreviewed_sync_identity`, `policy_allows_unreviewed` | Legacy `allow_unreviewed` policy lets unreviewed IDs sync. |
+| warning | `circular_evidence` | Verified only by the Spotify page itself; add MusicBrainz, Wikidata or another source. |
+| warning | `enabled_without_syncable_profile` | Enabled artist that sync would skip. |
+| warning | `relationship_without_evidence`, `relationship_archived_artist` | Provenance gaps in relationships. |
+| info | `blocked_sync_identity` | A rejection that permanently blocks an ID. |
+
+Gate policy: exit 1 on errors; warnings and infos exit 0 so intentionally pending candidates do not break CI. `--strict` also fails on warnings, for use once the legacy policy is retired. Exit 2 is a usage error.
+
+Curated fixtures live in `internal/adapters/inbound/cli/testdata/integrity/` (correct and incorrect homonyms, no discography, alias-only credit, two profiles sharing a name, multi-ID artist, historical membership, release credit versus official member, rejected-but-enabled). They contain synthetic IDs only.

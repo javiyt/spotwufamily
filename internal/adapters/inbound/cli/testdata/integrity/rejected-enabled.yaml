@@ -1,0 +1,28 @@
+version: 1
+profile_sync_policy: verified_only
+artists:
+  - slug: owner
+    name: Owner
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+    spotify_profiles:
+      - id: "9999999999999999999999"
+        status: rejected
+        evidence:
+          - type: name_match
+            rationale: Wrong artist
+        reviewed_at: "2026-10-20T12:00:00Z"
+        reviewer: fixture
+  - slug: thief
+    name: Thief
+    spotify_id: "9999999999999999999999"
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: true
+    editorial_order: 2
+    notes: ""

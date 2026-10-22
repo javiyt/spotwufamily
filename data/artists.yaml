@@ -83,6 +83,16 @@ artists:
   - slug: 1-4-0-productions
     name: 1.4.0. Productions
     spotify_id: 4tceeg5s2WPnnJzQZwDCIZ
+    spotify_profiles:
+      - id: 4tceeg5s2WPnnJzQZwDCIZ
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/4tceeg5s2WPnnJzQZwDCIZ
+            rationale: Found on spotify
+        reviewed_at: "2026-10-20T12:36:08Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T12:36:08Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -95,6 +105,16 @@ artists:
   - slug: a-i-g
     name: A.I.G.
     spotify_id: 4W91zWkx3syrUDACiK5Jxh
+    spotify_profiles:
+      - id: 4W91zWkx3syrUDACiK5Jxh
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/bce1d77e-f91d-4fc7-b29d-28584734da65
+            rationale: Found artist
+        reviewed_at: "2026-10-20T12:37:14Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T12:37:14Z"
     genres:
       - underground hip hop
     category: affiliate_group
@@ -121,6 +141,29 @@ artists:
     spotify_id: 53kDI3KVrY4ZVj1yPLxy8U
     spotify_ids:
       - 446HW5xA2MwQKg5IAWl8jt
+    spotify_profiles:
+      - id: 53kDI3KVrY4ZVj1yPLxy8U
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/54b44541-9c3f-4801-958e-3f9107c5f724
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://musicbrainz.org/artist/54b44541-9c3f-4801-958e-3f9107c5f724'
+        reviewed_at: "2026-10-20T13:00:42Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:00:42Z"
+      - id: 446HW5xA2MwQKg5IAWl8jt
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/54b44541-9c3f-4801-958e-3f9107c5f724
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://musicbrainz.org/artist/54b44541-9c3f-4801-958e-3f9107c5f724'
+        reviewed_at: "2026-10-20T13:01:15Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:01:15Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -133,6 +176,18 @@ artists:
   - slug: black-knights
     name: Black Knights
     spotify_id: 0AF5FJR5VgrhPw6qcLkEBA
+    spotify_profiles:
+      - id: 0AF5FJR5VgrhPw6qcLkEBA
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/0AF5FJR5VgrhPw6qcLkEBA
+            rationale: They belong to wu family
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/0AF5FJR5VgrhPw6qcLkEBA'
+        reviewed_at: "2026-10-20T13:02:46Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:02:46Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -155,6 +210,16 @@ artists:
   - slug: black-market-militia
     name: Black Market Militia
     spotify_id: 3jcyrGTj2QAkZOjriBOr9a
+    spotify_profiles:
+      - id: 3jcyrGTj2QAkZOjriBOr9a
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/3a06fefe-2aa5-35b9-adf8-5cd6dba7a941
+            rationale: 'MusicBrainz release group "Black Market Militia" (2005) matches releases on this Spotify profile: 1 of 3 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T13:03:37Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:03:37Z"
     genres:
       - east coast hip hop
     category: affiliate_group
@@ -182,6 +247,25 @@ artists:
     spotify_id: 0RhBRiD7TkjokNCJPw8yK1
     spotify_ids:
       - 1hBmOgsicbt92Fs6mDnFTW
+    spotify_profiles:
+      - id: 0RhBRiD7TkjokNCJPw8yK1
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/intl-es/artist/0RhBRiD7TkjokNCJPw8yK1
+            rationale: Found
+        reviewed_at: "2026-10-20T13:26:13Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:26:13Z"
+      - id: 1hBmOgsicbt92Fs6mDnFTW
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/1hBmOgsicbt92Fs6mDnFTW
+            rationale: Found
+        reviewed_at: "2026-10-20T13:26:44Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:26:44Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -195,6 +279,25 @@ artists:
     spotify_id: 6QMm5lohv2eBZRmt7KDQbw
     spotify_ids:
       - 19peYk9dHVzsOZggDzVsoc
+    spotify_profiles:
+      - id: 6QMm5lohv2eBZRmt7KDQbw
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/6QMm5lohv2eBZRmt7KDQbw
+            rationale: Found
+        reviewed_at: "2026-10-20T13:28:01Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:28:01Z"
+      - id: 19peYk9dHVzsOZggDzVsoc
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/intl-es/artist/19peYk9dHVzsOZggDzVsoc
+            rationale: Found
+        reviewed_at: "2026-10-20T13:28:43Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:28:43Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -207,6 +310,18 @@ artists:
   - slug: deadly-venoms
     name: Deadly Venoms
     spotify_id: 65qelf3gvWxMQew3vIp5bS
+    spotify_profiles:
+      - id: 65qelf3gvWxMQew3vIp5bS
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/intl-es/artist/65qelf3gvWxMQew3vIp5bS
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/intl-es/artist/65qelf3gvWxMQew3vIp5bS'
+        reviewed_at: "2026-10-20T13:29:28Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:29:28Z"
     genres:
       - east coast hip hop
     category: affiliate_group
@@ -221,6 +336,18 @@ artists:
   - slug: gp-wu
     name: GP Wu
     spotify_id: 7FTrXLdYYvZ9LYUBgDA6vu
+    spotify_profiles:
+      - id: 7FTrXLdYYvZ9LYUBgDA6vu
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/7FTrXLdYYvZ9LYUBgDA6vu
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/7FTrXLdYYvZ9LYUBgDA6vu'
+        reviewed_at: "2026-10-20T13:30:15Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T13:30:15Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -236,6 +363,27 @@ artists:
     spotify_id: 5NIhgQ08PBzMux08ndi8Ae
     spotify_ids:
       - 5kM2hWXBW4G2AwPNcFjIZX
+    spotify_profiles:
+      - id: 5NIhgQ08PBzMux08ndi8Ae
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/5NIhgQ08PBzMux08ndi8Ae
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/5NIhgQ08PBzMux08ndi8Ae'
+        reviewed_at: "2026-10-20T14:05:46Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:05:46Z"
+      - id: 5kM2hWXBW4G2AwPNcFjIZX
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/5kM2hWXBW4G2AwPNcFjIZX
+            rationale: Found
+        reviewed_at: "2026-10-20T14:06:15Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:06:15Z"
     genres:
       - east coast hip hop
       - hardcore hip hop
@@ -252,6 +400,18 @@ artists:
   - slug: harlem-6
     name: Harlem 6
     spotify_id: 35LzkvRooyAAgLaY8zkuz0
+    spotify_profiles:
+      - id: 35LzkvRooyAAgLaY8zkuz0
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/35LzkvRooyAAgLaY8zkuz0
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/35LzkvRooyAAgLaY8zkuz0'
+        reviewed_at: "2026-10-20T14:07:24Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:07:24Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -264,6 +424,18 @@ artists:
   - slug: hillside-scramblers
     name: Hillside Scramblers
     spotify_id: 4b1oxfH1Zbcjh9CpV9zqZr
+    spotify_profiles:
+      - id: 4b1oxfH1Zbcjh9CpV9zqZr
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/4b1oxfH1Zbcjh9CpV9zqZr
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/4b1oxfH1Zbcjh9CpV9zqZr'
+        reviewed_at: "2026-10-20T14:08:57Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:08:57Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -317,6 +489,16 @@ artists:
   - slug: killarmy
     name: Killarmy
     spotify_id: 5wwleY8YnxnutxOExPVoJb
+    spotify_profiles:
+      - id: 5wwleY8YnxnutxOExPVoJb
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/d3533433-3bb2-4c30-89b4-230c01e93e52
+            rationale: 'MusicBrainz release group "Full Metal Jackets (Instrumentals)" (2020) matches releases on this Spotify profile: 1 of 1 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T14:09:47Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:09:47Z"
     genres:
       - east coast hip hop
       - underground hip hop
@@ -342,6 +524,18 @@ artists:
   - slug: m-m-o
     name: M.M.O.
     spotify_id: 2hOq10IeawxqftIahsIITz
+    spotify_profiles:
+      - id: 2hOq10IeawxqftIahsIITz
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/2hOq10IeawxqftIahsIITz
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/2hOq10IeawxqftIahsIITz'
+        reviewed_at: "2026-10-20T14:10:57Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:10:57Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -354,6 +548,16 @@ artists:
   - slug: northstar
     name: Northstar
     spotify_id: 1WOFD00y6IbUDRlMPHgVVZ
+    spotify_profiles:
+      - id: 1WOFD00y6IbUDRlMPHgVVZ
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/2f48d687-8093-31a1-8af1-cd019a8bb06d
+            rationale: 'MusicBrainz release group "Bobby Digital Presents Northstar" (2004) matches releases on this Spotify profile: 4 of 12 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T14:11:15Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:11:15Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -377,6 +581,18 @@ artists:
   - slug: royal-fam
     name: Royal Fam
     spotify_id: 1G47XK3qlBueKLQXz4dSVM
+    spotify_profiles:
+      - id: 1G47XK3qlBueKLQXz4dSVM
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/1G47XK3qlBueKLQXz4dSVM
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/1G47XK3qlBueKLQXz4dSVM'
+        reviewed_at: "2026-10-20T14:11:47Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:11:47Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -389,6 +605,18 @@ artists:
   - slug: school-of-the-gifted
     name: School of the Gifted
     spotify_id: 3amOMus2rGDPRrdH968jGL
+    spotify_profiles:
+      - id: 3amOMus2rGDPRrdH968jGL
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/3amOMus2rGDPRrdH968jGL
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/3amOMus2rGDPRrdH968jGL'
+        reviewed_at: "2026-10-20T14:12:48Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:12:48Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -401,6 +629,16 @@ artists:
   - slug: stone-mecca
     name: Stone Mecca
     spotify_id: 1TGwUWwVcKAYoXSuXVZUxt
+    spotify_profiles:
+      - id: 1TGwUWwVcKAYoXSuXVZUxt
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/41bae233-2d31-4cdd-a161-e69853095690
+            rationale: 'MusicBrainz release group "First Contact" (2007) matches releases on this Spotify profile: 1 of 6 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T14:14:24Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:14:24Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -415,6 +653,25 @@ artists:
     spotify_id: 5PtIZ9EIXAYnZKhBZZuRsA
     spotify_ids:
       - 2BLi7tO8z8oHfsy1Q3K9tb
+    spotify_profiles:
+      - id: 5PtIZ9EIXAYnZKhBZZuRsA
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/47979a39-409f-45a6-811f-aed127375938
+            rationale: 'MusicBrainz release group "Remarkable Timing (Deluxe Remaster)" (2025) matches releases on this Spotify profile: 1 of 2 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T14:14:51Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:14:51Z"
+      - id: 2BLi7tO8z8oHfsy1Q3K9tb
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/2BLi7tO8z8oHfsy1Q3K9tb
+            rationale: Found
+        reviewed_at: "2026-10-20T14:15:30Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:15:30Z"
     genres:
       - boom bap
       - east coast hip hop
@@ -429,9 +686,25 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b2736d1edba4a223845ea86616ab
   - slug: tha-beggas
     name: Tha Beggas
-    spotify_id: 3KoWNgHihU3OzEuoouuycC
+    spotify_id: 2DVZz7RkwtlLIxvruS7AYD
     spotify_ids:
-      - 2DVZz7RkwtlLIxvruS7AYD
+      - 3KoWNgHihU3OzEuoouuycC
+    spotify_profiles:
+      - id: 2DVZz7RkwtlLIxvruS7AYD
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/2DVZz7RkwtlLIxvruS7AYD
+            rationale: Found
+        reviewed_at: "2026-10-20T14:16:42Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:16:42Z"
+      - id: 3KoWNgHihU3OzEuoouuycC
+        status: needs_review
+        evidence:
+          - type: name_match
+            rationale: 'Inconclusive review by javiyt: A member of the group'
+        last_checked_at: "2026-10-20T14:17:47Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -443,9 +716,32 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b27347375f55881b37edac2c295d
   - slug: theodore-unit
     name: Theodore Unit
-    spotify_id: 3etQyCmhwVq3MCsOWAqgSq
+    spotify_id: 5IWGIMFNr8cyIsHTOTKDR2
     spotify_ids:
-      - 5IWGIMFNr8cyIsHTOTKDR2
+      - 3etQyCmhwVq3MCsOWAqgSq
+    spotify_profiles:
+      - id: 3etQyCmhwVq3MCsOWAqgSq
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/3etQyCmhwVq3MCsOWAqgSq
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/3etQyCmhwVq3MCsOWAqgSq'
+        reviewed_at: "2026-10-20T14:18:29Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:18:29Z"
+      - id: 5IWGIMFNr8cyIsHTOTKDR2
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/5IWGIMFNr8cyIsHTOTKDR2
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/5IWGIMFNr8cyIsHTOTKDR2'
+        reviewed_at: "2026-10-20T14:19:00Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:19:00Z"
     genres:
       - east coast hip hop
     category: affiliate_group
@@ -460,6 +756,16 @@ artists:
   - slug: t-m-f
     name: T.M.F.
     spotify_id: 2CjKVGzo9RfscIwGAt0FfN
+    spotify_profiles:
+      - id: 2CjKVGzo9RfscIwGAt0FfN
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/2CjKVGzo9RfscIwGAt0FfN
+            rationale: Found
+        reviewed_at: "2026-10-20T14:22:35Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T14:22:35Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -484,6 +790,16 @@ artists:
   - slug: universal-zu-disciplez
     name: Universal Zu Disciplez
     spotify_id: 0YyxZ6HTVgyBvJW3RPzUZF
+    spotify_profiles:
+      - id: 0YyxZ6HTVgyBvJW3RPzUZF
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/0YyxZ6HTVgyBvJW3RPzUZF
+            rationale: Found
+        reviewed_at: "2026-10-20T19:17:13Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T19:17:13Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -497,6 +813,16 @@ artists:
   - slug: wu-syndicate
     name: Wu-Syndicate
     spotify_id: 7Kiy2CEjPnhXePyLiBoscc
+    spotify_profiles:
+      - id: 7Kiy2CEjPnhXePyLiBoscc
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/1a5a3de4-4c49-4c09-8b12-382017b4a05e
+            rationale: 'MusicBrainz release group "Illustrious" (2019) matches releases on this Spotify profile: 1 of 1 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T19:18:17Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T19:18:17Z"
     genres:
       - east coast hip hop
       - underground hip hop
@@ -512,6 +838,16 @@ artists:
   - slug: yellow-jacketz
     name: Yellow Jacketz
     spotify_id: 4h45LoknPVdea6ePNiia1K
+    spotify_profiles:
+      - id: 4h45LoknPVdea6ePNiia1K
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/b3bde166-7783-48e0-9d64-f9980ff22236
+            rationale: 'MusicBrainz release group "Wu-Tang Yellow Jacketz" (2019) matches releases on this Spotify profile: 1 of 3 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T19:19:03Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T19:19:03Z"
     genres:
       - underground hip hop
     category: affiliate_group
@@ -526,6 +862,16 @@ artists:
   - slug: zu-ninjaz
     name: Zu Ninjaz
     spotify_id: 6WWD54LZfwes6Nl6IQQDL0
+    spotify_profiles:
+      - id: 6WWD54LZfwes6Nl6IQQDL0
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/1c659f77-1a50-3ddf-aaa9-b38608254769
+            rationale: 'MusicBrainz release group "Now Justice" (2005) matches releases on this Spotify profile: 1 of 9 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T19:20:14Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T19:20:14Z"
     category: affiliate_group
     roles:
       - affiliate_group
@@ -538,6 +884,16 @@ artists:
   - slug: 9th-prince
     name: 9th Prince
     spotify_id: 68vZ1TKfHl8C1tMUfTooFc
+    spotify_profiles:
+      - id: 68vZ1TKfHl8C1tMUfTooFc
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/245ae00d-68dc-32d8-bb74-584c26125903
+            rationale: 'MusicBrainz release group "Granddaddy Flow" (2003) matches releases on this Spotify profile: 3 of 3 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-20T19:20:37Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T19:20:37Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -550,6 +906,16 @@ artists:
   - slug: 12-o-clock
     name: 12 O'Clock
     spotify_id: 45jICGqV9F6TTd6YF6kv3L
+    spotify_profiles:
+      - id: 45jICGqV9F6TTd6YF6kv3L
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/45jICGqV9F6TTd6YF6kv3L
+            rationale: Found
+        reviewed_at: "2026-10-20T19:21:25Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T19:21:25Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -561,6 +927,18 @@ artists:
   - slug: armel
     name: Armel
     spotify_id: 6Py83d4Xdc7SLzhr0eTNx5
+    spotify_profiles:
+      - id: 6Py83d4Xdc7SLzhr0eTNx5
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/6Py83d4Xdc7SLzhr0eTNx5
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/6Py83d4Xdc7SLzhr0eTNx5'
+        reviewed_at: "2026-10-20T19:23:33Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-20T19:23:33Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -573,6 +951,16 @@ artists:
   - slug: beretta-9
     name: Beretta 9
     spotify_id: 3TTUz7m8TuRU8yBcUbQTKI
+    spotify_profiles:
+      - id: 3TTUz7m8TuRU8yBcUbQTKI
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/3TTUz7m8TuRU8yBcUbQTKI
+            rationale: Found
+        reviewed_at: "2026-10-21T09:25:39Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:25:39Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -584,6 +972,16 @@ artists:
   - slug: bronze-nazareth
     name: Bronze Nazareth
     spotify_id: 4VhYUWpDsLraUG6Sd8g9TF
+    spotify_profiles:
+      - id: 4VhYUWpDsLraUG6Sd8g9TF
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/3dbedd55-237c-4a3c-9c60-333eea6c4e85
+            rationale: 'MusicBrainz release group "The Unknown" (2002) matches releases on this Spotify profile: 16 of 144 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T09:27:08Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:27:08Z"
     genres:
       - underground hip hop
     category: affiliate_artist
@@ -599,6 +997,18 @@ artists:
   - slug: buddha-monk
     name: Buddha Monk
     spotify_id: 4QTIR7KM0trauXspUNduhh
+    spotify_profiles:
+      - id: 4QTIR7KM0trauXspUNduhh
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/4QTIR7KM0trauXspUNduhh
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/4QTIR7KM0trauXspUNduhh'
+        reviewed_at: "2026-10-21T09:27:43Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:27:43Z"
     genres:
       - boom bap
     category: affiliate_artist
@@ -613,6 +1023,16 @@ artists:
   - slug: cilvaringz
     name: Cilvaringz
     spotify_id: 2v8ABtQy5LkGqPbrwwKQcj
+    spotify_profiles:
+      - id: 2v8ABtQy5LkGqPbrwwKQcj
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/8c0c396f-da22-4dc3-bb16-c99b9cb0eed7
+            rationale: 'MusicBrainz release group "Mental Chambers V" (2017) matches releases on this Spotify profile: 1 of 6 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T09:28:55Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:28:55Z"
     genres:
       - arabic hip hop
     category: affiliate_artist
@@ -628,6 +1048,16 @@ artists:
   - slug: darkim-be-allah
     name: Darkim Be Allah
     spotify_id: 1kVxIOLoDQhladQfYBIOdd
+    spotify_profiles:
+      - id: 1kVxIOLoDQhladQfYBIOdd
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/b5a01a8e-a70c-46ac-bf90-79715018fc9c
+            rationale: 'MusicBrainz release group "Antediluvian King" (2020) matches releases on this Spotify profile: 2 of 15 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T09:31:41Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:31:41Z"
     genres:
       - underground hip hop
     category: affiliate_artist
@@ -642,6 +1072,16 @@ artists:
   - slug: dj-ace-nyc
     name: DJ ACE NYC
     spotify_id: 3NggH17RWRTlazacK3wG0o
+    spotify_profiles:
+      - id: 3NggH17RWRTlazacK3wG0o
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/3NggH17RWRTlazacK3wG0o
+            rationale: Found
+        reviewed_at: "2026-10-21T09:33:49Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:33:49Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -654,6 +1094,16 @@ artists:
   - slug: dom-pachino
     name: Dom Pachino
     spotify_id: 7CRWPXETWBXqVw8rzEoGtn
+    spotify_profiles:
+      - id: 7CRWPXETWBXqVw8rzEoGtn
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/76307b97-7c37-3cc8-af00-aa9bb2bc3ba2
+            rationale: 'MusicBrainz release group "Tera Iz Him" (2002) matches releases on this Spotify profile: 4 of 53 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T09:35:10Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:35:10Z"
     genres:
       - east coast hip hop
     category: affiliate_artist
@@ -668,6 +1118,13 @@ artists:
   - slug: don-staten
     name: Don Staten
     spotify_id: 6ibKjQlrvEUbIggU7N1bUX
+    spotify_profiles:
+      - id: 6ibKjQlrvEUbIggU7N1bUX
+        status: needs_review
+        evidence:
+          - type: name_match
+            rationale: 'Inconclusive review by javiyt: Not clear is the one we are looking for'
+        last_checked_at: "2026-10-21T09:36:34Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -690,9 +1147,25 @@ artists:
     notes: ""
   - slug: dreddy-krueger
     name: Dreddy Krueger
-    spotify_id: 4DFFHbyOLhS79zbAX1T1M9
+    spotify_id: 0Ljv2YoYC1aaFPbBlKvDwI
     spotify_ids:
-      - 0Ljv2YoYC1aaFPbBlKvDwI
+      - 4DFFHbyOLhS79zbAX1T1M9
+    spotify_profiles:
+      - id: 0Ljv2YoYC1aaFPbBlKvDwI
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/0Ljv2YoYC1aaFPbBlKvDwI
+            rationale: Found
+        reviewed_at: "2026-10-21T09:37:49Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:37:49Z"
+      - id: 4DFFHbyOLhS79zbAX1T1M9
+        status: needs_review
+        evidence:
+          - type: name_match
+            rationale: 'Inconclusive review by javiyt: Not sure is the proper one'
+        last_checked_at: "2026-10-21T09:38:57Z"
     genres:
       - french rap
     category: affiliate_artist
@@ -706,6 +1179,18 @@ artists:
   - slug: dungeon-masta
     name: Dungeon Masta
     spotify_id: 1co5MV1wOKEZJLPVkml3Ri
+    spotify_profiles:
+      - id: 1co5MV1wOKEZJLPVkml3Ri
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/1co5MV1wOKEZJLPVkml3Ri
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/1co5MV1wOKEZJLPVkml3Ri'
+        reviewed_at: "2026-10-21T09:40:20Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:40:20Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -720,6 +1205,29 @@ artists:
     spotify_id: 7bcaPLwtiAQbJUcYYvHPlq
     spotify_ids:
       - 2n2CyLQNyTcScQCuqnqp81
+    spotify_profiles:
+      - id: 7bcaPLwtiAQbJUcYYvHPlq
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/7bcaPLwtiAQbJUcYYvHPlq
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/7bcaPLwtiAQbJUcYYvHPlq'
+        reviewed_at: "2026-10-21T09:41:26Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:41:26Z"
+      - id: 2n2CyLQNyTcScQCuqnqp81
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/2n2CyLQNyTcScQCuqnqp81
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/2n2CyLQNyTcScQCuqnqp81'
+        reviewed_at: "2026-10-21T09:41:54Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:41:54Z"
     genres:
       - east coast hip hop
     category: affiliate_artist
@@ -734,6 +1242,16 @@ artists:
   - slug: hanz-on
     name: Hanz On
     spotify_id: 7ifoWUchkVgZUnNy6PTl4D
+    spotify_profiles:
+      - id: 7ifoWUchkVgZUnNy6PTl4D
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/3e6ffa67-60d9-4a54-aa59-a2326020859d
+            rationale: 'MusicBrainz release group "Barca" (2017) matches releases on this Spotify profile: 1 of 14 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T09:43:31Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:43:31Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -746,6 +1264,16 @@ artists:
   - slug: hell-razah
     name: Hell Razah
     spotify_id: 59h4urZSPlBLaT0YharjOM
+    spotify_profiles:
+      - id: 59h4urZSPlBLaT0YharjOM
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/9528372c-5ce0-344a-8181-c4818bb4a747
+            rationale: 'MusicBrainz release group "Razah’s Ladder" (2007) matches releases on this Spotify profile: 3 of 6 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T09:43:52Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:43:52Z"
     genres:
       - east coast hip hop
       - underground hip hop
@@ -761,6 +1289,16 @@ artists:
   - slug: intell
     name: Intell
     spotify_id: 4jITyKWjSTPCdzK1iM5eaA
+    spotify_profiles:
+      - id: 4jITyKWjSTPCdzK1iM5eaA
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/c0495039-2e54-4912-b318-0ef3e736c114
+            rationale: 'MusicBrainz release group "Hip Hop Lives" (2010) matches releases on this Spotify profile: 19 of 49 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T09:44:11Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:44:11Z"
     genres:
       - underground hip hop
     category: affiliate_artist
@@ -775,6 +1313,18 @@ artists:
   - slug: islord
     name: Islord
     spotify_id: 7qmKiz1EjNCG6216Jc9S0C
+    spotify_profiles:
+      - id: 7qmKiz1EjNCG6216Jc9S0C
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/7qmKiz1EjNCG6216Jc9S0C
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/7qmKiz1EjNCG6216Jc9S0C'
+        reviewed_at: "2026-10-21T09:45:19Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:45:19Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -786,6 +1336,16 @@ artists:
   - slug: killah-priest
     name: Killah Priest
     spotify_id: 0JYmatsiEQMn2v5KchV8u2
+    spotify_profiles:
+      - id: 0JYmatsiEQMn2v5KchV8u2
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/0307ddb7-f682-34b4-b0a9-9e9ca207395a
+            rationale: 'MusicBrainz release group "Heavy Mental" (1998) matches releases on this Spotify profile: 7 of 7 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T09:45:38Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:45:38Z"
     genres:
       - east coast hip hop
       - underground hip hop
@@ -805,6 +1365,43 @@ artists:
       - 53dhUXHXSM7X5SL33JX1Jy
       - 1YOd9jtfZkGy1eCRiZbuiQ
       - 7mYFvApe9zG6Zi2C6wKyDk
+    spotify_profiles:
+      - id: 67XIntxIqJFHkWpewJcrOb
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/67XIntxIqJFHkWpewJcrOb
+            rationale: Found
+        reviewed_at: "2026-10-21T09:47:15Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:47:15Z"
+      - id: 53dhUXHXSM7X5SL33JX1Jy
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/53dhUXHXSM7X5SL33JX1Jy
+            rationale: Found
+        reviewed_at: "2026-10-21T09:53:07Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T09:53:07Z"
+      - id: 1YOd9jtfZkGy1eCRiZbuiQ
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/1YOd9jtfZkGy1eCRiZbuiQ
+            rationale: Found
+        reviewed_at: "2026-10-21T11:37:35Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:37:35Z"
+      - id: 7mYFvApe9zG6Zi2C6wKyDk
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/7mYFvApe9zG6Zi2C6wKyDk
+            rationale: Found
+        reviewed_at: "2026-10-21T11:38:20Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:38:20Z"
     genres:
       - boom bap
     category: affiliate_artist
@@ -818,6 +1415,16 @@ artists:
   - slug: krumbsnatcha
     name: Krumbsnatcha
     spotify_id: 4StWnbDC5LLdf3socfu0gx
+    spotify_profiles:
+      - id: 4StWnbDC5LLdf3socfu0gx
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/4StWnbDC5LLdf3socfu0gx
+            rationale: Found
+        reviewed_at: "2026-10-21T11:39:36Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:39:36Z"
     genres:
       - boom bap
       - east coast hip hop
@@ -834,6 +1441,16 @@ artists:
   - slug: la-the-darkman
     name: LA the Darkman
     spotify_id: 130JkW1WwUswzofZ2paOvs
+    spotify_profiles:
+      - id: 130JkW1WwUswzofZ2paOvs
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/3fb2f1ac-57e5-3bb4-9d40-423fb001b655
+            rationale: 'MusicBrainz release group "Heist of the Century" (1998) matches releases on this Spotify profile: 1 of 1 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T11:39:52Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:39:52Z"
     genres:
       - east coast hip hop
       - underground hip hop
@@ -850,6 +1467,16 @@ artists:
   - slug: lord-superb
     name: Lord Superb
     spotify_id: 5NZmO3Be6xZVNMZgxoxdtZ
+    spotify_profiles:
+      - id: 5NZmO3Be6xZVNMZgxoxdtZ
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/b66a8ccc-e604-4147-83a1-33971d24fb2a
+            rationale: 'MusicBrainz release group "Superb Clientele" (2009) matches releases on this Spotify profile: 1 of 9 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-21T11:40:16Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:40:16Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -861,9 +1488,28 @@ artists:
     image_url: https://i.scdn.co/image/ab67616d0000b2738ce90a971cfffd49573c68cc
   - slug: lounge-lo
     name: Lounge Lo
-    spotify_id: 3nksXkEKKByUQDyUB23ftO
+    spotify_id: 5FjoaoTbHpCoo70fijg3mv
     spotify_ids:
-      - 5FjoaoTbHpCoo70fijg3mv
+      - 3nksXkEKKByUQDyUB23ftO
+    spotify_profiles:
+      - id: 5FjoaoTbHpCoo70fijg3mv
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/5FjoaoTbHpCoo70fijg3mv
+            rationale: Found
+        reviewed_at: "2026-10-21T11:41:07Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:41:07Z"
+      - id: 3nksXkEKKByUQDyUB23ftO
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/3nksXkEKKByUQDyUB23ftO
+            rationale: Found
+        reviewed_at: "2026-10-21T11:41:39Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:41:39Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -876,6 +1522,18 @@ artists:
   - slug: piro
     name: PiRo
     spotify_id: 06jtqet6GMetHMxOznw0zK
+    spotify_profiles:
+      - id: 06jtqet6GMetHMxOznw0zK
+        status: verified
+        evidence:
+          - type: spotify_profile
+            url: https://open.spotify.com/artist/06jtqet6GMetHMxOznw0zK
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/06jtqet6GMetHMxOznw0zK'
+        reviewed_at: "2026-10-21T11:43:06Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:43:06Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -888,6 +1546,18 @@ artists:
   - slug: popa-wu
     name: Popa Wu
     spotify_id: 4kAt7aq5WVf9vJ5gdlj5KT
+    spotify_profiles:
+      - id: 4kAt7aq5WVf9vJ5gdlj5KT
+        status: verified
+        evidence:
+          - type: official_site
+            url: https://open.spotify.com/artist/4kAt7aq5WVf9vJ5gdlj5KT
+            rationale: Found
+          - type: name_match
+            rationale: 'Audited override by javiyt: https://open.spotify.com/artist/4kAt7aq5WVf9vJ5gdlj5KT'
+        reviewed_at: "2026-10-21T11:44:03Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-21T11:44:03Z"
     category: affiliate_artist
     roles:
       - affiliate_artist

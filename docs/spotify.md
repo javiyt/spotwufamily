@@ -138,3 +138,5 @@ go run ./cmd/spotwufamily artists audit-profiles --artist streetlife --spotify-i
 It re-audits that artist and only moves a `suspicious` profile to `needs_review` (exit code 3 for any other result, in particular `ambiguous`). Rejecting or verifying stays a human decision through `artists review-profile`.
 
 The typed report (`artists.ProfileAuditReport`, produced by `artists.NewAuditProfiles(...).Run`) is the single definition used by the CLI renderers and is the use case for the later local web UI.
+
+The offline integrity gate (`artists audit-integrity`) treats `spotify_profile` evidence alone as circular; see `docs/catalog-policy.md`.

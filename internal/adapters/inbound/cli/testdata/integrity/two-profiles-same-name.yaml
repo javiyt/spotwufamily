@@ -1,0 +1,22 @@
+version: 1
+profile_sync_policy: verified_only
+artists:
+  - slug: shared-name
+    name: Shared Name
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+    spotify_profiles:
+      - id: "5555555555555555555555"
+        status: candidate
+        evidence:
+          - type: name_match
+            rationale: Identical name, unverified
+      - id: "6666666666666666666666"
+        status: needs_review
+        evidence:
+          - type: name_match
+            rationale: Identical name, unverified

@@ -1,0 +1,21 @@
+version: 1
+profile_sync_policy: verified_only
+artists:
+  - slug: new-artist
+    name: New Artist
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: true
+    editorial_order: 1
+    notes: ""
+    spotify_id: "3333333333333333333333"
+    spotify_profiles:
+      - id: "3333333333333333333333"
+        status: verified
+        evidence:
+          - type: official_site
+            url: https://example.com/new-artist
+            rationale: Official site lists this profile; no releases yet
+        reviewed_at: "2026-10-20T12:00:00Z"
+        reviewer: fixture
