@@ -169,6 +169,7 @@ func (r *dbReleaser) counts() (prepares, publishes int) {
 type websiteE2E struct {
 	t                      *testing.T
 	root, bare, tmp, ghLog string
+	other                  string // a second clone pushing to origin
 	main                   string
 	cfg                    AdminConfig
 	fetcher                *countingSyncFetcher
@@ -182,7 +183,7 @@ func newWebsiteE2E(t *testing.T) *websiteE2E {
 	t.Helper()
 	pr := newPRRepo(t) // git, HOME/config isolation, bare origin and clone
 	base := filepath.Dir(pr.bare)
-	e := &websiteE2E{t: t, root: pr.clone, bare: pr.bare, tmp: filepath.Join(base, "e2e-tmp"),
+	e := &websiteE2E{t: t, root: pr.clone, bare: pr.bare, other: pr.other, tmp: filepath.Join(base, "e2e-tmp"),
 		ghLog: filepath.Join(base, "e2e-gh.log"), fetcher: &countingSyncFetcher{}}
 	state := filepath.Join(base, "e2e-gh-state")
 	require.NoError(t, os.MkdirAll(state, 0o755))
@@ -438,4 +439,38 @@ func TestUpdateWebsiteEndToEndStopsWhenTheCatalogChangesMidRun(t *testing.T) {
 	_, published := e.releaser.counts()
 	require.Zero(t, published)
 	require.NotEqual(t, maintenance.PendingClean, e.pending(e.stack()).State)
+}
+
+func TestUpdateWebsiteEndToEndStopsBeforePublishingWhenOriginHasNewerCatalogChanges(t *testing.T) {
+	e := newWebsiteE2E(t)
+	e.editCatalog("spotify_id: 34EP7KEpOjXcM2TCat1ISk", "spotify_id: 4gzpq5DPGxSnKTe4SA8HAU")
+	// Someone else changes the catalog on origin after the operator's base.
+	gitRun(t, e.other, "pull", "--quiet", "--ff-only", "origin", "main")
+	body, err := os.ReadFile(filepath.Join(e.other, "data", "artists.yaml"))
+	require.NoError(t, err)
+	writeFile(t, filepath.Join(e.other, "data", "artists.yaml"), string(body)+"# edited on origin\n")
+	gitRun(t, e.other, "commit", "--quiet", "-am", "concurrent catalog edit")
+	gitRun(t, e.other, "push", "--quiet", "origin", "main")
+
+	s := e.stack()
+	j := e.run(s, "update-website", nil)
+	require.NotEqual(t, jobs.StatusSucceeded, j.Status)
+	require.Contains(t, j.Message, "origin has newer changes to catalog data")
+	got := outcomes(t, j)
+	require.NotEqual(t, maintenance.OutcomeDone, got[maintenance.PlanReleasePublish])
+	_, published := e.releaser.counts()
+	require.Zero(t, published, "nothing is published when the pull request cannot be opened")
+	require.Empty(t, e.branches())
+	require.Zero(t, e.ghCalls("pr "))
+
+	// The run fetched origin: availability now says why.
+	s = e.stack()
+	info, ok := s.a.Action("release-pr")
+	require.True(t, ok)
+	require.False(t, info.Available)
+	require.Contains(t, info.UnavailableReason, "origin has newer changes to catalog data")
+	info, ok = s.a.Action("update-website")
+	require.True(t, ok)
+	require.False(t, info.Available)
+	require.Contains(t, info.UnavailableReason, "origin has newer changes to catalog data")
 }

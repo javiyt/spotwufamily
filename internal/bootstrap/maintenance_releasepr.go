@@ -350,7 +350,85 @@ func (g *releasePRPort) Check(ctx context.Context) (maintenance.PRPrereq, error)
 			p.FilesChanged = append(p.FilesChanged, f)
 		}
 	}
+	if err := g.requireIdentity(ctx); err != nil {
+		if !errors.Is(err, maintenance.ErrGitIdentity) {
+			return maintenance.PRPrereq{}, err
+		}
+		p.IdentityMissing = true
+	}
+	if p.OriginNewer, err = g.originNewer(ctx, false); err != nil {
+		return maintenance.PRPrereq{}, err
+	}
 	return p, nil
+}
+
+var _ maintenance.PRPrepublishChecker = (*releasePRPort)(nil)
+
+// CheckBeforePublish fetches origin, then checks as Check does. Since the
+// publish is about to rewrite the release manifest, a manifest that origin
+// changed since the merge base is a conflict too.
+func (g *releasePRPort) CheckBeforePublish(ctx context.Context) (maintenance.PRPrereq, error) {
+	if g.originResolved(ctx) && g.originMatchesRepo(ctx) {
+		tmp, err := os.MkdirTemp(g.cfg.TempDir, "spotwu-release-pr-")
+		if err != nil {
+			return maintenance.PRPrereq{}, fmt.Errorf("release-pr: temp dir: %w", maintenance.ErrPRGit)
+		}
+		defer func() { _ = os.RemoveAll(tmp) }()
+		hooks := filepath.Join(tmp, "hooks")
+		if err := os.Mkdir(hooks, 0o700); err != nil {
+			return maintenance.PRPrereq{}, fmt.Errorf("release-pr: hooks dir: %w", maintenance.ErrPRGit)
+		}
+		if _, err := g.git(ctx, g.cfg.RepoRoot, "-c", "core.hooksPath="+hooks, "fetch", "--quiet", "--no-tags", "origin"); err != nil {
+			g.log("fetch failed", err)
+			return maintenance.PRPrereq{}, err
+		}
+	}
+	p, err := g.Check(ctx)
+	if err != nil || !p.OriginResolved {
+		return p, err
+	}
+	if !p.OriginNewer {
+		p.OriginNewer, err = g.originNewer(ctx, true)
+	}
+	return p, err
+}
+
+// originNewer reports whether origin changed one of ReleasePRFiles since
+// the checkout's merge base while the local copy differs from origin's (as
+// desired does when opening). With publishing set, an origin change of the
+// release manifest is a conflict regardless of the local copy.
+func (g *releasePRPort) originNewer(ctx context.Context, publishing bool) (bool, error) {
+	mbOut, err := g.git(ctx, g.cfg.RepoRoot, "merge-base", "HEAD", g.baseRef())
+	if err != nil {
+		return false, err
+	}
+	mb := strings.TrimSpace(mbOut)
+	for _, f := range maintenance.ReleasePRFiles {
+		base, err := g.blob(ctx, g.baseRef(), f)
+		if err != nil {
+			return false, err
+		}
+		old, err := g.blob(ctx, mb, f)
+		if err != nil {
+			return false, err
+		}
+		if base == old {
+			continue
+		}
+		if publishing && f == releaseManifestName {
+			return true, nil
+		}
+		local := base
+		if g.present(f) {
+			if local, err = g.localBlob(ctx, f); err != nil {
+				return false, err
+			}
+		}
+		if local != base {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (g *releasePRPort) catalogDigest(ctx context.Context) (string, error) {

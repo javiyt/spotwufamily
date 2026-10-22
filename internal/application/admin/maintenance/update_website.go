@@ -37,9 +37,10 @@ const (
 		"the published release is not pinned by the site, and if it is never merged it stays unpinned."
 	msgEditsBlocked = "Catalog edits in the admin are refused while the run is active; an edit made outside " +
 		"the admin stops the run before its next step."
-	msgReconcileAll = "Reconcile is all or nothing: a failure rolls every artist back and stops the run."
-	msgStageCancel  = "Cancelled while this step was running."
-	msgNeededAgain  = "The database or its update records changed outside this run, so steps that already ran " +
+	msgReconcileAll  = "Reconcile is all or nothing: a failure rolls every artist back and stops the run."
+	msgStageCancel   = "Cancelled while this step was running."
+	msgBeforePublish = "Nothing was published: the pull request could not be opened afterwards. "
+	msgNeededAgain   = "The database or its update records changed outside this run, so steps that already ran " +
 		"are needed again; nothing more was published. Needed again: "
 	msgIncomplete = "every step ran, but these are still not done for the current catalog and database: "
 )
@@ -402,6 +403,18 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 		case !st.run:
 			return rs.failed(i, &SafeError{Code: "stale_preview", Message: msgPlanChanged})
 		}
+		if st.def.name == PlanReleasePublish && need[PlanPR] == NeedRequired {
+			// Nothing is published unless the pull request can be opened
+			// afterwards (a fresh fetch of origin, not a cached check).
+			if pr, ok := a.s.byName[stageDefs[10].action].(prePublishChecker); ok {
+				if err := pr.checkBeforePublish(ctx); err != nil {
+					if ctx.Err() != nil {
+						return rs.cancelled(ctx.Err())
+					}
+					return rs.failed(i, Safe(err).(*SafeError))
+				}
+			}
+		}
 		out, err := a.runStage(ctx, r, st, pl.reconcileFP, confirmed)
 		switch {
 		case err != nil && ctx.Err() != nil && !isFinal(err):
@@ -569,6 +582,11 @@ func (a *updateWebsiteAction) runStage(ctx context.Context, r jobs.Reporter, st 
 		return jobs.Outcome{}, err
 	}
 	return spec.Run(ctx, stageReporter{r: r, prefix: st.def.name})
+}
+
+// prePublishChecker is implemented by release-pr.
+type prePublishChecker interface {
+	checkBeforePublish(ctx context.Context) error
 }
 
 // availabilityRechecker is implemented by actions caching an availability

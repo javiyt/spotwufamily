@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 	"testing"
 
 	"github.com/javiyt/spotwufamily/internal/application/artists"
@@ -184,6 +185,8 @@ func TestReleasePRAvailability(t *testing.T) {
 		{"origin-repo", func(p *PRPrereq) { p.OriginMatchesRepo = false }, prOriginRepoReason},
 		{"base", func(p *PRPrereq) { p.BaseBranch = "../main" }, prOriginReason},
 		{"manifest", func(p *PRPrereq) { p.ManifestMatchesLocal = false }, prManifestReason},
+		{"identity", func(p *PRPrereq) { p.IdentityMissing = true }, prIdentityReason},
+		{"origin-newer", func(p *PRPrereq) { p.OriginNewer = true }, prOriginNewerMsg},
 		{"nothing", func(p *PRPrereq) { p.FilesChanged = []string{"data/artists.yaml.reviews.jsonl"} }, prNothingReason},
 	}
 	seen := map[string]bool{}
@@ -448,4 +451,37 @@ func TestReleasePRForcedRecheckIgnoresAStaleInFlightCheck(t *testing.T) {
 	if port.calls.Load() < 2 {
 		t.Fatalf("checks %d: the forced recheck did not run", port.calls.Load())
 	}
+}
+
+func TestUpdateWebsiteStopsBeforePublishingWhenThePRCannotBeOpened(t *testing.T) {
+	h := newHarness(t, newWorld(baseCatalog(), idEdited()), nil)
+	port := readyPRPort()
+	port.set(func(p *PRPrereq) { p.OriginNewer = true })
+	pr := NewReleasePR(PRDeps{Port: port})
+	actions := []Action{}
+	for _, n := range stageActionNames {
+		if n == "release-pr" {
+			continue
+		}
+		actions = append(actions, h.stages[n])
+	}
+	actions = append(actions, &prAvailableAnyway{Action: pr})
+	h.s = NewService(h.m, actions, []byte("secret"), time.Now, WithPending(h.w.deps()))
+	j := h.runToEnd(t)
+	if j.Status == jobs.StatusSucceeded || h.stages["release-publish"].runs.Load() != 0 {
+		t.Fatalf("status %s, publishes %d", j.Status, h.stages["release-publish"].runs.Load())
+	}
+	if !strings.Contains(j.Message, prOriginNewerMsg) {
+		t.Fatalf("message %q", j.Message)
+	}
+}
+
+// prAvailableAnyway hides release-pr's cached availability, as when the
+// last fetch predates origin's change, so only the pre-publish check sees it.
+type prAvailableAnyway struct{ Action }
+
+func (a *prAvailableAnyway) Available() (bool, string)    { return true, "" }
+func (a *prAvailableAnyway) AvailableNow() (bool, string) { return true, "" }
+func (a *prAvailableAnyway) checkBeforePublish(ctx context.Context) error {
+	return a.Action.(prePublishChecker).checkBeforePublish(ctx)
 }

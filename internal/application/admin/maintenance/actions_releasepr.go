@@ -67,6 +67,7 @@ const (
 	prOriginNewerMsg    = "origin has newer changes to catalog data; update your checkout first"
 	prBranchDivergedMsg = "The pull request branch already exists on origin with different content; it is never force-pushed. Delete the branch on GitHub or update the catalog, then retry."
 	prIdentityMsg       = "Git user.name and user.email are not configured; set them with git config and retry."
+	prIdentityReason    = "Git user.name and user.email are not configured; set them with git config"
 	prGitMsg            = "A git or GitHub CLI command failed; nothing was force-pushed. Check the checkout and retry."
 	prInvalidMsg        = "The pull request request is not valid."
 )
@@ -103,6 +104,22 @@ type PRPrereq struct {
 	// those whose local content differs from the base branch.
 	FilesPresent []string
 	FilesChanged []string
+	// OriginNewer: origin changed one of the files since the checkout's
+	// merge base while the local copy differs (as of the last fetch).
+	OriginNewer bool
+	// IdentityMissing: git user.name or user.email is not configured.
+	IdentityMissing bool
+}
+
+// PRPrepublishChecker is optionally implemented by a PRPort that can fetch
+// the base branch and check it before a release is published: a conflict
+// found only when opening the pull request would leave the release
+// published but unpinned.
+type PRPrepublishChecker interface {
+	// CheckBeforePublish fetches origin and returns Check's answer, with
+	// OriginNewer also set when origin changed the release manifest (the
+	// publish is about to rewrite it).
+	CheckBeforePublish(ctx context.Context) (PRPrereq, error)
 }
 
 // PRRequest is one pull request to open. Files must be a subset of
@@ -318,6 +335,10 @@ func prBlockedReason(p PRPrereq) string {
 		return prOriginReason
 	case !p.OriginMatchesRepo:
 		return prOriginRepoReason
+	case p.IdentityMissing:
+		return prIdentityReason
+	case p.OriginNewer:
+		return prOriginNewerMsg
 	case !p.ManifestMatchesLocal:
 		return prManifestReason
 	}
@@ -571,6 +592,31 @@ func (a *releasePRAction) recordProvenance(ctx context.Context, catalogDigest st
 		return nil
 	}
 	return recordCheckpoint(context.WithoutCancel(ctx), a.deps.Provenance, artists.StagePR, catalogDigest)
+}
+
+// checkBeforePublish refuses, before a release is published, a pull request
+// that could not be opened afterwards (origin newer, missing identity, gh,
+// origin). It fetches origin when the port can; the manifest is expected to
+// be unpinned at this point.
+func (a *releasePRAction) checkBeforePublish(ctx context.Context) error {
+	var (
+		p   PRPrereq
+		err error
+	)
+	if c, ok := a.deps.Port.(PRPrepublishChecker); ok {
+		p, err = c.CheckBeforePublish(ctx)
+	} else {
+		p, err = a.deps.Port.Check(ctx)
+	}
+	if err != nil {
+		return prFail(ctx, err)
+	}
+	switch reason := prBlockedReason(p); reason {
+	case "", prManifestReason, prNothingReason:
+		return nil
+	default:
+		return &SafeError{Code: "unavailable", Message: msgBeforePublish + reason + "."}
+	}
 }
 
 // prFail maps a release-pr error to a fixed message; a cancel stays a cancel.
