@@ -121,7 +121,7 @@ var actionSpecs = map[string]actionSpec{
 	"sync-dry-run":             {Group: "Sync", Description: "Plan a sync from the catalog without contacting Spotify or writing anything.", Fields: syncDryRunFields},
 	"sync":                     {Group: "Sync", Description: "Sync artists from Spotify into the database. Backs up the database first.", Fields: syncFields},
 	"refresh-metadata-preview": {Group: "Refresh/Export", Description: "Show which artists' metadata a refresh would fetch. Writes nothing.", Fields: refreshFields},
-	"refresh-metadata":         {Group: "Refresh/Export", Description: "Fetch artist metadata from Spotify into the catalog.", Fields: refreshFields},
+	"refresh-metadata":         {Group: "Refresh/Export", Description: "Fetch artist metadata from Spotify into the catalog file. It does not update the database: run a sync afterwards.", Fields: refreshFields},
 	"db-verify":                {Group: "Refresh/Export", Description: "Verify the database integrity."},
 	"db-snapshot":              {Group: "Refresh/Export", Description: "Write the database snapshot (the previous one is kept)."},
 	"export":                   {Group: "Refresh/Export", Description: "Regenerate the static JSON the site reads."},
@@ -247,6 +247,19 @@ func (s *Server) actionCards() []cardGroup {
 	return out
 }
 
+// recentLogError turns a RecentOperations error into the notice shown in
+// place of the log. A canceled request (the client left) is neither logged nor
+// shown; a real failure is logged and tells the operator to retry.
+func (s *Server) recentLogError(err error) string {
+	switch {
+	case err == nil, errors.Is(err, context.Canceled):
+		return ""
+	default:
+		s.logger.Printf("operations log: %v", err)
+		return "The operations log could not be read. Reload the page to retry."
+	}
+}
+
 func (s *Server) handleOperations(w http.ResponseWriter, r *http.Request) {
 	d, err := s.svc.Dashboard(r.Context())
 	if err != nil {
@@ -259,10 +272,7 @@ func (s *Server) handleOperations(w http.ResponseWriter, r *http.Request) {
 		page.Groups = s.actionCards()
 		page.Fresh = s.freshView()
 		entries, err := s.op.RecentOperations(r.Context(), recentOperations)
-		if err != nil {
-			s.logger.Printf("operations log: %v", err)
-			page.RecentErr = "The operations log could not be read."
-		}
+		page.RecentErr = s.recentLogError(err)
 		for i, e := range entries {
 			if i == recentOperations {
 				break

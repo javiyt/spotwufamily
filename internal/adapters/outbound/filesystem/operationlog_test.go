@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,5 +102,33 @@ func TestOperationLogAppendAfterTruncatedTail(t *testing.T) {
 	got, _ := l.Recent(ctx, 10)
 	if len(got) != 2 || got[0].JobID != "b" || strings.Contains(string(mustRead(t, path)), `2026-{`) {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestRecentCanceledContextLeavesLogIntact(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "o.jsonl")
+	l := NewOperationLog(path)
+	bg := context.Background()
+	_ = l.Append(bg, entry(0))
+	before := mustRead(t, path)
+
+	ctx, cancel := context.WithCancel(bg)
+	cancel()
+	if _, err := l.Recent(ctx, 5); !errors.Is(err, context.Canceled) {
+		t.Fatalf("want context.Canceled, got %v", err)
+	}
+	if string(mustRead(t, path)) != string(before) {
+		t.Fatal("a canceled read changed the log")
+	}
+	if got, err := l.Recent(bg, 5); err != nil || len(got) != 1 {
+		t.Fatalf("later read: %+v %v", got, err)
+	}
+}
+
+func TestRecentGenuineErrorIsNotACancellation(t *testing.T) {
+	dir := t.TempDir() // a directory where the file should be: open succeeds, read fails
+	_, err := NewOperationLog(dir).Recent(context.Background(), 5)
+	if err != nil && errors.Is(err, context.Canceled) {
+		t.Fatalf("genuine failure misreported as cancellation: %v", err)
 	}
 }

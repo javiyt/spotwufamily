@@ -159,10 +159,7 @@ func (s *Server) publishPageData(r *http.Request) publishPage {
 		}
 	}
 	entries, err := s.op.RecentOperations(r.Context(), 100)
-	if err != nil {
-		s.logger.Printf("operations log: %v", err)
-		page.RecentErr = "The operations log could not be read."
-	}
+	page.RecentErr = s.recentLogError(err)
 	for _, e := range entries {
 		if len(page.Recent) == releaseLogEntries {
 			break

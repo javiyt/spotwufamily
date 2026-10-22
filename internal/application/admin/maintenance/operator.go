@@ -2,6 +2,8 @@ package maintenance
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
 )
@@ -32,7 +34,12 @@ func (s *Service) RecentOperations(ctx context.Context, n int) ([]OperationEntry
 	n = min(n, maxRecentOperations)
 	entries, err := s.oplog.Recent(ctx, n)
 	if err != nil {
-		s.reportLogErr(err)
+		// A request the client abandoned is not a log failure: report it to
+		// the caller (which can drop it) but not to the failure handler.
+		if cerr := ctx.Err(); cerr != nil && errors.Is(err, cerr) {
+			return nil, cerr
+		}
+		s.reportLogErr(fmt.Errorf("read operation log: %w", err))
 		return nil, errOperationLogUnreadable
 	}
 	return entries, nil
