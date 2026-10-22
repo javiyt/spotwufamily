@@ -133,6 +133,7 @@ func (s freshnessSource) AppliedChanges() ([]artists.ArtistChange, bool) {
 	}
 	current, err := s.currentFingerprint()
 	if err != nil {
+		// Unloadable catalog: an applied row exists but nothing can be diffed.
 		return nil, true
 	}
 	return artists.DiffCatalog(applied, current), true

@@ -1,6 +1,7 @@
 package httpadmin_test
 
 import (
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -399,7 +400,7 @@ func TestPublishWarnsWhenDataMayNeedRefreshing(t *testing.T) {
 	require.Equal(t, http.StatusSeeOther, e.send("/operations/freshness", e.form("from", "publish")).Code)
 	require.NotContains(t, e.get(t, "/publish").Body.String(), warning)
 
-	for _, f := range []maintenance.Freshness{{SeedNeeded: true}, {SnapshotNeeded: true}, {ExportNeeded: true}, {RebuildNeeded: true, Offline: true}} {
+	for _, f := range []maintenance.Freshness{{SeedNeeded: true}, {SeedUnknown: true}, {SnapshotNeeded: true}, {ExportNeeded: true}, {RebuildNeeded: true, Offline: true}} {
 		e := newOpsEnv(t, withRelease(readyRelease()), func(op *fakeOp) { op.fresh = f })
 		require.Equal(t, http.StatusSeeOther, e.send("/operations/freshness", e.form("from", "publish")).Code)
 		require.Contains(t, e.get(t, "/publish").Body.String(), warning, "%+v", f)
@@ -410,4 +411,18 @@ func TestPublishCheckingListsTheReasonForBothSteps(t *testing.T) {
 	e, _ := newRealOpsEnv(t)
 	body := e.get(t, "/publish").Body.String()
 	require.Equal(t, 2, strings.Count(body, "<li>Checking release prerequisites; reload the page in a moment</li>"), body)
+}
+
+func TestPublishShowsUnknownSeedState(t *testing.T) {
+	e := newOpsEnv(t, withRelease(readyRelease()), func(op *fakeOp) {
+		op.fresh = maintenance.Freshness{SeedUnknown: true, Pending: []artists.ArtistChange{{Slug: "a"}}}
+	})
+	require.Equal(t, http.StatusSeeOther, e.send("/operations/freshness", e.form("from", "publish")).Code)
+	body := e.get(t, "/publish").Body.String()
+	require.Contains(t, body, "<td>unknown</td>")
+	require.Contains(t, body, "Refresh the data first")
+
+	api := e.get(t, "/api/v1/freshness").Body.String()
+	require.Contains(t, api, `"seed_unknown":true`)
+	require.Contains(t, api, `"pending_changes":1`)
 }

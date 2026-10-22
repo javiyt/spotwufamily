@@ -151,7 +151,7 @@ func prereqRows(st maintenance.ReleaseStatus) []prereqRow {
 func (s *Server) publishPageData(r *http.Request) publishPage {
 	page := publishPage{Fresh: s.freshView(), ManifestName: defaultManifestName}
 	f := page.Fresh
-	page.DataWarning = !f.Checked || f.Stale || f.SeedNeeded || f.SnapshotNeeded || f.ExportNeeded || f.RebuildNeeded ||
+	page.DataWarning = !f.Checked || f.Stale || f.SeedNeeded || f.SeedUnknown || f.SnapshotNeeded || f.ExportNeeded || f.RebuildNeeded ||
 		f.Offline || f.Unreadable
 	if s.pub != nil {
 		if st, ok := s.pub.ReleaseStatus(); ok {

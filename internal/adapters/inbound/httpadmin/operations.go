@@ -393,7 +393,7 @@ func (s *Server) apiFreshness(w http.ResponseWriter, _ *http.Request) {
 	age := max(s.now().Sub(at), 0)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"checked": true, "checked_at": rfc3339(at), "age_seconds": int(age.Seconds()), "stale": s.fresh.isStale(),
-		"seed_needed": f.SeedNeeded, "snapshot_needed": f.SnapshotNeeded, "export_needed": f.ExportNeeded,
+		"seed_needed": f.SeedNeeded, "seed_unknown": f.SeedUnknown, "pending_changes": len(f.Pending), "snapshot_needed": f.SnapshotNeeded, "export_needed": f.ExportNeeded,
 		"rebuild_needed": f.RebuildNeeded, "differs_from_published": f.DiffersFromPublished,
 		"offline": f.Offline, "unreadable": f.Unreadable, "reasons": nonNilStrings(append([]string(nil), f.Reasons...)),
 	})

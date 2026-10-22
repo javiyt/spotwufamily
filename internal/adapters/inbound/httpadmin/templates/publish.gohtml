@@ -9,7 +9,7 @@
 <div class="table-wrap"><table>
 <caption class="sr">Data readiness</caption>
 <tbody>
-<tr><th scope="row">Seed needed</th><td>{{if .SeedNeeded}}yes{{else}}no{{end}}</td></tr>
+<tr><th scope="row">Seed needed</th><td>{{if .SeedUnknown}}unknown{{else if .SeedNeeded}}yes{{else}}no{{end}}</td></tr>
 <tr><th scope="row">Snapshot needed</th><td>{{if .SnapshotNeeded}}yes{{else}}no{{end}}</td></tr>
 <tr><th scope="row">Export needed</th><td>{{if .ExportNeeded}}yes{{else}}no{{end}}</td></tr>
 <tr><th scope="row">Database unreadable</th><td>{{if .Unreadable}}yes{{else}}no{{end}}</td></tr>
@@ -17,7 +17,7 @@
 <tr><th scope="row">Differs from the published catalog</th><td>{{if .DiffersFromPublished}}yes{{else}}no{{end}}</td></tr>
 </tbody></table></div>
 {{if .Reasons}}<ul>{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>{{else}}<p>Everything derived from the catalog is up to date.</p>{{end}}
-{{if or .SeedNeeded .SnapshotNeeded .ExportNeeded .RebuildNeeded}}<p class="notice warn">Refresh the data first (sync if the catalog changed, then <a href="/operations/refresh-export">refresh-export</a>), then prepare the package again.</p>{{end}}
+{{if or .SeedNeeded .SeedUnknown .SnapshotNeeded .ExportNeeded .RebuildNeeded}}<p class="notice warn">Refresh the data first (sync if the catalog changed, then <a href="/operations/refresh-export">refresh-export</a>), then prepare the package again.</p>{{end}}
 {{else}}<p class="muted">Freshness not checked yet. The check reads the whole database and can take a few seconds.</p>{{end}}{{end}}
 <form method="post" action="/operations/freshness">
 <input type="hidden" name="csrf_token" value="{{$csrf}}">
