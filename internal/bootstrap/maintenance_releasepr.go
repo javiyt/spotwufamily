@@ -210,7 +210,41 @@ func (g *releasePRPort) originMatchesRepo(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
-	repo := originRepo(out)
+	raw := strings.TrimSpace(out)
+	if !g.namesRepo(raw) {
+		return false
+	}
+	// A push URL, when set, must name the same repository.
+	push, err := g.git(ctx, g.cfg.RepoRoot, "config", "--get-all", "remote.origin.pushurl")
+	switch {
+	case err == nil:
+		for _, u := range strings.Split(strings.TrimSpace(push), "\n") {
+			if !g.namesRepo(u) {
+				return false
+			}
+		}
+	case exitCode(err) != 1: // 1: not set
+		return false
+	}
+	// No pushInsteadOf rewrite may apply to the origin URL: it would send
+	// the push somewhere else than the URL checked above.
+	rewrites, err := g.git(ctx, g.cfg.RepoRoot, "config", "--get-regexp", `^url\..*\.pushinsteadof$`)
+	switch {
+	case err == nil:
+		for _, line := range strings.Split(strings.TrimSpace(rewrites), "\n") {
+			_, prefix, _ := strings.Cut(line, " ")
+			if prefix != "" && strings.HasPrefix(raw, prefix) {
+				return false
+			}
+		}
+	case exitCode(err) != 1: // 1: none configured
+		return false
+	}
+	return true
+}
+
+func (g *releasePRPort) namesRepo(url string) bool {
+	repo := originRepo(url)
 	return repo != "" && strings.EqualFold(repo, g.cfg.Repo)
 }
 
@@ -345,7 +379,19 @@ func (g *releasePRPort) Open(ctx context.Context, req maintenance.PRRequest) (ma
 	if !g.originMatchesRepo(ctx) {
 		return maintenance.PRResult{}, maintenance.ErrPROriginMismatch
 	}
-	if _, err := g.git(ctx, g.cfg.RepoRoot, "fetch", "--quiet", "--no-tags", "origin"); err != nil {
+	tmp, err := os.MkdirTemp(g.cfg.TempDir, "spotwu-release-pr-")
+	if err != nil {
+		return maintenance.PRResult{}, fmt.Errorf("release-pr: temp dir: %w", maintenance.ErrPRGit)
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
+	// An empty hooks directory: the operator's hooks (post-checkout, LFS,
+	// reference-transaction, pre-push, …) never run for these commands.
+	hooks := filepath.Join(tmp, "hooks")
+	if err := os.Mkdir(hooks, 0o700); err != nil {
+		return maintenance.PRResult{}, fmt.Errorf("release-pr: hooks dir: %w", maintenance.ErrPRGit)
+	}
+	noHooks := "core.hooksPath=" + hooks
+	if _, err := g.git(ctx, g.cfg.RepoRoot, "-c", noHooks, "fetch", "--quiet", "--no-tags", "origin"); err != nil {
 		g.log("fetch failed", err)
 		return maintenance.PRResult{}, err
 	}
@@ -368,18 +414,12 @@ func (g *releasePRPort) Open(ctx context.Context, req maintenance.PRRequest) (ma
 		return maintenance.PRResult{}, maintenance.ErrPRNothingToOpen
 	}
 
-	tmp, err := os.MkdirTemp(g.cfg.TempDir, "spotwu-release-pr-")
-	if err != nil {
-		return maintenance.PRResult{}, fmt.Errorf("release-pr: temp dir: %w", maintenance.ErrPRGit)
-	}
-	defer func() { _ = os.RemoveAll(tmp) }()
-
-	exists, err := g.remoteBranch(ctx, req.Branch, want)
+	exists, err := g.remoteBranch(ctx, noHooks, req.Branch, want)
 	if err != nil {
 		return maintenance.PRResult{}, err
 	}
 	if !exists {
-		if err := g.commitAndPush(ctx, tmp, req); err != nil {
+		if err := g.commitAndPush(ctx, tmp, noHooks, req); err != nil {
 			return maintenance.PRResult{}, err
 		}
 		if g.afterPush != nil {
@@ -388,7 +428,7 @@ func (g *releasePRPort) Open(ctx context.Context, req maintenance.PRRequest) (ma
 	}
 	res, err := g.openPR(ctx, tmp, req, func() error {
 		// The branch an open pull request shows must still be ours.
-		ok, err := g.remoteBranch(ctx, req.Branch, want)
+		ok, err := g.remoteBranch(ctx, noHooks, req.Branch, want)
 		if err == nil && !ok {
 			err = maintenance.ErrPRBranchDiverged
 		}
@@ -454,7 +494,7 @@ func (g *releasePRPort) desired(ctx context.Context, files []string) (map[string
 // is reused only when it is one commit on top of the base that changes
 // nothing but ReleasePRFiles, and its tip has exactly the wanted content of
 // every one of them.
-func (g *releasePRPort) remoteBranch(ctx context.Context, branch string, want map[string]string) (bool, error) {
+func (g *releasePRPort) remoteBranch(ctx context.Context, noHooks, branch string, want map[string]string) (bool, error) {
 	ref := "refs/heads/" + branch
 	out, err := g.git(ctx, g.cfg.RepoRoot, "ls-remote", "--heads", "origin", ref)
 	if err != nil {
@@ -465,7 +505,7 @@ func (g *releasePRPort) remoteBranch(ctx context.Context, branch string, want ma
 		return false, nil
 	}
 	tracking := "refs/remotes/origin/" + branch
-	if _, err := g.git(ctx, g.cfg.RepoRoot, "fetch", "--quiet", "--no-tags", "origin", "+"+ref+":"+tracking); err != nil {
+	if _, err := g.git(ctx, g.cfg.RepoRoot, "-c", noHooks, "fetch", "--quiet", "--no-tags", "origin", "+"+ref+":"+tracking); err != nil {
 		g.log("fetch of the branch failed", err)
 		return false, err
 	}
@@ -501,21 +541,14 @@ func (g *releasePRPort) remoteBranch(ctx context.Context, branch string, want ma
 // commitAndPush commits req.Files in a detached worktree of the base branch
 // inside tmp and pushes it to req.Branch without force. The worktree is
 // removed even when the context is cancelled.
-func (g *releasePRPort) commitAndPush(ctx context.Context, tmp string, req maintenance.PRRequest) (err error) {
+func (g *releasePRPort) commitAndPush(ctx context.Context, tmp, noHooks string, req maintenance.PRRequest) (err error) {
 	wt := filepath.Join(tmp, "worktree")
-	// An empty hooks directory: the operator's hooks (post-checkout, LFS,
-	// pre-push, …) never run for this commit.
-	hooks := filepath.Join(tmp, "hooks")
-	if err := os.Mkdir(hooks, 0o700); err != nil {
-		return fmt.Errorf("release-pr: hooks dir: %w", maintenance.ErrPRGit)
-	}
-	noHooks := "core.hooksPath=" + hooks
 	if _, err := g.git(ctx, g.cfg.RepoRoot, "-c", noHooks, "worktree", "add", "--quiet", "--detach", wt, g.baseRef()); err != nil {
 		g.log("worktree add failed", err)
-		g.removeWorktree(ctx, wt)
+		g.removeWorktree(ctx, noHooks, wt)
 		return err
 	}
-	defer g.removeWorktree(ctx, wt)
+	defer g.removeWorktree(ctx, noHooks, wt)
 	for _, f := range req.Files {
 		if !g.present(f) {
 			continue
@@ -549,10 +582,10 @@ func (g *releasePRPort) commitAndPush(ctx context.Context, tmp string, req maint
 
 // removeWorktree removes the worktree, detached from the job's cancel. Only
 // when that fails is its directory deleted and the stale record pruned.
-func (g *releasePRPort) removeWorktree(ctx context.Context, wt string) {
+func (g *releasePRPort) removeWorktree(ctx context.Context, noHooks, wt string) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), prCleanupBudget)
 	defer cancel()
-	if _, err := g.git(ctx, g.cfg.RepoRoot, "worktree", "remove", "--force", wt); err != nil {
+	if _, err := g.git(ctx, g.cfg.RepoRoot, "-c", noHooks, "worktree", "remove", "--force", wt); err != nil {
 		g.log("worktree remove failed", err)
 		_ = os.RemoveAll(wt)
 		_, _ = g.git(ctx, g.cfg.RepoRoot, "worktree", "prune")

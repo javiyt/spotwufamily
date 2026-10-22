@@ -561,3 +561,61 @@ func TestReleasePRPortSkipsOperatorHooks(t *testing.T) {
 	require.Equal(t, before, r.state())
 	r.requireClean()
 }
+
+// requireOriginRefused checks that a push-redirecting origin configuration
+// makes release-pr unavailable and Open refuse before anything is pushed.
+func requireOriginRefused(t *testing.T, r *prRepo) {
+	t.Helper()
+	port := r.port(true)
+	p, err := port.Check(context.Background())
+	require.NoError(t, err)
+	require.True(t, p.OriginResolved)
+	require.False(t, p.OriginMatchesRepo)
+	ok, reason := maintenance.NewReleasePR(maintenance.PRDeps{Port: port}).Available()
+	require.False(t, ok)
+	require.Contains(t, reason, "does not point at the configured repository")
+	p.CatalogDigest, p.ManifestContentSHA256 = strings.Repeat("c", 64), r.manifestSHA
+	_, err = port.Open(context.Background(), r.request(p))
+	require.ErrorIs(t, err, maintenance.ErrPROriginMismatch)
+	require.NotContains(t, err.Error(), "fork")
+	require.Empty(t, r.remoteBranches(), "nothing pushed to origin")
+	require.Empty(t, r.ghCalls(), "gh never ran")
+	r.requireClean()
+}
+
+// forkBare is a second temp bare repository the push could be redirected to.
+func forkBare(t *testing.T, r *prRepo) string {
+	fork := filepath.Join(t.TempDir(), "fork.git")
+	gitRun(t, r.clone, "init", "--quiet", "--bare", fork)
+	return fork
+}
+
+func requireForkUntouched(t *testing.T, fork string) {
+	require.Empty(t, strings.TrimSpace(gitRun(t, fork, "for-each-ref", "refs/heads")), "nothing pushed to the other repository")
+}
+
+func TestReleasePRPortRefusesPushURLOfAnotherRepo(t *testing.T) {
+	r := newPRRepo(t)
+	fork := forkBare(t, r)
+	gitRun(t, r.clone, "config", "remote.origin.pushurl", "git@github.com:someone/fork.git")
+	gitRun(t, r.clone, "config", "url."+fork+".insteadOf", "git@github.com:someone/fork.git")
+	requireOriginRefused(t, r)
+	requireForkUntouched(t, fork)
+}
+
+func TestReleasePRPortAcceptsPushURLOfSameRepo(t *testing.T) {
+	r := newPRRepo(t)
+	gitRun(t, r.clone, "config", "remote.origin.pushurl", "git@github.com:Owner/Repo.git")
+	gitRun(t, r.clone, "config", "url."+r.bare+".insteadOf", "git@github.com:Owner/Repo.git")
+	p, err := r.port(true).Check(context.Background())
+	require.NoError(t, err)
+	require.True(t, p.OriginMatchesRepo)
+}
+
+func TestReleasePRPortRefusesPushInsteadOf(t *testing.T) {
+	r := newPRRepo(t)
+	fork := forkBare(t, r)
+	gitRun(t, r.clone, "config", "url."+fork+".pushInsteadOf", "https://github.com/owner/")
+	requireOriginRefused(t, r)
+	requireForkUntouched(t, fork)
+}
