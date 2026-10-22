@@ -430,9 +430,10 @@ func (a *prepAction) runStep(ctx context.Context, r jobs.Reporter, s prepStep) (
 }
 
 func (a *prepAction) verify(ctx context.Context) (stepResult, error) {
-	// The composite rewrites the snapshot next, so only db-verify fails on a
-	// stale snapshot (as the CLI's db verify does).
-	checkSnapshot := !a.composite()
+	// The composites (refresh-export, update-website) rewrite the snapshot
+	// next, so only a standalone db-verify fails on a stale snapshot (as the
+	// CLI's db verify does).
+	checkSnapshot := !a.composite() && !snapshotFollows(ctx)
 	res, err := a.deps.Verifier.Verify(ctx, checkSnapshot)
 	if err != nil {
 		if errors.Is(err, ErrDatabaseInvalid) {

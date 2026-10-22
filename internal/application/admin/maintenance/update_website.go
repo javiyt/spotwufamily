@@ -332,6 +332,9 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 	confirmed := pl.facts.catalog.Digest
 	// Every stage sees the confirmed catalog; release-pr refuses another.
 	ctx = WithConfirmedCatalogDigest(ctx, confirmed)
+	// The snapshot stage follows verify: a snapshot made stale by the seed or
+	// sync is rewritten there, not reported by verify as a partial result.
+	ctx = withSnapshotFollows(ctx)
 	for i, st := range pl.stages {
 		r.Progress(i, len(pl.stages))
 		if err := ctx.Err(); err != nil {

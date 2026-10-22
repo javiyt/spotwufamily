@@ -240,3 +240,18 @@ func ConfirmedCatalogDigest(ctx context.Context) (string, bool) {
 	d, ok := ctx.Value(confirmedCatalogKey{}).(string)
 	return d, ok && d != ""
 }
+
+type snapshotFollowsKey struct{}
+
+// withSnapshotFollows marks the context of an update-website stage: the run
+// writes (or already holds) the snapshot of the current database after its
+// verify stage, so db-verify there does not compare the snapshot, as the
+// refresh-export composite does not.
+func withSnapshotFollows(ctx context.Context) context.Context {
+	return context.WithValue(ctx, snapshotFollowsKey{}, true)
+}
+
+func snapshotFollows(ctx context.Context) bool {
+	v, _ := ctx.Value(snapshotFollowsKey{}).(bool)
+	return v
+}
