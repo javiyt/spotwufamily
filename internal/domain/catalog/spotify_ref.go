@@ -60,6 +60,15 @@ func SpotifyAlbumURL(id string) string {
 	return "https://open.spotify.com/album/" + id
 }
 
+// SpotifyTrackURL is the canonical public link of a track. It returns "" for
+// an id that is not a Spotify ID.
+func SpotifyTrackURL(id string) string {
+	if !IsSpotifyID(id) {
+		return ""
+	}
+	return "https://open.spotify.com/track/" + id
+}
+
 // SafeSpotifyReleaseURL returns the canonical album link for a release. raw is
 // trusted only when it is an https open.spotify.com/album/<id> link; anything
 // else falls back to the link derived from a valid id, and to "" when neither

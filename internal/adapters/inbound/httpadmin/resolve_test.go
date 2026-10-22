@@ -30,6 +30,7 @@ const (
 	rzReal       = "7CrVv4zLga71gdlMOMfjXL"
 	rzMixed      = "2gKwx0Lm0JoOrN2mY9Z0PG"
 	rzNewcomer   = "5rN8PqXk2mTz9LwYc3VbHa"
+	rzWu         = "34Dl2Pj3d2hTpkb1VtkhVe"
 	rzSecretVal  = "spotify-client-secret-do-not-leak-0123"
 	rzMBEvidence = "https://musicbrainz.org/artist/e70e310e-8e92-4da7-9aba-071bc6032a34"
 )
@@ -38,8 +39,22 @@ const (
 type fakeProfiles struct {
 	profiles map[string]catalog.ArtistCandidate
 	albums   map[string][]catalog.Release
+	tracks   map[string][]catalog.Track
 	err      error
 	calls    atomic.Int64
+}
+
+// GetAlbumTracks answers from the fixture and reports a cache miss for any
+// release it holds no tracklist for.
+func (f *fakeProfiles) GetAlbumTracks(_ context.Context, id string) ([]catalog.Track, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	tracks, ok := f.tracks[id]
+	if !ok {
+		return nil, artists.ErrCacheMiss
+	}
+	return tracks, nil
 }
 
 func (f *fakeProfiles) GetArtist(_ context.Context, id string) (catalog.ArtistCandidate, error) {
@@ -123,6 +138,8 @@ func newResolveEnv(t *testing.T, tweak func(*resolveEnv, *admin.ResolutionDeps))
 		{Slug: "k-g-b", Name: "K.G.B.", Category: catalog.CategoryAffiliateGroup, EditorialOrder: 19,
 			SpotifyProfiles: []catalog.SpotifyProfile{reject(rzMixed, "mixed homonym profile")}},
 		{Slug: "newcomer", Name: "Newcomer", Category: catalog.CategoryAffiliateArtist, EditorialOrder: 40},
+		{Slug: "wu-tang-clan", Name: "Wu-Tang Clan", SpotifyID: rzWu, Category: catalog.CategoryCore, EditorialOrder: 1,
+			SpotifyProfiles: []catalog.SpotifyProfile{{ID: rzWu, Status: catalog.ProfileVerified, Reviewer: "javi", ReviewedAt: "2026-10-01T00:00:00Z", Evidence: mb}}},
 	}}
 	require.NoError(t, store.Save(context.Background(), path, seed))
 
@@ -602,4 +619,43 @@ func TestNullOriginIsAcceptedOnlyWhenTheBrowserSaysSameOrigin(t *testing.T) {
 	require.Equal(t, http.StatusOK, post("same-origin"))
 	require.Equal(t, http.StatusForbidden, post("cross-site"))
 	require.Equal(t, http.StatusForbidden, post(""), "a bare null origin is not proof")
+}
+
+func TestVerifiedGroupCreditsAreOfferedAsSupportingEvidenceOnly(t *testing.T) {
+	const track = "T1111111111111111111aa"
+	env := newResolveEnv(t, func(e *resolveEnv, _ *admin.ResolutionDeps) {
+		e.spotify.tracks = map[string][]catalog.Track{"A1111111111111111111aa": {{SpotifyID: track, Name: "Opener",
+			Artists: []catalog.ArtistCandidate{{SpotifyID: rzNewcomer, Name: "Newcomer"}, {SpotifyID: rzWu, Name: "Wu-Tang Clan"}}}}}
+	})
+	page := env.get("/resolve/newcomer?q=" + rzNewcomer).Body.String()
+	require.Contains(t, page, "Credits with verified groups")
+	require.Contains(t, page, "Use as supporting credit")
+	require.Contains(t, page, `data-fill-type="credit"`)
+	require.Contains(t, page, `data-fill-url="https://open.spotify.com/track/`+track+`"`)
+	require.Contains(t, page, `data-fill-track="`+track+`"`)
+	require.Contains(t, page, `data-fill-release="A1111111111111111111aa"`)
+	require.Contains(t, page, `name="evidence_track_id"`)
+	require.Contains(t, page, "not independent")
+	require.Contains(t, page, "use musicbrainz", "the MusicBrainz suggestion stays a separate control")
+
+	// Choosing the credit and nothing else cannot verify the profile.
+	rev := env.workbenchRevision("newcomer", "?q="+rzNewcomer)
+	require.Equal(t, http.StatusSeeOther, env.post("/resolve/newcomer/apply", decision("newcomer", rzNewcomer, "accept_primary", rev, "confirm", "1")).Code)
+	rev = env.workbenchRevision("newcomer", "")
+	before := env.file()
+	credit := decision("newcomer", rzNewcomer, "verify", rev, "confirm", "1",
+		"evidence_type", "credit", "evidence_url", "https://open.spotify.com/track/"+track,
+		"evidence_release_id", "A1111111111111111111aa", "evidence_track_id", track,
+		"evidence_rationale", "credited next to Wu-Tang Clan")
+	rec := env.post("/resolve/newcomer/apply", credit)
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+	require.Equal(t, before, env.file())
+}
+
+func TestUncheckedCreditsAreNotShownAsNoCredits(t *testing.T) {
+	env := newResolveEnv(t, nil) // the fixture holds no tracklists: cache miss
+	page := env.get("/resolve/newcomer?q=" + rzNewcomer).Body.String()
+	require.Contains(t, page, "Credits with verified groups")
+	require.Contains(t, page, "not checked")
+	require.NotContains(t, page, "Use as supporting credit")
 }

@@ -304,7 +304,8 @@ func resolveForm(slug string, v url.Values) (admin.ResolveRequest, string) {
 		Verify: v.Get("verify") != "", Enable: v.Get("enable") != "",
 	}
 	if t, u, rationale := field("evidence_type"), field("evidence_url"), field("evidence_rationale"); t != "" || u != "" || rationale != "" {
-		req.Evidence = []catalog.Evidence{{Type: catalog.EvidenceType(t), URL: u, Rationale: rationale}}
+		req.Evidence = []catalog.Evidence{{Type: catalog.EvidenceType(t), URL: u, Rationale: rationale,
+			ReleaseID: field("evidence_release_id"), TrackID: field("evidence_track_id")}}
 	}
 	q := field("q")
 	if len(q) > maxQueryLen {
@@ -315,7 +316,7 @@ func resolveForm(slug string, v url.Values) (admin.ResolveRequest, string) {
 
 func echoDecision(v url.Values) []hiddenField {
 	var out []hiddenField
-	for _, name := range []string{"spotify_id", "action", "revision", "reviewer", "note", "evidence_type", "evidence_url", "evidence_rationale", "verify", "enable", "q"} {
+	for _, name := range []string{"spotify_id", "action", "revision", "reviewer", "note", "evidence_type", "evidence_url", "evidence_rationale", "evidence_release_id", "evidence_track_id", "verify", "enable", "q"} {
 		if value := v.Get(name); value != "" {
 			if len(value) > maxFormText {
 				value = value[:maxFormText]
