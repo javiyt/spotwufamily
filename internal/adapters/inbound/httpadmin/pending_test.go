@@ -221,6 +221,22 @@ func TestPendingHungProviderStillRenders(t *testing.T) {
 	require.EqualValues(t, 1, p.calls.Load())
 }
 
+func TestPendingProviderIgnoringContextDoesNotBlockPages(t *testing.T) {
+	defer httpadmin.SetPendingTimeout(100 * time.Millisecond)()
+	block := make(chan struct{})
+	t.Cleanup(func() { close(block) })
+	p, h, c := newPendingEnv(t, pendingView(), func(p *pendingOp) {
+		p.hook = func(context.Context) error { <-block; return nil }
+	})
+	for i := 0; i < 3; i++ {
+		start := time.Now()
+		rec := do(t, h, http.MethodGet, "/artists", withCookie(c))
+		require.Less(t, time.Since(start), 2*time.Second, "request %d", i)
+		require.Contains(t, rec.Body.String(), "Database catalog state unknown")
+	}
+	require.EqualValues(t, 1, p.calls.Load(), "the cached failure prevents a second blocked call")
+}
+
 func TestPendingCancelledRequestDoesNotPoisonNext(t *testing.T) {
 	p, h, c := newPendingEnv(t, pendingView())
 	release := make(chan struct{})

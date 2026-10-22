@@ -94,7 +94,25 @@ func (s *Server) pendingView(ctx context.Context) (maintenance.PendingView, bool
 func (s *Server) computePending(call *pendingCall, gen uint64) {
 	ctx, cancel := context.WithTimeout(context.Background(), pendingTimeout)
 	defer cancel()
-	v, err := s.pend.Pending(ctx)
+	type result struct {
+		v   maintenance.PendingView
+		err error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		v, err := s.pend.Pending(ctx)
+		ch <- result{v, err}
+	}()
+	// Race the provider against the deadline: a provider that ignores its
+	// context must not keep the computation in flight. Its late result is
+	// dropped.
+	var res result
+	select {
+	case res = <-ch:
+	case <-ctx.Done():
+		res.err = ctx.Err()
+	}
+	v, err := res.v, res.err
 	if err != nil {
 		s.logger.Printf("pending changes: %s", maintenance.LogText(err))
 		v = maintenance.PendingView{}
