@@ -1,3 +1,5 @@
+{{define "evsummary"}}{{if .Evidence}}<h3>Evidence you supplied</h3><ol class="evidence">{{$ind := .Independent}}{{range $i, $e := .Evidence}}<li><span class="badge">{{label $e.Type}}</span> <span class="badge{{if not (index $ind $i)}} contextual{{end}}">{{if index $ind $i}}independent{{else}}contextual{{end}}</span> {{$e.Rationale}}{{if $e.URL}} {{$e.URL}}{{end}}</li>{{end}}</ol>{{end}}{{end}}
+
 {{define "content"}}{{with .Data}}{{$p := .}}
 <section aria-labelledby="cf-h">
 <h2 id="cf-h">{{if .ActionLabel}}{{.ActionLabel}}{{else}}Profile change{{end}}{{with .Preview.Request.SpotifyID}} · <code>{{.}}</code>{{end}}</h2>
@@ -21,7 +23,7 @@
 {{range .Preview.Impact.Notes}}<p class="notice">{{.}}</p>{{end}}
 {{range .Preview.Warnings}}<p class="notice" role="alert">{{.}}</p>{{end}}
 <p class="muted">The database is never changed here. A changed mapping shows up as pending reconciliation until you run <code>artists reconcile</code>.</p>
-{{if .Evidence}}<h3>Evidence you supplied</h3><ul class="evidence">{{range .Evidence}}<li><span class="badge">{{label .Type}}</span> {{.Rationale}}{{if .URL}} {{.URL}}{{end}}</li>{{end}}</ul>{{end}}
+{{template "evsummary" .}}
 
 <form method="post" action="/resolve/{{.Preview.Artist.Slug}}/apply" class="stack">
 <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
@@ -29,7 +31,7 @@
 {{range .Fields}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
 {{if .Override}}<input type="hidden" name="override_reason" value="{{.Override}}">{{end}}
 <p class="check"><input id="cf-ok" type="checkbox" required><label for="cf-ok">I have checked the change and its downstream impact</label></p>
-<div class="actions"><button type="submit" class="primary">Confirm and save</button> <a href="{{.Back}}" data-cancel>Cancel</a></div>
+<div class="actions"><button type="submit" class="primary">Confirm and save</button> <button type="submit" formaction="{{.Edit}}" formnovalidate name="back" value="1">Edit decision</button> <a href="{{.Back}}" data-cancel>Cancel</a></div>
 </form>
 {{else}}
 {{if .NeedsOverride}}
@@ -41,7 +43,13 @@
 <p class="muted">An override never replaces the independent evidence a verified profile needs; it only explains why you accept the profile despite the contradiction.</p>
 <div class="actions"><button type="submit" class="primary">Preview again</button> <a href="{{.Back}}" data-cancel>Cancel</a></div>
 </form>
-{{else}}<p><a href="{{.Back}}">← Back to the review page</a></p>{{end}}
+{{else}}{{template "evsummary" .}}
+<form method="post" action="{{.Edit}}" class="stack">
+<input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+{{range .Fields}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
+{{if .Override}}<input type="hidden" name="override_reason" value="{{.Override}}">{{end}}
+<div class="actions"><button type="submit" class="primary" name="back" value="1">Edit decision</button> <a href="{{.Back}}">← Back to the review page</a></div>
+</form>{{end}}
 {{end}}
 </section>
 {{end}}{{end}}

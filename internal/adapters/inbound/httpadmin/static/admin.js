@@ -121,7 +121,7 @@
 })();
 
 // Profile review: remember the reviewer's name for this browser, and let a
-// suggested source fill the evidence fields of the form it sits in.
+// suggested sources accumulate as evidence rows of the form they sit in.
 (function () {
   'use strict';
   var key = 'swf-admin-reviewer';
@@ -133,17 +133,105 @@
       try { window.localStorage.setItem(key, input.value.trim()); } catch (e) { /* storage may be blocked */ }
     });
   });
+  // Evidence rows: suggestions accumulate as extra rows instead of overwriting
+  // one group of fields. Every control is a real submit button that the server
+  // handles too (/resolve/{slug}/edit); this only does the same without a reload.
+  var MAX_ROWS = 20;
+  var fields = { type: 'evidence_type', url: 'evidence_url', rationale: 'evidence_rationale', release: 'evidence_release_id', track: 'evidence_track_id' };
+
+  function rowValue(row, name) { var el = row.querySelector('[name="' + name + '"]'); return el ? el.value.trim() : ''; }
+  function rowKey(row) {
+    return [rowValue(row, fields.type), rowValue(row, fields.url), rowValue(row, fields.release), rowValue(row, fields.track)].join('\u0000');
+  }
+  function isBlank(row) {
+    return Object.keys(fields).every(function (k) { return rowValue(row, fields[k]) === ''; });
+  }
+  function setValue(row, name, value) { var el = row.querySelector('[name="' + name + '"]'); if (el) el.value = value; }
+
+  // The badge says which rows can verify on their own, as the server does.
+  function refreshBadge(row) {
+    var badge = row.querySelector('[data-independence]');
+    if (!badge) return;
+    var type = rowValue(row, fields.type);
+    var contextual = type === 'credit' || type === 'name_match';
+    badge.textContent = !type ? 'type not chosen' : contextual ? 'contextual (not independent)' : 'independent';
+    badge.classList.toggle('contextual', !!type && contextual);
+  }
+
+  // Suggestion buttons for rows that are present are shown as added, so a
+  // duplicate cannot be picked; removing the row offers it again.
+  function refreshSuggestions(box) {
+    var present = {};
+    box.querySelectorAll('[data-evidence-row]').forEach(function (row) { present[rowKey(row)] = true; });
+    box.querySelectorAll('[data-add-suggestion]').forEach(function (b) {
+      var key = [b.getAttribute('data-type'), b.getAttribute('data-url'), b.getAttribute('data-release') || '', b.getAttribute('data-track') || ''].join('\u0000');
+      var added = !!present[key];
+      b.disabled = added;
+      b.textContent = added ? 'Added' : 'Add evidence';
+    });
+  }
+
+  function addRow(box, values) {
+    var holder = box.querySelector('[data-evidence-rows]');
+    var tpl = box.querySelector('template[data-evidence-template]');
+    if (!holder || !tpl || !tpl.content) return null;
+    var rows = holder.querySelectorAll('[data-evidence-row]');
+    var row = null;
+    // A blank row waiting at the end is filled before another is added.
+    if (values && rows.length && isBlank(rows[rows.length - 1])) row = rows[rows.length - 1];
+    if (!row) {
+      if (rows.length >= MAX_ROWS) return null;
+      row = tpl.content.firstElementChild.cloneNode(true);
+      holder.appendChild(row);
+    }
+    if (values) {
+      Object.keys(fields).forEach(function (k) { setValue(row, fields[k], values[k] || ''); });
+    }
+    refreshBadge(row);
+    return row;
+  }
+
   document.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-fill-url]');
-    if (!b) return;
-    var form = b.closest('form');
-    if (!form) return;
-    var set = function (name, value) { var el = form.elements[name]; if (el) el.value = value; };
-    set('evidence_type', b.getAttribute('data-fill-type'));
-    set('evidence_url', b.getAttribute('data-fill-url'));
-    set('evidence_rationale', b.getAttribute('data-fill-rationale'));
-    set('evidence_release_id', b.getAttribute('data-fill-release') || '');
-    set('evidence_track_id', b.getAttribute('data-fill-track') || '');
+    var t = e.target.closest && e.target.closest('[data-add-suggestion], [data-add-row], [data-remove-row]');
+    if (!t || !t.closest) return;
+    var box = t.closest('[data-evidence]');
+    if (!box || !window.HTMLTemplateElement) return; // the server-rendered path handles it
+    e.preventDefault();
+    if (t.hasAttribute('data-add-suggestion')) {
+      var values = {
+        type: t.getAttribute('data-type'), url: t.getAttribute('data-url'), rationale: t.getAttribute('data-rationale'),
+        release: t.getAttribute('data-release') || '', track: t.getAttribute('data-track') || ''
+      };
+      var probe = [values.type, values.url, values.release, values.track].join('\u0000');
+      var dup = false;
+      box.querySelectorAll('[data-evidence-row]').forEach(function (r) { if (rowKey(r) === probe) dup = true; });
+      if (!dup) {
+        var row = addRow(box, values);
+        if (row) { var first = row.querySelector('textarea, input[type="url"]'); if (first) first.focus(); }
+      }
+    } else if (t.hasAttribute('data-add-row')) {
+      var added = addRow(box, null);
+      if (added) { var sel = added.querySelector('select'); if (sel) sel.focus(); }
+    } else {
+      var gone = t.closest('[data-evidence-row]');
+      if (gone) {
+        var all = box.querySelectorAll('[data-evidence-row]');
+        var next = gone.nextElementSibling || gone.previousElementSibling;
+        gone.remove();
+        if (all.length === 1) addRow(box, null); // keep one blank row to type into
+        var focus = next && next.querySelector('select');
+        if (focus) focus.focus(); else { var add = box.querySelector('[data-add-row]'); if (add) add.focus(); }
+      }
+    }
+    refreshSuggestions(box);
+  });
+
+  document.addEventListener('input', function (e) {
+    var row = e.target.closest && e.target.closest('[data-evidence-row]');
+    if (!row) return;
+    refreshBadge(row);
+    var box = row.closest('[data-evidence]');
+    if (box) refreshSuggestions(box);
   });
 })();
 

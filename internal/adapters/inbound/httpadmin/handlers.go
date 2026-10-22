@@ -379,7 +379,18 @@ var templateFuncs = template.FuncMap{
 	},
 	"seconds": seconds,
 	"cardCtx": func(c admin.Card, p workbenchPage, zone string) cardView {
-		return cardView{Card: c, Page: p, Zone: zone}
+		view := cardView{Card: c, Page: p, Zone: zone, Suggestions: suggestionsOf(c)}
+		if p.Draft != nil && p.Draft.SpotifyID == c.SpotifyID {
+			view.Draft = p.Draft
+			for i := range view.Suggestions {
+				view.Suggestions[i].Added = p.Draft.Has(view.Suggestions[i].Key)
+			}
+		}
+		return view
+	},
+	"blankRow": func() evidenceDraft { return evidenceDraft{} },
+	"rowCtx": func(row evidenceDraft, i int, p workbenchPage) evidenceRowView {
+		return evidenceRowView{Row: row, Index: i, Types: p.EvidenceTypes, Edit: editURL(p.WB.Artist.Slug), Independent: evidenceIndependent(row), Known: row.Type != ""}
 	},
 	"join":  strings.Join,
 	"label": func(v string) string { return strings.ReplaceAll(v, "_", " ") },
