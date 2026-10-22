@@ -24,17 +24,17 @@ type ArtistFingerprint struct {
 
 // AppliedCatalog is the catalog state last applied to the database.
 type AppliedCatalog struct {
-	Digest    string
-	Artists   []ArtistFingerprint
-	AppliedAt string
+	Digest    string              `json:"digest"`
+	Artists   []ArtistFingerprint `json:"artists"`
+	AppliedAt string              `json:"applied_at"`
 }
 
 // StageCheckpoint records the digests a stage last completed against.
 type StageCheckpoint struct {
-	Stage         string
-	CatalogDigest string
-	DBDigest      string
-	At            string
+	Stage         string `json:"stage"`
+	CatalogDigest string `json:"catalog_digest"`
+	DBDigest      string `json:"db_digest"`
+	At            string `json:"at"`
 }
 
 // ProvenanceStore persists what the database was built from.

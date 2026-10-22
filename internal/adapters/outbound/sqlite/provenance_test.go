@@ -71,3 +71,23 @@ func TestProvenanceEmptyOnLegacyDB(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, ok)
 }
+
+func TestProvenanceExcludedFromSnapshot(t *testing.T) {
+	ctx := context.Background()
+	database, err := sqliteadapter.Open(filepath.Join(t.TempDir(), "catalog.db"))
+	require.NoError(t, err)
+	defer func() { require.NoError(t, database.Close()) }()
+	require.NoError(t, database.Migrate(ctx))
+
+	before, err := database.Snapshot(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, database.RecordApplied(ctx, artists.AppliedCatalog{Digest: "d", AppliedAt: "2026-10-22T10:00:00Z"}))
+	require.NoError(t, database.RecordCheckpoint(ctx, artists.StageCheckpoint{Stage: artists.StageSync, CatalogDigest: "c", DBDigest: "d", At: "2026-10-22T10:00:00Z"}))
+
+	after, err := database.Snapshot(ctx)
+	require.NoError(t, err)
+	require.Equal(t, string(before), string(after))
+	require.NotContains(t, string(after), "catalog_applied")
+	require.NotContains(t, string(after), "stage_checkpoints")
+}
