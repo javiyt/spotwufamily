@@ -5,19 +5,41 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/catalogsync"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
+// SaveConfiguredArtists upserts the listed artists (their configured row,
+// aliases and Spotify IDs). Artists it does not list are left as they are.
 func (d *Database) SaveConfiguredArtists(ctx context.Context, artists []catalog.Artist) error {
+	return d.saveConfiguredArtists(ctx, artists, false)
+}
+
+// SeedCatalog makes the configured artists mirror the whole editorial
+// catalog in one transaction: it upserts every listed artist as
+// SaveConfiguredArtists does and deactivates (never deletes) the configured
+// artists the catalog no longer lists, freeing their editorial order and
+// dropping their aliases. Their releases and reconciliation state are kept,
+// and listing them again reactivates them.
+func (d *Database) SeedCatalog(ctx context.Context, artists []catalog.Artist) error {
+	return d.saveConfiguredArtists(ctx, artists, true)
+}
+
+func (d *Database) saveConfiguredArtists(ctx context.Context, artists []catalog.Artist, whole bool) error {
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin configured artists transaction: %w", err)
 	}
 	defer rollbackUnlessCommitted(tx)
 
+	if whole {
+		if err := deactivateUnlisted(ctx, tx, artists); err != nil {
+			return err
+		}
+	}
 	for _, artist := range artists {
 		spotifyID := sql.NullString{String: artist.SpotifyID, Valid: artist.SpotifyID != ""}
 		if _, err := tx.ExecContext(ctx, `
@@ -48,6 +70,11 @@ ON CONFLICT(slug) DO UPDATE SET
 			return fmt.Errorf("upsert configured artist %s: %w", artist.Slug, err)
 		}
 
+		// The catalog's alias list replaces the stored one, so a removed
+		// alias is never exported again.
+		if _, err := tx.ExecContext(ctx, `DELETE FROM artist_aliases WHERE artist_slug = ?`, artist.Slug); err != nil {
+			return fmt.Errorf("delete aliases for %s: %w", artist.Slug, err)
+		}
 		for index, alias := range artist.Aliases {
 			if _, err := tx.ExecContext(ctx, `
 INSERT INTO artist_aliases(artist_slug, alias, position)
@@ -93,6 +120,29 @@ VALUES (?, ?, ?, ?)`,
 		return fmt.Errorf("commit configured artists transaction: %w", err)
 	}
 
+	return nil
+}
+
+// deactivateUnlisted deactivates the configured artists not in artists and
+// drops their aliases.
+func deactivateUnlisted(ctx context.Context, tx *sql.Tx, artists []catalog.Artist) error {
+	listed := make([]any, 0, len(artists))
+	marks := make([]string, 0, len(artists))
+	for _, a := range artists {
+		listed = append(listed, a.Slug)
+		marks = append(marks, "?")
+	}
+	where := "1 = 1"
+	if len(marks) > 0 {
+		where = "slug NOT IN (" + strings.Join(marks, ", ") + ")"
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE configured_artists SET active = 0, editorial_order = NULL WHERE `+where, listed...); err != nil {
+		return fmt.Errorf("deactivate removed configured artists: %w", err)
+	}
+	aliasWhere := strings.Replace(where, "slug NOT IN", "artist_slug NOT IN", 1)
+	if _, err := tx.ExecContext(ctx, `DELETE FROM artist_aliases WHERE `+aliasWhere, listed...); err != nil {
+		return fmt.Errorf("delete aliases of removed configured artists: %w", err)
+	}
 	return nil
 }
 
