@@ -619,3 +619,20 @@ func TestReleasePRPortRefusesPushInsteadOf(t *testing.T) {
 	requireOriginRefused(t, r)
 	requireForkUntouched(t, fork)
 }
+
+func TestReleasePRPortRefusesEmptyPushInsteadOf(t *testing.T) {
+	r := newPRRepo(t)
+	fork := forkBare(t, r)
+	gitRun(t, r.clone, "config", "url."+fork+".pushInsteadOf", "")
+	requireOriginRefused(t, r)
+	requireForkUntouched(t, fork)
+}
+
+func TestReleasePRPortRefusesSecondOriginURLOfAnotherRepo(t *testing.T) {
+	r := newPRRepo(t)
+	fork := forkBare(t, r)
+	gitRun(t, r.clone, "config", "--add", "remote.origin.url", "git@github.com:someone/fork.git")
+	gitRun(t, r.clone, "config", "url."+fork+".insteadOf", "git@github.com:someone/fork.git")
+	requireOriginRefused(t, r)
+	requireForkUntouched(t, fork)
+}

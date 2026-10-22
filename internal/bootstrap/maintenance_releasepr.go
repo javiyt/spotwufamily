@@ -202,45 +202,76 @@ func originRepo(url string) string {
 	return m[1]
 }
 
-// originMatchesRepo reports whether origin's configured URL (raw, before any
-// insteadOf rewrite) names cfg.Repo, so the push and the pull request target
-// the same repository. The URL never leaves this function.
+// originMatchesRepo reports whether every URL origin pushes to names
+// cfg.Repo, so the push and the pull request target the same repository:
+// every raw remote.origin.url (git pushes to all of them when no pushurl is
+// set), every remote.origin.pushurl, and no url.*.pushInsteadOf rewrite of
+// them. It fails safe on any error. The URLs never leave this function.
 func (g *releasePRPort) originMatchesRepo(ctx context.Context) bool {
-	out, err := g.git(ctx, g.cfg.RepoRoot, "config", "--get", "remote.origin.url")
+	out, err := g.git(ctx, g.cfg.RepoRoot, "config", "--get-all", "remote.origin.url")
 	if err != nil {
 		return false
 	}
-	raw := strings.TrimSpace(out)
-	if !g.namesRepo(raw) {
+	raws := configLines(out)
+	if len(raws) == 0 {
 		return false
 	}
-	// A push URL, when set, must name the same repository.
+	for _, u := range raws {
+		if !g.namesRepo(u) {
+			return false
+		}
+	}
+	// Push URLs, when set, must name the same repository.
 	push, err := g.git(ctx, g.cfg.RepoRoot, "config", "--get-all", "remote.origin.pushurl")
 	switch {
 	case err == nil:
-		for _, u := range strings.Split(strings.TrimSpace(push), "\n") {
+		pushes := configLines(push)
+		if len(pushes) == 0 {
+			return false
+		}
+		for _, u := range pushes {
 			if !g.namesRepo(u) {
 				return false
 			}
 		}
+		raws = append(raws, pushes...)
 	case exitCode(err) != 1: // 1: not set
 		return false
 	}
-	// No pushInsteadOf rewrite may apply to the origin URL: it would send
-	// the push somewhere else than the URL checked above.
+	// No pushInsteadOf rewrite may apply: it would send the push somewhere
+	// else than the URLs checked above. An empty prefix matches every URL.
 	rewrites, err := g.git(ctx, g.cfg.RepoRoot, "config", "--get-regexp", `^url\..*\.pushinsteadof$`)
 	switch {
 	case err == nil:
-		for _, line := range strings.Split(strings.TrimSpace(rewrites), "\n") {
+		for _, line := range strings.Split(rewrites, "\n") {
+			if strings.TrimSpace(line) == "" {
+				continue
+			}
 			_, prefix, _ := strings.Cut(line, " ")
-			if prefix != "" && strings.HasPrefix(raw, prefix) {
+			if strings.TrimSpace(prefix) == "" {
 				return false
+			}
+			for _, u := range raws {
+				if strings.HasPrefix(u, prefix) {
+					return false
+				}
 			}
 		}
 	case exitCode(err) != 1: // 1: none configured
 		return false
 	}
 	return true
+}
+
+// configLines splits git config output into its non-empty values.
+func configLines(out string) []string {
+	var lines []string
+	for _, l := range strings.Split(out, "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			lines = append(lines, l)
+		}
+	}
+	return lines
 }
 
 func (g *releasePRPort) namesRepo(url string) bool {
