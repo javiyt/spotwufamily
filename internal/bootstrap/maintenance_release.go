@@ -130,10 +130,42 @@ func (s journalPrepared) RecordPrepared(sha string) error {
 		return err
 	}
 	tmp := s.recordPath() + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+	if err := writeSynced(tmp, data); err != nil {
+		_ = os.Remove(tmp)
 		return err
 	}
-	return os.Rename(tmp, s.recordPath())
+	if err := os.Rename(tmp, s.recordPath()); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return syncDir(filepath.Dir(s.recordPath()))
+}
+
+// writeSynced writes data to path and flushes it to disk before closing.
+func writeSynced(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
+
+// syncDir flushes a directory entry (the rename) to disk.
+func syncDir(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = d.Close() }()
+	return d.Sync()
 }
 
 func (s journalPrepared) recorded() (preparedRecord, bool) {

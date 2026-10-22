@@ -28,6 +28,8 @@ type bulkDB struct {
 	failSlug string
 	// onApply runs while the transaction applies the artist.
 	onApply func(slug string)
+	// clearErr fails ClearProvenance.
+	clearErr error
 }
 
 func (s *bulkDB) ActiveAssociations(_ context.Context, slug string) ([]artists.Association, error) {
@@ -83,7 +85,7 @@ func (s *bulkDB) RestoreAssociations(context.Context, string, string) (int, int,
 func (s *bulkDB) ClearProvenance(context.Context) error {
 	s.log.add("clear-provenance")
 	s.cleared++
-	return nil
+	return s.clearErr
 }
 
 // bulkPort drives the real bulk use case over the in-memory stores.
@@ -514,5 +516,25 @@ func TestReconcileAllApplyLockedFailsWithConflict(t *testing.T) {
 	}
 	if len(fx.db.backups) != 0 || fx.db.batches != 0 {
 		t.Fatal("nothing runs without the lock")
+	}
+}
+
+func TestReconcileAllApplyOnlySaysStatusResetWhenItWas(t *testing.T) {
+	fx := newBulkFixture()
+	fx.db.failSlug = "meth"
+	_, out, _, err := runAction(t, NewReconcileAllApply(fx.deps), Params{})
+	if err == nil || !strings.Contains(out.Result.Summary, rolledBackProvenanceMsg) {
+		t.Fatalf("cleared: %q %v", out.Result.Summary, err)
+	}
+
+	fx = newBulkFixture()
+	fx.db.failSlug = "meth"
+	fx.db.clearErr = errors.New("database is locked")
+	_, out, _, err = runAction(t, NewReconcileAllApply(fx.deps), Params{})
+	if err == nil || strings.Contains(out.Result.Summary, rolledBackProvenanceMsg) {
+		t.Fatalf("not cleared but says reset: %q %v", out.Result.Summary, err)
+	}
+	if strings.Contains(out.Result.Summary, "locked") {
+		t.Fatalf("raw error in summary %q", out.Result.Summary)
 	}
 }

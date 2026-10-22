@@ -317,7 +317,8 @@ func (a *reconcileAllAction) rolledBack(ctx context.Context, changes []artists.R
 	default:
 		summary = "Bulk reconcile stopped before applying any artist; the database is unchanged."
 	}
-	if attempted {
+	// Only say the status was reset when clearing it succeeded.
+	if attempted && !errors.Is(err, artists.ErrProvenanceNotCleared) {
 		summary += rolledBackProvenanceMsg
 	}
 	out := jobs.Outcome{Result: jobs.Result{Summary: summary, Report: rep}}

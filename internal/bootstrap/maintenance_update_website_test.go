@@ -334,3 +334,18 @@ func TestUpdateWebsiteConvergesForARevertedIDSetAndARemovedArtist(t *testing.T) 
 		require.Equal(t, 0, active)
 	})
 }
+
+func TestPreparedSidecarIsReadBackAndLeavesNoTempFile(t *testing.T) {
+	dir := t.TempDir()
+	s := journalPrepared{path: filepath.Join(dir, "admin", "jobs.jsonl")}
+	require.NoError(t, s.RecordPrepared(localSHA))
+	sha, ok := s.LastPrepared()
+	require.True(t, ok)
+	require.Equal(t, localSHA, sha)
+	entries, err := os.ReadDir(filepath.Join(dir, "admin"))
+	require.NoError(t, err)
+	for _, e := range entries {
+		require.False(t, strings.HasSuffix(e.Name(), ".tmp"), e.Name())
+	}
+	require.Error(t, s.RecordPrepared("not-a-hash"))
+}

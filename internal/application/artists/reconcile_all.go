@@ -24,6 +24,10 @@ type BulkReconcileStore interface {
 	ClearProvenance(ctx context.Context) error
 }
 
+// ErrProvenanceNotCleared is joined to a rolled back bulk apply's error when
+// the recorded provenance could not be cleared afterwards.
+var ErrProvenanceNotCleared = errors.New("provenance not cleared after rollback")
+
 // BulkApplyError is a bulk apply that failed and was rolled back.
 type BulkApplyError struct {
 	// Slug is the artist being applied when it failed; empty when every
@@ -204,7 +208,7 @@ func (r ReconcileAll) Apply(ctx context.Context, in ReconcileAllInput) ([]Reconc
 		// The recorded provenance is dropped all the same, so the database
 		// reads as unknown until it is checked again.
 		if clearErr := r.store.ClearProvenance(context.WithoutCancel(ctx)); clearErr != nil {
-			err = errors.Join(err, fmt.Errorf("clear provenance: %w", clearErr))
+			err = errors.Join(err, fmt.Errorf("%w: %w", ErrProvenanceNotCleared, clearErr))
 		}
 		return reports, err
 	}
