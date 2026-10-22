@@ -132,6 +132,7 @@ var actionSpecs = map[string]actionSpec{
 	"reconcile-all-apply":      {Group: "Reconcile", Description: "Apply every artist's pending association changes in one step: one backup first, and any failure rolls every artist back."},
 	"release-prepare":          {Group: "Release", Description: "Build the catalog release package.", Guided: "/publish"},
 	"release-publish":          {Group: "Release", Description: "Publish the prepared release to GitHub.", Guided: "/publish"},
+	"release-pr":               {Group: "Release", Description: "Commit the catalog, its review log and the release manifest to a new branch from origin and open a pull request. Your checkout is not changed; nothing is merged."},
 }
 
 func specFor(name string) actionSpec {

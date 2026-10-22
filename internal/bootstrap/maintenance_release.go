@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"log/slog"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -45,9 +46,11 @@ func NewReleaseScript(repoRoot, repo string, logger *slog.Logger) (maintenance.R
 	return release.New(release.Config{RepoRoot: repoRoot, Repo: repo, Logger: logger})
 }
 
-// NewReleaseActions wires release-prepare and release-publish to the release
-// script, the job journal and the database lock. These are the only actions
-// that reach the Releaser, and only release-publish publishes.
+// NewReleaseActions wires release-prepare, release-publish and release-pr to
+// the release script, the job journal and the database lock. These are the
+// only actions that reach the Releaser, and only release-publish publishes;
+// release-pr only reads its preflight, then pushes a branch and opens a pull
+// request.
 func NewReleaseActions(cfg ReleaseActionsConfig) ([]maintenance.Action, error) {
 	releaser := cfg.Releaser
 	if releaser == nil {
@@ -71,7 +74,23 @@ func NewReleaseActions(cfg ReleaseActionsConfig) ([]maintenance.Action, error) {
 	if cfg.CatalogPath != "" {
 		deps.Provenance = newProvenance(cfg.DBPath, cfg.CatalogPath)
 	}
-	return []maintenance.Action{maintenance.NewReleasePrepare(deps), maintenance.NewReleasePublish(deps)}, nil
+	actions := []maintenance.Action{maintenance.NewReleasePrepare(deps), maintenance.NewReleasePublish(deps)}
+	if releasePRApplies(cfg) {
+		port := NewReleasePRPort(ReleasePRConfig{RepoRoot: cfg.RepoRoot, Repo: cfg.Repo, Releaser: releaser, Logger: cfg.Logger})
+		actions = append(actions, maintenance.NewReleasePR(maintenance.PRDeps{Port: port, Changes: port.Changes}))
+	}
+	return actions, nil
+}
+
+// releasePRApplies reports whether release-pr commits the catalog the admin
+// edits: it always commits the repository's own data/artists.yaml, so an
+// admin configured with another catalog file does not get it.
+func releasePRApplies(cfg ReleaseActionsConfig) bool {
+	if cfg.CatalogPath == "" {
+		return true
+	}
+	want := filepath.Join(cfg.RepoRoot, filepath.FromSlash(prCatalogFile))
+	return filepath.Clean(cfg.CatalogPath) == filepath.Clean(want)
 }
 
 var contentSHAPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)

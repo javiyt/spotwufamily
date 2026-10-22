@@ -1,0 +1,348 @@
+package maintenance
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/javiyt/spotwufamily/internal/application/artists"
+	"github.com/javiyt/spotwufamily/internal/application/jobs"
+)
+
+var (
+	prCatalogDigest = strings.Repeat("c", 64)
+	prManifestSHA   = strings.Repeat("d", 64)
+)
+
+// fakePRPort records Open requests and returns canned answers.
+type fakePRPort struct {
+	mu       sync.Mutex
+	prereq   PRPrereq
+	checkErr error
+	opened   []PRRequest
+	result   PRResult
+	openErr  error
+	// openFn, when set, replaces the canned Open answer.
+	openFn func(context.Context, PRRequest) (PRResult, error)
+}
+
+func (f *fakePRPort) Check(context.Context) (PRPrereq, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p := f.prereq
+	p.FilesPresent = slices.Clone(p.FilesPresent)
+	p.FilesChanged = slices.Clone(p.FilesChanged)
+	return p, f.checkErr
+}
+
+func (f *fakePRPort) Open(ctx context.Context, req PRRequest) (PRResult, error) {
+	f.mu.Lock()
+	f.opened = append(f.opened, req)
+	fn := f.openFn
+	f.mu.Unlock()
+	if fn != nil {
+		return fn(ctx, req)
+	}
+	return f.result, f.openErr
+}
+
+func (f *fakePRPort) set(fn func(*PRPrereq)) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	fn(&f.prereq)
+}
+
+func readyPRPort() *fakePRPort {
+	return &fakePRPort{
+		prereq: PRPrereq{
+			GhAuthenticated: true, OriginResolved: true, Repo: "javiyt/spotwufamily", BaseBranch: "main",
+			ManifestMatchesLocal: true, ManifestContentSHA256: prManifestSHA, ReleaseTag: "catalog-20261022T100000Z-abcdef12",
+			CatalogDigest: prCatalogDigest,
+			FilesPresent:  slices.Clone(ReleasePRFiles),
+			FilesChanged:  []string{"data/artists.yaml", "data/catalog.release.json"},
+		},
+		result: PRResult{URL: "https://github.com/javiyt/spotwufamily/pull/42"},
+	}
+}
+
+func prDeps(port *fakePRPort, changes []artists.ArtistChange) PRDeps {
+	return PRDeps{Port: port, Changes: func(context.Context) ([]artists.ArtistChange, error) { return changes, nil }}
+}
+
+func TestReleasePRDescribesItself(t *testing.T) {
+	a := NewReleasePR(prDeps(readyPRPort(), nil))
+	if a.Name() != "release-pr" {
+		t.Fatalf("name %q", a.Name())
+	}
+	d := a.(Describer).Describe()
+	if !d.UsesNetwork || !d.Destructive || d.Title == "" {
+		t.Fatalf("describe %+v", d)
+	}
+	if err := a.Validate(Params{"x": "1"}); err == nil {
+		t.Fatal("unknown params are rejected")
+	}
+	if err := a.Validate(nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReleasePRPreview(t *testing.T) {
+	port := readyPRPort()
+	changes := []artists.ArtistChange{
+		{Slug: "rza", Kinds: []artists.ChangeKind{artists.ChangeVerified}},
+		{Slug: "gza", Kinds: []artists.ChangeKind{artists.ChangeIDsAdded, artists.ChangeMetadata}},
+	}
+	a := NewReleasePR(prDeps(port, changes))
+	pv, err := a.Preview(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pv.RequiresTyped != "open pull request" || !pv.Destructive || !pv.UsesNetwork || pv.Fingerprint == "" {
+		t.Fatalf("preview %+v", pv)
+	}
+	want := map[string]string{
+		"Repository":  "javiyt/spotwufamily",
+		"Base branch": "main",
+		"Branch":      "catalog-update-cccccccccccc-dddddddddddd",
+		"Files":       "data/artists.yaml, data/artists.yaml.reviews.jsonl, data/catalog.release.json",
+		"Title":       "Update catalog: gza, rza",
+	}
+	got := map[string]string{}
+	for _, l := range pv.Scope {
+		got[l.Label] = l.Value
+		if strings.Contains(l.Value, "/Users") || strings.Contains(l.Value, "@") {
+			t.Fatalf("scope line carries a path or account: %+v", l)
+		}
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Fatalf("scope %q = %q, want %q (all %v)", k, got[k], v, got)
+		}
+	}
+}
+
+func TestReleasePRFilesOmitMissing(t *testing.T) {
+	port := readyPRPort()
+	port.set(func(p *PRPrereq) { p.FilesPresent = []string{"data/artists.yaml", "data/catalog.release.json"} })
+	a := NewReleasePR(prDeps(port, nil))
+	_, out, _, err := runAction(t, a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Status != jobs.StatusSucceeded {
+		t.Fatalf("outcome %+v", out)
+	}
+	if got := port.opened[0].Files; !slices.Equal(got, []string{"data/artists.yaml", "data/catalog.release.json"}) {
+		t.Fatalf("files %v", got)
+	}
+	if port.opened[0].Title != "Update catalog data" {
+		t.Fatalf("empty change list gives the generic title, got %q", port.opened[0].Title)
+	}
+}
+
+func TestReleasePRTitleAndBody(t *testing.T) {
+	changes := []artists.ArtistChange{
+		{Slug: "rza", Kinds: []artists.ChangeKind{artists.ChangeVerified}},
+		{Slug: "gza", Kinds: []artists.ChangeKind{artists.ChangeIDsAdded, artists.ChangeMetadata}},
+		{Slug: "method-man", Kinds: []artists.ChangeKind{artists.ChangeAdded}},
+		{Slug: "raekwon", Kinds: []artists.ChangeKind{artists.ChangeRelationships}},
+	}
+	port := readyPRPort()
+	a := NewReleasePR(prDeps(port, changes))
+	if _, _, _, err := runAction(t, a, nil); err != nil {
+		t.Fatal(err)
+	}
+	req := port.opened[0]
+	if req.Title != "Update catalog: gza, method-man, raekwon, …" {
+		t.Fatalf("title %q", req.Title)
+	}
+	for _, want := range []string{"gza: ids_added, metadata", "rza: verified", "catalog-20261022T100000Z-abcdef12", "Pages"} {
+		if !strings.Contains(req.Body, want) {
+			t.Fatalf("body lacks %q:\n%s", want, req.Body)
+		}
+	}
+	if req.Branch != "catalog-update-cccccccccccc-dddddddddddd" {
+		t.Fatalf("branch %q", req.Branch)
+	}
+	if err := ValidatePRRequest(req); err != nil {
+		t.Fatalf("generated request is valid: %v", err)
+	}
+}
+
+func TestReleasePRAvailability(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*PRPrereq)
+		reason string
+	}{
+		{"gh", func(p *PRPrereq) { p.GhAuthenticated = false }, ghNotAuthenticatedReason},
+		{"origin", func(p *PRPrereq) { p.OriginResolved = false }, prOriginReason},
+		{"manifest", func(p *PRPrereq) { p.ManifestMatchesLocal = false }, prManifestReason},
+		{"nothing", func(p *PRPrereq) { p.FilesChanged = []string{"data/artists.yaml.reviews.jsonl"} }, prNothingReason},
+	}
+	seen := map[string]bool{}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			port := readyPRPort()
+			port.set(c.mutate)
+			ok, reason := NewReleasePR(prDeps(port, nil)).Available()
+			if ok || reason != c.reason {
+				t.Fatalf("available=%v reason=%q, want %q", ok, reason, c.reason)
+			}
+			if strings.Contains(reason, "/") && c.name != "gh" {
+				t.Fatalf("reason carries a path: %q", reason)
+			}
+		})
+		seen[c.reason] = true
+	}
+	if len(seen) != len(cases) {
+		t.Fatal("reasons are distinct")
+	}
+	ok, reason := NewReleasePR(prDeps(readyPRPort(), nil)).Available()
+	if !ok || reason != "" {
+		t.Fatalf("ready: %v %q", ok, reason)
+	}
+	port := readyPRPort()
+	port.checkErr = errors.New("boom /Users/secret")
+	ok, reason = NewReleasePR(prDeps(port, nil)).Available()
+	if ok || strings.Contains(reason, "/Users") {
+		t.Fatalf("check error: %v %q", ok, reason)
+	}
+}
+
+func TestReleasePRSpecRefusesUnready(t *testing.T) {
+	port := readyPRPort()
+	a := NewReleasePR(prDeps(port, nil))
+	ctx := confirmedCtx(t, a, nil)
+	port.set(func(p *PRPrereq) { p.ManifestMatchesLocal = false })
+	if _, err := a.Spec(ctx, nil); err == nil {
+		t.Fatal("an unpinned manifest is refused")
+	}
+	if _, err := a.Spec(context.Background(), nil); err == nil {
+		t.Fatal("spec without a confirmed preview fails closed")
+	}
+	if len(port.opened) != 0 {
+		t.Fatal("nothing opened")
+	}
+}
+
+func TestReleasePRAbortsWhenCatalogChangedAfterConfirm(t *testing.T) {
+	port := readyPRPort()
+	a := NewReleasePR(prDeps(port, nil))
+	spec, err := specFor(t, a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	port.set(func(p *PRPrereq) { p.CatalogDigest = strings.Repeat("e", 64) })
+	_, err = spec.Run(context.Background(), &recReporter{})
+	assertSafe(t, err, "stale_preview")
+	if len(port.opened) != 0 {
+		t.Fatal("nothing is committed after the catalog changed")
+	}
+}
+
+func TestReleasePROpenedAndReused(t *testing.T) {
+	port := readyPRPort()
+	a := NewReleasePR(prDeps(port, nil))
+	spec, out, _, err := runAction(t, a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(spec.Resources, ResourceCatalogYAML) || !slices.Contains(spec.Resources, ResourceRelease) {
+		t.Fatalf("resources %v", spec.Resources)
+	}
+	if !strings.Contains(out.Result.Summary, "https://github.com/javiyt/spotwufamily/pull/42") {
+		t.Fatalf("summary %q", out.Result.Summary)
+	}
+	port.result.Reused = true
+	_, out, _, err = runAction(t, a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.Result.Summary, "already open") {
+		t.Fatalf("summary %q", out.Result.Summary)
+	}
+}
+
+func TestReleasePRNothingToOpenSucceeds(t *testing.T) {
+	port := readyPRPort()
+	port.openErr = ErrPRNothingToOpen
+	_, out, _, err := runAction(t, NewReleasePR(prDeps(port, nil)), nil)
+	if err != nil || out.Status != jobs.StatusSucceeded || !strings.Contains(out.Result.Summary, "Nothing to open") {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+}
+
+func TestReleasePRErrorsAreFixedMessages(t *testing.T) {
+	for _, sentinel := range []error{ErrPROriginNewer, ErrPRBranchDiverged, ErrGitIdentity, ErrPRGit, ErrPRInvalidRequest} {
+		port := readyPRPort()
+		port.openErr = errors.Join(sentinel, errors.New("stderr: /Users/javi/repo token ghp_x user@example.com"))
+		_, _, _, err := runAction(t, NewReleasePR(prDeps(port, nil)), nil)
+		var se *SafeError
+		if !errors.As(err, &se) {
+			t.Fatalf("%v: not a SafeError: %v", sentinel, err)
+		}
+		if strings.Contains(se.Message, "/Users") || strings.Contains(se.Message, "@") || strings.Contains(se.Message, "ghp_") {
+			t.Fatalf("leaky message %q", se.Message)
+		}
+	}
+	port := readyPRPort()
+	port.openErr = ErrPROriginNewer
+	_, _, _, err := runAction(t, NewReleasePR(prDeps(port, nil)), nil)
+	if err == nil || err.Error() != "origin has newer changes to catalog data; update your checkout first" {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestReleasePRPushedButNotOpenedReportsAndIsRerunnable(t *testing.T) {
+	port := readyPRPort()
+	ctx, cancel := context.WithCancel(context.Background())
+	port.openFn = func(context.Context, PRRequest) (PRResult, error) {
+		cancel()
+		return PRResult{}, errors.Join(ErrPRNotOpened, context.Canceled)
+	}
+	a := NewReleasePR(prDeps(port, nil))
+	spec, err := a.Spec(confirmedCtx(t, a, nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := spec.Run(ctx, &recReporter{})
+	if err == nil {
+		t.Fatal("a cancelled run reports an error")
+	}
+	if !strings.Contains(out.Result.Summary, "catalog-update-cccccccccccc-dddddddddddd was pushed") ||
+		!strings.Contains(out.Result.Summary, "not opened") {
+		t.Fatalf("summary %q", out.Result.Summary)
+	}
+	port.openFn = nil
+	_, out, _, err = runAction(t, a, nil)
+	if err != nil || out.Status != jobs.StatusSucceeded {
+		t.Fatalf("rerun: %+v %v", out, err)
+	}
+}
+
+func TestValidatePRRequest(t *testing.T) {
+	ok := PRRequest{Branch: "catalog-update-cccccccccccc-dddddddddddd", Title: "Update catalog data", Body: "body",
+		Files: []string{"data/artists.yaml"}}
+	if err := ValidatePRRequest(ok); err != nil {
+		t.Fatal(err)
+	}
+	bad := []PRRequest{
+		{Branch: "main", Title: "t", Body: "b", Files: []string{"data/artists.yaml"}},
+		{Branch: ok.Branch, Title: "t", Body: "b", Files: []string{"data/artists.yaml", "go.mod"}},
+		{Branch: ok.Branch, Title: "t", Body: "b", Files: []string{"../data/artists.yaml"}},
+		{Branch: ok.Branch, Title: "t", Body: "b", Files: []string{"data/artists.yaml", "data/artists.yaml"}},
+		{Branch: ok.Branch, Title: "t", Body: "b", Files: nil},
+		{Branch: ok.Branch, Title: "a\nb", Body: "b", Files: []string{"data/artists.yaml"}},
+		{Branch: ok.Branch, Title: "", Body: "b", Files: []string{"data/artists.yaml"}},
+		{Branch: ok.Branch, Title: "t", Body: "b", Files: []string{"data/artists.yaml.reviews.jsonl"}},
+	}
+	for i, r := range bad {
+		if err := ValidatePRRequest(r); !errors.Is(err, ErrPRInvalidRequest) {
+			t.Fatalf("case %d accepted: %v", i, err)
+		}
+	}
+}
