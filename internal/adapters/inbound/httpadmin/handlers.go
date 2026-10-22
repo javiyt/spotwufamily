@@ -59,6 +59,8 @@ type view struct {
 	// Reload adds an auto refresh for every client (JS or not) while a page
 	// waits for a background check it cannot poll for.
 	Reload bool
+	// Banner is the pending-changes notice; nil when there is none.
+	Banner *banner
 }
 
 type pager struct {
@@ -446,6 +448,7 @@ func (s *Server) renderStatus(w http.ResponseWriter, r *http.Request, status int
 	if id := s.sessionID(r); s.sessions.valid(id) {
 		v.Authed, v.CSRF = true, s.sessions.csrf(id)
 		v.Flash = s.sessions.takeFlash(id)
+		v.Banner = s.pendingBanner(r.Context())
 	}
 	var buf bytes.Buffer
 	if err := s.templates[name].ExecuteTemplate(&buf, "layout", v); err != nil {

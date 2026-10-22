@@ -42,6 +42,10 @@ func (s *Server) registerPublish() {
 	if p, ok := s.op.(Publisher); ok {
 		s.pub = p
 	}
+	if p, ok := s.op.(PendingProvider); ok {
+		s.pend = p
+		s.routes["/api/v1/pending"] = route{methods: []string{http.MethodGet}, handler: s.apiPending}
+	}
 }
 
 // prereqRow is one prerequisite. The remediation is split around one code

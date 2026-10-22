@@ -99,3 +99,8 @@ button.link{border:0;background:none;color:inherit;text-decoration:underline;cur
 .badge.contextual{border-style:dashed}
 .evrow{margin:.5rem 0}.evrow legend{font-size:.9rem}
 .suggestions{list-style:none;padding-left:0}.suggestions li{margin:.5rem 0;padding:.5rem;border:1px solid var(--line);border-radius:8px}
+/* pending changes */
+.pending-banner{margin:0;border-radius:0}
+.button.disabled{opacity:.5;cursor:not-allowed}
+.stage-list{padding-left:1.5rem}.stage-list .stage{margin:.5rem 0}.stage-list p{margin:.25rem 0}
+.status-lines{padding-left:1.25rem}

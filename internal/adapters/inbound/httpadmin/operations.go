@@ -225,6 +225,7 @@ type operationsPage struct {
 	Fresh     freshView
 	Recent    []opEntryRow
 	RecentErr string
+	Pending   pendingPanel
 }
 
 func actionPage(a maintenance.ActionInfo) string {
@@ -276,6 +277,7 @@ func (s *Server) handleOperations(w http.ResponseWriter, r *http.Request) {
 		page.Operator = true
 		page.Groups = s.actionCards()
 		page.Fresh = s.freshView()
+		page.Pending = s.pendingPanel(r.Context())
 		entries, err := s.op.RecentOperations(r.Context(), recentOperations)
 		page.RecentErr = s.recentLogError(err)
 		for i, e := range entries {
