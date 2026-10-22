@@ -23,6 +23,7 @@ type Service struct {
 	now     func() time.Time
 
 	freshness FreshnessSource
+	pending   *PendingDeps
 	oplog     OperationLog
 	oplogErr  func(error)
 	// confirmMu orders a job's confirmed entry before its finished entry; it
@@ -48,6 +49,14 @@ func NewService(m *jobs.Manager, actions []Action, secret []byte, now func() tim
 	}
 	for _, o := range opts {
 		o(s)
+	}
+	if s.pending != nil {
+		a := newUpdateWebsite(s)
+		if _, dup := s.byName[a.Name()]; dup {
+			panic("maintenance: duplicate action name " + a.Name())
+		}
+		s.actions = append(s.actions, a)
+		s.byName[a.Name()] = a
 	}
 	return s
 }

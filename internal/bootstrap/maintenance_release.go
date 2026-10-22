@@ -77,7 +77,8 @@ func NewReleaseActions(cfg ReleaseActionsConfig) ([]maintenance.Action, error) {
 	actions := []maintenance.Action{maintenance.NewReleasePrepare(deps), maintenance.NewReleasePublish(deps)}
 	if releasePRApplies(cfg) {
 		port := NewReleasePRPort(ReleasePRConfig{RepoRoot: cfg.RepoRoot, Repo: cfg.Repo, Releaser: releaser, Logger: cfg.Logger})
-		actions = append(actions, maintenance.NewReleasePR(maintenance.PRDeps{Port: port, Changes: port.Changes}))
+		actions = append(actions, maintenance.NewReleasePR(maintenance.PRDeps{Port: port, Changes: port.Changes,
+			Provenance: deps.Provenance}))
 	}
 	return actions, nil
 }

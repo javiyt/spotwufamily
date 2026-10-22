@@ -12,6 +12,10 @@ const (
 	// StageRelease is a published (or already current) release.
 	StageReleasePrepare = "release-prepare"
 	StageRelease        = "release"
+	// StageSeed is a database seed from the catalog (no Spotify call);
+	// StagePR is an opened (or already open) catalog pull request.
+	StageSeed = "seed"
+	StagePR   = "release-pr"
 )
 
 // ArtistFingerprint summarises the editorial inputs of one artist. Metadata is

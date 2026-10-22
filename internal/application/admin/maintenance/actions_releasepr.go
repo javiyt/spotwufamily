@@ -133,6 +133,9 @@ type PRDeps struct {
 	Changes func(ctx context.Context) ([]artists.ArtistChange, error)
 	// Now defaults to time.Now; it times the availability cache.
 	Now func() time.Time
+	// Provenance, when set, checkpoints a pull request that is open (or not
+	// needed) for the catalog and database digests it was opened from.
+	Provenance Provenance
 }
 
 // ValidatePRRequest checks req names only ReleasePRFiles (each once, at
@@ -497,9 +500,11 @@ func (a *releasePRAction) run(ctx context.Context, r jobs.Reporter, fp string) (
 	switch {
 	case err == nil:
 	case errors.Is(err, ErrPRNothingToOpen):
-		return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{
-			Summary: "Nothing to open: the catalog and release manifest already match origin " + p.BaseBranch + ".",
-		}}, nil
+		summary := "Nothing to open: the catalog and release manifest already match origin " + p.BaseBranch + "."
+		if err := a.recordProvenance(ctx, p.CatalogDigest); err != nil {
+			summary += provenanceWarning
+		}
+		return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: summary}}, nil
 	case errors.Is(err, ErrPRNotOpened):
 		msg := "Branch " + req.Branch + " was pushed, but the pull request was not opened. Run release-pr again to open it."
 		out := jobs.Outcome{Result: jobs.Result{Summary: msg}}
@@ -522,6 +527,9 @@ func (a *releasePRAction) run(ctx context.Context, r jobs.Reporter, fp string) (
 	}
 	summary += " Merging it deploys the site; until then release " + orNone(prSafeValue(p.ReleaseTag, prTagPattern)) +
 		" is not pinned by the site."
+	if err := a.recordProvenance(ctx, p.CatalogDigest); err != nil {
+		summary += provenanceWarning
+	}
 	return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{
 		Summary: summary,
 		Report: &jobs.Report{
@@ -530,6 +538,17 @@ func (a *releasePRAction) run(ctx context.Context, r jobs.Reporter, fp string) (
 			Rows:    [][]string{{req.Branch, p.BaseBranch, url, reused}},
 		},
 	}}, nil
+}
+
+// recordProvenance checkpoints the pull request against the catalog digest
+// it was opened from (verified against the confirmed preview) and the
+// database digest now. The pull request exists, so recording it is not
+// cancellable.
+func (a *releasePRAction) recordProvenance(ctx context.Context, catalogDigest string) error {
+	if a.deps.Provenance == nil {
+		return nil
+	}
+	return recordCheckpoint(context.WithoutCancel(ctx), a.deps.Provenance, artists.StagePR, catalogDigest)
 }
 
 // prFail maps a release-pr error to a fixed message; a cancel stays a cancel.
