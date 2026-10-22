@@ -449,6 +449,9 @@ func (a *releasePRAction) verify(ctx context.Context, p PRPrereq, fp string) (PR
 	if !p.GhAuthenticated {
 		return PRRequest{}, ErrGhNotAuthenticated
 	}
+	if confirmed, ok := ConfirmedCatalogDigest(ctx); ok && p.CatalogDigest != confirmed {
+		return PRRequest{}, &SafeError{Code: "stale_preview", Message: msgCatalogChanged}
+	}
 	req := a.request(ctx, p)
 	if a.fingerprint(p, req) != fp {
 		return PRRequest{}, ErrStalePreview

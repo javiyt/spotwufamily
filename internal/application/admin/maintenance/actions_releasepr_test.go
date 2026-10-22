@@ -380,3 +380,19 @@ func TestReleasePRBaseBranchPattern(t *testing.T) {
 		}
 	}
 }
+
+func TestReleasePRRefusesACatalogOtherThanTheConfirmedOne(t *testing.T) {
+	port := readyPRPort()
+	a := NewReleasePR(prDeps(port, nil))
+	ctx := WithConfirmedCatalogDigest(confirmedCtx(t, a, Params{}), "0123456789abcdef0123")
+	spec, err := a.Spec(ctx, Params{})
+	if err == nil {
+		_, err = spec.Run(ctx, &recReporter{})
+	}
+	if err == nil || (!errors.Is(err, ErrStalePreview) && !strings.Contains(err.Error(), "catalog changed")) {
+		t.Fatalf("mismatched confirmed digest: %v", err)
+	}
+	if len(port.opened) != 0 {
+		t.Fatal("pull request opened for another catalog")
+	}
+}

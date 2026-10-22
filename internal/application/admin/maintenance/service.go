@@ -225,3 +225,18 @@ func verifiedFingerprint(ctx context.Context) (string, error) {
 	}
 	return fp, nil
 }
+
+type confirmedCatalogKey struct{}
+
+// WithConfirmedCatalogDigest returns ctx carrying the catalog digest a
+// composite run (update-website) was confirmed against. Stages that commit
+// the catalog (release-pr) refuse any other catalog.
+func WithConfirmedCatalogDigest(ctx context.Context, digest string) context.Context {
+	return context.WithValue(ctx, confirmedCatalogKey{}, digest)
+}
+
+// ConfirmedCatalogDigest returns the digest set by WithConfirmedCatalogDigest.
+func ConfirmedCatalogDigest(ctx context.Context) (string, bool) {
+	d, ok := ctx.Value(confirmedCatalogKey{}).(string)
+	return d, ok && d != ""
+}

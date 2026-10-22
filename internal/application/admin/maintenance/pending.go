@@ -243,7 +243,7 @@ func needs(f pendingFacts) map[string]StageNeed {
 	} else {
 		reconcile = len(f.pendingRecs) > 0
 		for _, c := range f.changes {
-			reconcile = reconcile || c.NeedsReconcile
+			reconcile = reconcile || needsReconcile(c)
 			sync = sync || c.NeedsSync
 		}
 		seed = f.seedNeeded
@@ -269,6 +269,19 @@ func needs(f pendingFacts) map[string]StageNeed {
 		PlanDeploy:         NeedManual,
 	}
 }
+
+// seedApplies reports whether the seed alone applies c: a change needing
+// no sync and no reconcile, or the removal of an artist without Spotify IDs
+// (the seed deactivates it; there is nothing to unlink or fetch).
+func seedApplies(c artists.ArtistChange) bool {
+	if c.NeedsSync {
+		return false
+	}
+	return !c.NeedsReconcile || (len(c.Kinds) == 1 && c.Kinds[0] == artists.ChangeRemoved)
+}
+
+// needsReconcile reports whether c needs the bulk reconcile.
+func needsReconcile(c artists.ArtistChange) bool { return c.NeedsReconcile && !seedApplies(c) }
 
 // availability reports whether an action can run now.
 type availability func(Action) (bool, string)

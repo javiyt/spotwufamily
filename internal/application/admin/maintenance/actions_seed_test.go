@@ -109,3 +109,34 @@ func TestReleasePRCheckpointsTheOpenedPullRequest(t *testing.T) {
 	}
 	prov2.assertNothing(t)
 }
+
+func TestSeedIsUnavailableUntilTheArtistsAreReconciled(t *testing.T) {
+	deps, _, log := seedFixture(baseCatalog(), metadataEdited())
+	deps.Unreconciled = func(context.Context) ([]string, error) { return []string{"gza"}, nil }
+	a := NewSeed(deps)
+	ok, reason := a.Available()
+	if ok || reason != seedUnreconciledReason {
+		t.Fatalf("available %v %q", ok, reason)
+	}
+	if _, err := a.Spec(confirmedCtx(t, a, Params{}), Params{}); err == nil {
+		t.Fatal("spec accepted while artists are not reconciled")
+	}
+	if len(log.get()) != 0 {
+		t.Fatalf("calls %v", log.get())
+	}
+	deps.Unreconciled = func(context.Context) ([]string, error) { return nil, nil }
+	if ok, _ := NewSeed(deps).Available(); !ok {
+		t.Fatal("seed unavailable with nothing to reconcile")
+	}
+}
+
+func TestSeedRecordsAnArtistRemovedWithoutIDs(t *testing.T) {
+	applied := provCatalog(provArtist("gza", "id-gza"), catalog.Artist{Slug: "old", Name: "old", Enabled: true})
+	deps, prov, _ := seedFixture(applied, provCatalog(provArtist("gza", "id-gza")))
+	if _, _, _, err := runAction(t, NewSeed(deps), Params{}); err != nil {
+		t.Fatal(err)
+	}
+	if changes := artists.DiffCatalog(*prov.applied, artists.FingerprintCatalog(provCatalog(provArtist("gza", "id-gza")))); len(changes) != 0 {
+		t.Fatalf("still pending: %+v", changes)
+	}
+}

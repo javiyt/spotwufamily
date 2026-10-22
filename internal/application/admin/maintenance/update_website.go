@@ -39,6 +39,9 @@ const (
 		"the admin stops the run before its next step."
 	msgReconcileAll = "Reconcile is all or nothing: a failure rolls every artist back and stops the run."
 	msgStageCancel  = "Cancelled while this step was running."
+	msgNeededAgain  = "The database or its update records changed outside this run, so steps that already ran " +
+		"are needed again; nothing more was published. Needed again: "
+	msgIncomplete = "every step ran, but these are still not done for the current catalog and database: "
 )
 
 var updateWebsiteColumns = []string{"stage", "outcome", "detail"}
@@ -323,6 +326,8 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 		rs.rows[i] = []string{st.def.name, OutcomeNotRun, ""}
 	}
 	confirmed := pl.facts.catalog.Digest
+	// Every stage sees the confirmed catalog; release-pr refuses another.
+	ctx = WithConfirmedCatalogDigest(ctx, confirmed)
 	for i, st := range pl.stages {
 		r.Progress(i, len(pl.stages))
 		if err := ctx.Err(); err != nil {
@@ -364,7 +369,17 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 			}
 			return rs.failed(i, &SafeError{Code: "unavailable", Message: reason + "."})
 		}
-		live := needs(f)[st.def.name] == NeedRequired
+		// The same view the plan was computed from, so plan and run agree.
+		v := a.s.view(f, fullAvailable)
+		if st.def.name == PlanReleasePublish || st.def.name == PlanPR {
+			// Nothing is published while a stage that already ran is needed
+			// again (another process wrote the database between stages, or
+			// a stage's record was not written).
+			if again := requiredStages(v, i, false); len(again) > 0 {
+				return rs.failed(i, &SafeError{Code: "stale_preview", Message: msgNeededAgain + strings.Join(again, ", ") + "."})
+			}
+		}
+		live := v.Stages[i].Need == NeedRequired
 		switch {
 		case !live && st.run:
 			rs.set(i, OutcomeSkipped, msgSkippedDone)
@@ -379,7 +394,7 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 		case !st.run:
 			return rs.failed(i, &SafeError{Code: "stale_preview", Message: msgPlanChanged})
 		}
-		out, err := a.runStage(ctx, r, st, pl.reconcileFP)
+		out, err := a.runStage(ctx, r, st, pl.reconcileFP, confirmed)
 		switch {
 		case err != nil && ctx.Err() != nil && !isFinal(err):
 			rs.set(i, OutcomeFailed, joinDetail(msgStageCancel, out.Result.Summary))
@@ -399,12 +414,56 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 		}
 	}
 	r.Progress(len(pl.stages), len(pl.stages))
+	// Success only when the digests say every stage is done now.
+	f, err := a.s.facts(ctx)
+	if err != nil {
+		return rs.cancelled(err)
+	}
+	if !f.usable() {
+		return rs.incomplete([]string{databaseUnreadableNote})
+	}
+	if left := requiredStages(a.s.view(f, fullAvailable), len(pl.stages), true); len(left) > 0 {
+		return rs.incomplete(left)
+	}
 	summary := "Website update finished for catalog " + pl.view.CatalogDigest + "." + rs.progressLine()
 	if rs.pr != "" {
 		summary += " " + rs.pr
 	}
 	summary += " " + msgMergeDeploy
 	return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: summary, Report: rs.report()}}, nil
+}
+
+// requiredStages lists the titles of the admin-run stages before index end
+// that the view still requires. The verify stage is derived from the
+// others and only counted when withVerify is set.
+func requiredStages(v PendingView, end int, withVerify bool) []string {
+	var out []string
+	for i, st := range v.Stages {
+		if i >= end {
+			break
+		}
+		switch st.Name {
+		case PlanValidate, PlanBuild, PlanDeploy:
+			continue
+		case PlanVerify:
+			if !withVerify {
+				continue
+			}
+		}
+		if st.Need == NeedRequired && st.Status != StageDone {
+			out = append(out, st.Title)
+		}
+	}
+	return out
+}
+
+// incomplete ends a run whose stages all ran but whose digests still show
+// stages to do: never a success.
+func (rs *runState) incomplete(left []string) (jobs.Outcome, error) {
+	msg := msgIncomplete + strings.Join(left, ", ") + ". Run update website again."
+	summary := "Update website did not finish: " + msg + rs.progressLine()
+	return jobs.Outcome{Result: jobs.Result{Summary: summary, Report: rs.report()}},
+		&SafeError{Code: "incomplete", Message: summary}
 }
 
 func joinDetail(parts ...string) string {
@@ -458,7 +517,7 @@ func detailIfNew(detail, msg string) string {
 // preview, as the user's single confirmation of the whole plan covers it,
 // and runs its job function. The bulk reconcile is bound to the plan
 // checksum the user confirmed instead.
-func (a *updateWebsiteAction) runStage(ctx context.Context, r jobs.Reporter, st plannedStage, reconcileFP string) (jobs.Outcome, error) {
+func (a *updateWebsiteAction) runStage(ctx context.Context, r jobs.Reporter, st plannedStage, reconcileFP, confirmed string) (jobs.Outcome, error) {
 	sub, ok := a.s.byName[st.def.action]
 	if !ok {
 		return jobs.Outcome{}, &SafeError{Code: "unavailable", Message: stageMissingReason + "."}
@@ -483,11 +542,35 @@ func (a *updateWebsiteAction) runStage(ctx context.Context, r jobs.Reporter, st 
 		}
 		fp = pv.Fingerprint
 	}
+	// The stage's preview binds whatever catalog it read: it must still be
+	// the confirmed one.
+	if err := a.sameCatalog(ctx, confirmed); err != nil {
+		return jobs.Outcome{}, err
+	}
 	spec, err := sub.Spec(WithVerifiedFingerprint(ctx, fp), maps.Clone(params))
 	if err != nil {
 		return jobs.Outcome{}, err
 	}
+	if err := a.sameCatalog(ctx, confirmed); err != nil {
+		return jobs.Outcome{}, err
+	}
 	return spec.Run(ctx, stageReporter{r: r, prefix: st.def.name})
+}
+
+// sameCatalog fails with the fixed message when the catalog digest is no
+// longer the confirmed one.
+func (a *updateWebsiteAction) sameCatalog(ctx context.Context, confirmed string) error {
+	cur, err := a.s.pending.Catalog(ctx)
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return &SafeError{Code: "validation", Message: catalogInvalidOrUnreadable(err) + "."}
+	}
+	if cur.Digest != confirmed {
+		return &SafeError{Code: "stale_preview", Message: msgCatalogChanged}
+	}
+	return nil
 }
 
 // stageReporter prefixes a stage's steps; the stage index is the run's

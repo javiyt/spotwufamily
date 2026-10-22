@@ -3,8 +3,10 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -112,4 +114,96 @@ func TestPendingStagesFollowRealDigests(t *testing.T) {
 	require.Equal(t, maintenance.StageDone, pendingStage(t, s, maintenance.PlanSeed).Status)
 	require.Equal(t, maintenance.NeedRequired, pendingStage(t, s, maintenance.PlanExport).Need,
 		"the export checkpoint was taken against the previous catalog and database")
+}
+
+const seedCatalogYAML = `
+version: 1
+profile_sync_policy: allow_unreviewed
+artists:
+  - slug: wu-tang-clan
+    name: Wu-Tang Clan
+    category: core
+    roles: [core]
+    aliases: [Wu-Tang, Clan]
+    enabled: false
+    editorial_order: 1
+    notes: ""
+  - slug: gza
+    name: GZA
+    category: core
+    roles: [core]
+    aliases: [Genius]
+    enabled: false
+    editorial_order: 2
+    notes: ""
+  - slug: old-artist
+    name: Old Artist
+    category: core
+    roles: [core]
+    aliases: [Gone]
+    enabled: false
+    editorial_order: 3
+    notes: ""
+`
+
+func exportedAliases(t *testing.T, cfg MaintenanceActionsConfig) map[string][]string {
+	t.Helper()
+	out, err := runSpec(t, prepActionsByName(cfg)["export"], maintenance.Params{})
+	require.NoError(t, err)
+	require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
+	body, err := os.ReadFile(filepath.Join(cfg.ExportOutputDir, "artists", "index.json"))
+	require.NoError(t, err)
+	var idx struct {
+		Items []struct {
+			Slug    string   `json:"slug"`
+			Aliases []string `json:"aliases"`
+		} `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(body, &idx))
+	got := map[string][]string{}
+	for _, it := range idx.Items {
+		got[it.Slug] = it.Aliases
+	}
+	return got
+}
+
+func TestSeedMirrorsRemovedAliasesAndArtistsInTheExport(t *testing.T) {
+	cfg, _ := newPrepConfig(t)
+	cfg.BackupDir = filepath.Join(t.TempDir(), "backups")
+	require.NoError(t, os.WriteFile(cfg.CatalogPath, []byte(seedCatalogYAML), 0o600))
+	migrateDB(t, cfg.DBPath)
+	seed := func() {
+		t.Helper()
+		out, err := runSpec(t, NewSeedAction(cfg), maintenance.Params{})
+		require.NoError(t, err)
+		require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
+	}
+	seed()
+	writeApplied(t, cfg.DBPath, currentFingerprint(t, cfg.CatalogPath))
+	before := exportedAliases(t, cfg)
+	require.Equal(t, []string{"Gone"}, before["old-artist"])
+
+	edited := strings.Replace(seedCatalogYAML, "aliases: [Wu-Tang, Clan]", "aliases: [Wu-Tang]", 1)
+	edited = edited[:strings.Index(edited, "  - slug: old-artist")]
+	require.NoError(t, os.WriteFile(cfg.CatalogPath, []byte(edited), 0o600))
+	seed()
+
+	after := exportedAliases(t, cfg)
+	require.Equal(t, []string{"Wu-Tang"}, after["wu-tang-clan"], "a removed alias is no longer exported")
+	require.NotContains(t, after, "old-artist", "an artist removed from the catalog is not exported")
+	require.Equal(t, before["gza"], after["gza"], "unrelated artists are untouched")
+
+	database, err := sqliteadapter.Open(cfg.DBPath)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, database.Close()) }()
+	var active int
+	require.NoError(t, database.DB().QueryRowContext(context.Background(),
+		`SELECT active FROM configured_artists WHERE slug = 'old-artist'`).Scan(&active))
+	require.Equal(t, 0, active, "the removed artist is deactivated, not deleted")
+
+	// The seed vouches for the removal: nothing is pending any more.
+	s := pendingService(t, cfg)
+	v, err := s.Pending(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, v.Changes)
 }

@@ -2,7 +2,9 @@ package maintenance
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
@@ -26,7 +28,12 @@ type SeedDeps struct {
 	Locker   Locker
 	Backuper Backuper
 	// Provenance, when set, records the artists the seed fully applied.
-	Provenance   Provenance
+	Provenance Provenance
+	// Unreconciled lists the artists whose bulk reconcile plan would still
+	// change something; the seed is refused while there are any, so it
+	// never writes new Spotify IDs before their reconcile. Nil skips the
+	// check.
+	Unreconciled func(ctx context.Context) ([]string, error)
 	DatabaseName string
 }
 
@@ -46,11 +53,38 @@ func (a *seedAction) Describe() Description {
 	return Description{Title: "Seed database from the catalog"}
 }
 
+// seedUnreconciledReason is why db-seed waits for the bulk reconcile.
+const seedUnreconciledReason = "Reconcile the artists first: some Spotify ID, verified or enabled changes are not reconciled yet"
+
 func (a *seedAction) Available() (bool, string) {
 	if !a.deps.DatabaseExists() {
 		return false, noDatabaseReason
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), availabilityTimeout)
+	defer cancel()
+	if err := a.reconciled(ctx); err != nil {
+		var se *SafeError
+		if errors.As(err, &se) {
+			return false, strings.TrimSuffix(se.Message, ".")
+		}
+		return false, seedUnreconciledReason
+	}
 	return true, ""
+}
+
+// reconciled fails while the bulk reconcile still has changes to make.
+func (a *seedAction) reconciled(ctx context.Context) error {
+	if a.deps.Unreconciled == nil {
+		return nil
+	}
+	slugs, err := a.deps.Unreconciled(ctx)
+	if err != nil {
+		return err
+	}
+	if len(slugs) > 0 {
+		return &SafeError{Code: "unavailable", Message: seedUnreconciledReason + "."}
+	}
+	return nil
 }
 
 func (a *seedAction) Validate(p Params) error { return RejectUnknown(p) }
@@ -96,6 +130,9 @@ func (a *seedAction) Spec(ctx context.Context, _ Params) (jobs.Spec, error) {
 	if fp != verified {
 		return jobs.Spec{}, ErrStalePreview
 	}
+	if err := a.reconciled(ctx); err != nil {
+		return jobs.Spec{}, Safe(err)
+	}
 	return jobs.Spec{
 		Kind:      a.Name(),
 		Resources: []string{ResourceDatabase},
@@ -127,6 +164,9 @@ func (a *seedAction) run(ctx context.Context, r jobs.Reporter, fp string) (jobs.
 	}
 	if current != fp {
 		return jobs.Outcome{}, Safe(ErrStalePreview)
+	}
+	if err := a.reconciled(ctx); err != nil {
+		return jobs.Outcome{}, a.fail(ctx, err)
 	}
 	r.Step("backing up database")
 	if err := a.deps.Backuper.Backup(ctx); err != nil {
@@ -164,7 +204,7 @@ func recordSeeded(ctx context.Context, p Provenance, used artists.AppliedCatalog
 	}
 	var runs []appliedRun
 	for _, c := range artists.DiffCatalog(prev, used) {
-		if c.NeedsSync || c.NeedsReconcile {
+		if !seedApplies(c) {
 			continue
 		}
 		runs = append(runs, appliedRun{slug: c.Slug, used: used})

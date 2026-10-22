@@ -21,8 +21,25 @@ func NewSeedAction(cfg MaintenanceActionsConfig) maintenance.Action {
 		Locker:         databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
 		Backuper:       databaseBackuper{dbPath: cfg.DBPath, dir: cfg.BackupDir},
 		Provenance:     newProvenance(cfg.DBPath, cfg.CatalogPath),
+		Unreconciled:   unreconciledArtists(cfg),
 		DatabaseName:   filepath.Base(cfg.DBPath),
 	})
+}
+
+// unreconciledArtists lists the artists whose bulk reconcile plan would
+// still change something.
+func unreconciledArtists(cfg MaintenanceActionsConfig) func(context.Context) ([]string, error) {
+	return func(ctx context.Context) ([]string, error) {
+		plan, err := reconcilePort{cfg}.PlanAll(ctx)
+		if err != nil {
+			return nil, err
+		}
+		var slugs []string
+		for _, c := range plan.Changes() {
+			slugs = append(slugs, c.Slug)
+		}
+		return slugs, nil
+	}
 }
 
 type seedPort struct{ cfg MaintenanceActionsConfig }
@@ -30,7 +47,8 @@ type seedPort struct{ cfg MaintenanceActionsConfig }
 var _ maintenance.SeedPort = seedPort{}
 
 // Seed does what the CLI's artists seed-db does on the existing database:
-// load and validate the catalog, migrate, save every configured artist.
+// load and validate the catalog, migrate, mirror the configured artists
+// (removed artists deactivated, removed aliases dropped).
 // It returns the fingerprint of the catalog it loaded.
 func (p seedPort) Seed(ctx context.Context) (artists.AppliedCatalog, error) {
 	c, err := loadValidCatalog(ctx, p.cfg.CatalogPath)
@@ -45,7 +63,7 @@ func (p seedPort) Seed(ctx context.Context) (artists.AppliedCatalog, error) {
 		return artists.AppliedCatalog{}, err
 	}
 	defer func() { _ = database.Close() }()
-	if err := database.SaveConfiguredArtists(ctx, c.Artists); err != nil {
+	if err := database.SeedCatalog(ctx, c.Artists); err != nil {
 		return artists.AppliedCatalog{}, err
 	}
 	return artists.FingerprintCatalog(c), nil

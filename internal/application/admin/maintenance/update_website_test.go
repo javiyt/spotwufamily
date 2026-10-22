@@ -88,6 +88,10 @@ type stageFake struct {
 	scope       []ScopeLine
 	// runFn replaces the default effect when set.
 	runFn func(ctx context.Context) (jobs.Outcome, error)
+	// onPreview runs during every preview after the second (the composite's
+	// preview and its confirmation preview come first).
+	onPreview func()
+	previews  atomic.Int32
 }
 
 func (f *stageFake) Name() string            { return f.name }
@@ -115,6 +119,9 @@ func (f *stageFake) setUnavailable(reason string) {
 }
 
 func (f *stageFake) Preview(context.Context, Params) (Preview, error) {
+	if n := f.previews.Add(1); n > 2 && f.onPreview != nil {
+		f.onPreview()
+	}
 	return Preview{Title: f.name, Fingerprint: f.name + "-fp", Scope: f.scope}, nil
 }
 
@@ -752,5 +759,88 @@ func TestUpdateWebsiteResultsAreFreeOfPaths(t *testing.T) {
 	}
 	if strings.Contains(text, "/Users") || strings.Contains(text, "catalog.db") {
 		t.Fatalf("path leaked: %q", text)
+	}
+}
+
+func TestUpdateWebsiteDatabaseWriteBetweenStagesIsNotSuccess(t *testing.T) {
+	h := newHarness(t, newWorld(baseCatalog(), idEdited()), nil)
+	exp := h.stages["export"]
+	exp.runFn = func(ctx context.Context) (jobs.Outcome, error) {
+		h.w.changeDB() // another process writes between snapshot and export
+		return exp.effect(ctx)
+	}
+	j := h.runToEnd(t)
+	if j.Status == jobs.StatusSucceeded {
+		t.Fatalf("a run whose snapshot went stale succeeded: %+v", j.Result)
+	}
+	if h.w.pushed.Load() != 0 {
+		t.Fatal("the pull request was opened for a stale snapshot")
+	}
+	if !strings.Contains(j.Message, "Write the database snapshot") {
+		t.Fatalf("message %q", j.Message)
+	}
+}
+
+func TestUpdateWebsiteUnrecordedCheckpointIsNotSuccess(t *testing.T) {
+	h := newHarness(t, newWorld(baseCatalog(), idEdited()), nil)
+	h.stages["release-pr"].runFn = func(context.Context) (jobs.Outcome, error) {
+		// The pull request opened but its checkpoint could not be recorded.
+		return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: "Opened." + provenanceWarning}}, nil
+	}
+	j := h.runToEnd(t)
+	if j.Status == jobs.StatusSucceeded {
+		t.Fatalf("succeeded without the pr checkpoint: %+v", j.Result)
+	}
+	if !strings.Contains(j.Message, "Open the catalog pull request") {
+		t.Fatalf("message %q", j.Message)
+	}
+}
+
+func TestUpdateWebsiteConvergesForAnArtistRemovedWithoutIDs(t *testing.T) {
+	applied := provCatalog(provArtist("gza", "id-gza"), catalog.Artist{Slug: "old", Name: "old", Enabled: true})
+	h := newHarness(t, newWorld(applied, provCatalog(provArtist("gza", "id-gza"))), nil)
+	if st := stageOf(t, h.pending(t), PlanReconcile); st.Need != NeedNotNeeded {
+		t.Fatalf("reconcile for a removal without IDs: %+v", st)
+	}
+	j := h.runToEnd(t)
+	if j.Status != jobs.StatusSucceeded {
+		t.Fatalf("status %s %q", j.Status, j.Message)
+	}
+	if v := h.pending(t); v.State != PendingClean {
+		t.Fatalf("after one run %+v", v)
+	}
+}
+
+func TestUpdateWebsiteCatalogEditedDuringAStagePreviewAborts(t *testing.T) {
+	h := newHarness(t, newWorld(baseCatalog(), idEdited()), nil)
+	h.stages["release-pr"].onPreview = func() {
+		h.w.edit(func(c *catalog.EditorialCatalog) { c.Artists[1].Name = "Edited during the preview" })
+	}
+	j := h.runToEnd(t)
+	if j.Status != jobs.StatusFailed {
+		t.Fatalf("status %s", j.Status)
+	}
+	if h.stages["release-pr"].runs.Load() != 0 || h.w.pushed.Load() != 0 {
+		t.Fatal("the pull request ran after the catalog changed")
+	}
+	if !strings.Contains(j.Message, "The catalog changed outside the admin") {
+		t.Fatalf("message %q", j.Message)
+	}
+}
+
+func TestUpdateWebsitePassesTheConfirmedDigestToEveryStage(t *testing.T) {
+	w := newWorld(baseCatalog(), idEdited())
+	h := newHarness(t, w, nil)
+	var got string
+	pr := h.stages["release-pr"]
+	pr.runFn = func(ctx context.Context) (jobs.Outcome, error) {
+		got, _ = ConfirmedCatalogDigest(ctx)
+		return pr.effect(ctx)
+	}
+	if j := h.runToEnd(t); j.Status != jobs.StatusSucceeded {
+		t.Fatalf("status %s %q", j.Status, j.Message)
+	}
+	if got != w.fingerprint().Digest {
+		t.Fatalf("release-pr saw confirmed digest %q", got)
 	}
 }
