@@ -39,6 +39,8 @@ type ReconcileDeps struct {
 	// BackupName is the display name (never an absolute path) of the backup
 	// directory.
 	BackupName string
+	// Provenance, when set, records what a committed apply reconciled.
+	Provenance Provenance
 }
 
 var reconcileColumns = []string{"kind", "artist", "item", "from", "to"}
@@ -250,9 +252,13 @@ func (a *reconcileAction) runApply(ctx context.Context, r jobs.Reporter, slug, c
 		}
 		return jobs.Outcome{}, a.fail(ctx, err)
 	}
+	warning := ""
+	if err := a.recordProvenance(ctx, rep); err != nil {
+		warning = provenanceWarning
+	}
 	if rep.Backup == nil {
 		// The use case found nothing to change and took no backup.
-		summary := fmt.Sprintf("Nothing to apply: %s is already reconciled (status %s).", slug, rep.Status)
+		summary := fmt.Sprintf("Nothing to apply: %s is already reconciled (status %s).", slug, rep.Status) + warning
 		return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: summary, Report: reconcileReport(a.Name(), rep)}}, nil
 	}
 	countReconcile(r, rep)
@@ -262,7 +268,19 @@ func (a *reconcileAction) runApply(ctx context.Context, r jobs.Reporter, slug, c
 	if rep.Status == artists.StatusAwaitingResync {
 		summary += " Run a sync of " + slug + " to finish."
 	}
+	summary += warning
 	return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: summary, Report: reconcileReport(a.Name(), rep)}}, nil
+}
+
+// recordProvenance merges the artist's Spotify state, from the catalog the
+// apply read, into the applied record. An artist still awaiting its resync is
+// not applied yet: its sync records it.
+func (a *reconcileAction) recordProvenance(ctx context.Context, rep artists.ReconcileReport) error {
+	if a.deps.Provenance == nil || rep.ResyncRequired || rep.Catalog.Digest == "" {
+		return nil
+	}
+	return mergeApplied(ctx, a.deps.Provenance, artists.StageReconcile,
+		[]appliedRun{{slug: rep.Slug, used: rep.Catalog}}, artists.MergeReconciled)
 }
 
 func countReconcile(r jobs.Reporter, rep artists.ReconcileReport) {

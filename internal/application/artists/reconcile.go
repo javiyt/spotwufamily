@@ -254,6 +254,9 @@ type ReconcileReport struct {
 	Backup           *BackupInfo            `json:"backup,omitempty"`
 	Restored         *ReconcileCounts       `json:"restored,omitempty"`
 	Items            []ReconcileItem        `json:"items"`
+	// Catalog fingerprints the editorial catalog this report was computed
+	// from. It is not part of the report output or the plan manifest.
+	Catalog AppliedCatalog `json:"-"`
 }
 
 // NeedsChanges tells whether Apply would change anything. Drift already covered
@@ -304,6 +307,7 @@ func (r ReconcileArtist) Run(ctx context.Context, in ReconcileInput) (ReconcileR
 	if artist == nil {
 		return ReconcileReport{}, fmt.Errorf("artist %q not found", in.Slug)
 	}
+	used := FingerprintCatalog(c)
 
 	if in.RestoreRetiredAt != "" {
 		albums, tracks, err := r.store.RestoreAssociations(ctx, in.Slug, in.RestoreRetiredAt)
@@ -311,6 +315,7 @@ func (r ReconcileArtist) Run(ctx context.Context, in ReconcileInput) (ReconcileR
 			return ReconcileReport{}, fmt.Errorf("restore associations: %w", err)
 		}
 		report, err := r.plan(ctx, in.Slug, artist)
+		report.Catalog = used
 		if err != nil {
 			return report, err
 		}
@@ -322,6 +327,7 @@ func (r ReconcileArtist) Run(ctx context.Context, in ReconcileInput) (ReconcileR
 	}
 
 	report, err := r.plan(ctx, in.Slug, artist)
+	report.Catalog = used
 	if err != nil {
 		return report, err
 	}

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/catalogaudit"
 	"github.com/javiyt/spotwufamily/internal/application/catalogexport"
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
@@ -106,6 +107,9 @@ type PublishPrepDeps struct {
 	Stager   ExportStager
 	Audit    RepoAuditPort
 	Locker   Locker
+	// Provenance, when set, checkpoints a successful snapshot and export.
+	// They never record the catalog as applied.
+	Provenance Provenance
 	// Display names (never absolute paths) used in previews and reports.
 	DatabaseName string
 	SnapshotName string
@@ -303,6 +307,14 @@ func (a *prepAction) run(ctx context.Context, r jobs.Reporter, fp string) (jobs.
 			return jobs.Outcome{}, Safe(ErrStalePreview)
 		}
 	}
+	// The catalog as the stages run against it, read once before they start.
+	var (
+		catalogDigest string
+		catalogErr    error
+	)
+	if a.deps.Provenance != nil && a.writes() {
+		catalogDigest, catalogErr = a.deps.Provenance.CatalogDigest(ctx)
+	}
 
 	var (
 		rows      [][]string
@@ -341,10 +353,40 @@ func (a *prepAction) run(ctx context.Context, r jobs.Reporter, fp string) (jobs.
 	rep := &jobs.Report{Name: a.name, Columns: prepColumns, Rows: rows}
 	SortRows(rep)
 	status := jobs.StatusSucceeded
+	summary := strings.Join(summaries, " ")
 	if partial {
 		status = jobs.StatusPartial
+	} else if err := a.recordProvenance(ctx, done, catalogDigest, catalogErr); err != nil {
+		summary += provenanceWarning
 	}
-	return jobs.Outcome{Status: status, Result: jobs.Result{Summary: strings.Join(summaries, " "), Report: rep}}, nil
+	return jobs.Outcome{Status: status, Result: jobs.Result{Summary: summary, Report: rep}}, nil
+}
+
+// recordProvenance checkpoints the snapshot and export steps of a fully
+// successful run.
+func (a *prepAction) recordProvenance(ctx context.Context, done []string, catalogDigest string, catalogErr error) error {
+	p := a.deps.Provenance
+	if p == nil || !a.writes() {
+		return nil
+	}
+	if catalogErr != nil {
+		return catalogErr
+	}
+	for _, s := range done {
+		stage := ""
+		switch prepStep(s) {
+		case stepSnapshot:
+			stage = artists.StageSnapshot
+		case stepExport:
+			stage = artists.StageExport
+		default:
+			continue
+		}
+		if err := recordCheckpoint(ctx, p, stage, catalogDigest); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // fail maps a step error: cancellation stays cancellation, everything else
