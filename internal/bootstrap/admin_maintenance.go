@@ -306,7 +306,7 @@ func adminRelease(cfg AdminConfig, paths AdminPaths, logger *slog.Logger) (maint
 		releaser = script
 	}
 	actions, err := NewReleaseActions(ReleaseActionsConfig{
-		RepoRoot: root, Repo: repo, DBPath: cfg.DBPath,
+		RepoRoot: root, Repo: repo, DBPath: cfg.DBPath, CatalogPath: cfg.CatalogPath,
 		JournalPath: paths.JournalPath, Logger: logger, Releaser: releaser,
 	})
 	if err != nil {

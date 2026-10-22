@@ -21,6 +21,9 @@ type ReleaseActionsConfig struct {
 	Repo string
 	// DBPath is the database whose lock the release jobs hold.
 	DBPath string
+	// CatalogPath is the editorial catalog a successful prepare or publish is
+	// checkpointed against. Empty records no provenance.
+	CatalogPath string
 	// JournalPath is the job journal the jobs.Manager persists to; the
 	// latest successful release-prepare recorded there gates publishing.
 	JournalPath string
@@ -64,6 +67,9 @@ func NewReleaseActions(cfg ReleaseActionsConfig) ([]maintenance.Action, error) {
 		PackageName:  releasePackageName,
 		ManifestName: releaseManifestName,
 		Logger:       cfg.Logger,
+	}
+	if cfg.CatalogPath != "" {
+		deps.Provenance = newProvenance(cfg.DBPath, cfg.CatalogPath)
 	}
 	return []maintenance.Action{maintenance.NewReleasePrepare(deps), maintenance.NewReleasePublish(deps)}, nil
 }

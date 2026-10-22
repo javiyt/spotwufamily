@@ -20,6 +20,7 @@ func NewReconcileActions(cfg MaintenanceActionsConfig) []maintenance.Action {
 		Artists:        catalogSlugs(cfg.CatalogPath),
 		Locker:         databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
 		BackupName:     displayName(cfg.BackupDir),
+		Provenance:     newProvenance(cfg.DBPath, cfg.CatalogPath),
 	}
 	return []maintenance.Action{maintenance.NewReconcileDryRun(deps), maintenance.NewReconcileApply(deps)}
 }
