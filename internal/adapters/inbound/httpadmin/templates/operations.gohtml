@@ -12,7 +12,7 @@
 <h2 id="pending-h">Pending changes / Update website</h2>
 {{if .Failed}}<p class="notice warn" role="status">Pending changes could not be read. Reload the page to retry.</p>
 {{else}}
-{{if .Clean}}<p class="notice"><strong>Up to date</strong> — the local database matches the catalog.</p>
+{{if .Clean}}<p class="notice"><strong>Local database up to date</strong> — the local database matches the catalog.</p>
 {{else if .Unknown}}<p class="notice warn" role="status"><strong>The database's catalog state is unknown / needs check.</strong> Run the baseline check to compare the database with the catalog.
 {{if .BaselinePage}}<a class="button" href="{{.BaselinePage}}">Run the baseline check</a>{{end}}</p>
 {{else if .Offline}}<p class="notice bad" role="alert"><strong>No local database.</strong> Create it with a sync or rebuild it from the snapshot first.</p>
@@ -42,14 +42,14 @@
 <p class="badges"><strong>{{.Title}}</strong> <span class="badge {{.NeedClass}}">{{.Need}}</span> <span class="badge {{.StatusClass}}">{{.Status}}</span></p>
 {{if .Reason}}<p class="notice warn">{{.Reason}}</p>{{end}}
 {{if .Note}}<p class="muted">{{.Note}}</p>{{end}}
-{{if .Page}}<p><a class="button" href="{{.Page}}">Review…</a></p>
-{{else if .CTADisabled}}<p><span class="button disabled" aria-disabled="true">{{.CTADisabled}}</span> <span class="muted">{{.CTAReason}}</span></p>{{end}}
+{{if .Page}}<p><a class="button" href="{{.Page}}" aria-label="Review {{.Title}}">Review…</a></p>
+{{else if .CTADisabled}}<p><span class="button disabled" aria-disabled="true" aria-describedby="stage-why-{{.Name}}" aria-label="Review {{.Title}} (unavailable)">{{.CTADisabled}}</span> <span class="muted" id="stage-why-{{.Name}}">{{.CTAReason}}</span></p>{{end}}
 </li>
 {{end}}</ol>
 
 <p>
 {{if .UpdatePage}}<a class="button primary" href="{{.UpdatePage}}">Review plan and update website</a>
-{{else}}<span class="button disabled" aria-disabled="true">Review plan and update website</span> <span class="muted">{{.UpdateReason}}</span>{{end}}
+{{else}}<span class="button disabled" aria-disabled="true" aria-describedby="update-why">Review plan and update website</span> <span class="muted" id="update-why">{{.UpdateReason}}</span>{{end}}
 </p>
 {{end}}
 </section>

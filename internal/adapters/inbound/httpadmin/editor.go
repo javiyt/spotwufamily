@@ -481,7 +481,7 @@ func (s *Server) done(w http.ResponseWriter, r *http.Request, message, location 
 // sentence with a link to refreshHintLink.
 const (
 	refreshHint     = "Catalog changed — the database, snapshot and exports may need refreshing. Review in Operations."
-	refreshHintLink = "/operations"
+	refreshHintLink = "/operations#pending"
 )
 
 // catalogChanged confirms a successful catalog write (an edit or a Spotify

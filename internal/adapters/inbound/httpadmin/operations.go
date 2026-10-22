@@ -62,6 +62,7 @@ func (s *Server) registerOperator() {
 	s.dynamic.HandleFunc("POST /operations/{action}/preview", s.handleOperationPreview)
 	s.dynamic.HandleFunc("POST /operations/{action}/run", s.handleOperationRun)
 	s.registerPublish()
+	s.registerPending()
 }
 
 // --- static per-action UI metadata ---

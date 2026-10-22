@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -25,10 +26,17 @@ type pendingOp struct {
 	view  maintenance.PendingView
 	err   error
 	calls atomic.Int32
+	// hook, when set, runs inside Pending (to block or fail it).
+	hook func(ctx context.Context) error
 }
 
-func (p *pendingOp) Pending(context.Context) (maintenance.PendingView, error) {
+func (p *pendingOp) Pending(ctx context.Context) (maintenance.PendingView, error) {
 	p.calls.Add(1)
+	if p.hook != nil {
+		if err := p.hook(ctx); err != nil {
+			return maintenance.PendingView{}, err
+		}
+	}
 	return p.view, p.err
 }
 
@@ -36,22 +44,28 @@ var _ httpadmin.PendingProvider = (*pendingOp)(nil)
 
 func pendingActions() []maintenance.ActionInfo {
 	acts := defaultActions()
-	for _, n := range []string{"update-website", "reconcile-all-dry-run", "reconcile-all-apply", "db-seed", "release-pr"} {
+	for _, n := range []string{"update-website", "reconcile-all-dry-run", "reconcile-all-apply", "db-seed", "release-pr", "db-verify", "db-snapshot", "export", "release-prepare"} {
 		acts = append(acts, maintenance.ActionInfo{Name: n, Title: n, Available: true})
 	}
 	return acts
 }
 
 func stages() []maintenance.StageView {
+	req := maintenance.NeedRequired
+	todo := maintenance.StageTodo
 	return []maintenance.StageView{
-		{Name: "validate", Title: "Validate the catalog", Need: maintenance.NeedRequired, Status: maintenance.StageDone},
-		{Name: "reconcile", Title: "Reconcile all artists", Need: maintenance.NeedRequired, Status: maintenance.StageTodo, Action: "reconcile-all-apply"},
-		{Name: "seed", Title: "Seed the database from the catalog", Need: maintenance.NeedRequired, Status: maintenance.StageTodo, Action: "db-seed"},
-		{Name: "sync", Title: "Sync from Spotify", Need: maintenance.NeedOptional, Status: maintenance.StageTodo, Action: "sync"},
+		{Name: "validate", Title: "Validate the catalog", Need: req, Status: maintenance.StageDone},
+		{Name: "reconcile", Title: "Reconcile all artists", Need: req, Status: todo, Action: "reconcile-all-apply"},
+		{Name: "seed", Title: "Seed the database from the catalog", Need: req, Status: todo, Action: "db-seed"},
+		{Name: "sync", Title: "Sync from Spotify", Need: maintenance.NeedOptional, Status: todo, Action: "sync"},
+		{Name: "verify", Title: "Verify the database", Need: req, Status: todo, Action: "db-verify"},
+		{Name: "snapshot", Title: "Write the snapshot", Need: req, Status: todo, Action: "db-snapshot"},
+		{Name: "export", Title: "Regenerate the static JSON", Need: req, Status: todo, Action: "export"},
 		{Name: "build", Title: "Build the site locally", Need: maintenance.NeedManual, Status: maintenance.StageUnknown, Note: "build the site locally with make site-build"},
-		{Name: "release-publish", Title: "Publish the release", Need: maintenance.NeedRequired, Status: maintenance.StageBlocked,
+		{Name: "release-prepare", Title: "Prepare the release", Need: req, Status: todo, Action: "release-prepare"},
+		{Name: "release-publish", Title: "Publish the release", Need: req, Status: maintenance.StageBlocked,
 			BlockedReason: "Prepare the release first", Action: "release-publish"},
-		{Name: "pr", Title: "Open the pull request", Need: maintenance.NeedRequired, Status: maintenance.StageTodo, Action: "release-pr"},
+		{Name: "pr", Title: "Open the pull request", Need: req, Status: todo, Action: "release-pr"},
 		{Name: "deploy", Title: "GitHub Pages deploy", Need: maintenance.NeedManual, Status: maintenance.StageUnknown},
 	}
 }
@@ -111,7 +125,9 @@ func TestPendingBlockedStageIsDisabledWithReason(t *testing.T) {
 	require.Contains(t, body, `class="button disabled" aria-disabled="true"`)
 	// the blocked stage's action has no live link inside the pending panel
 	panel := body[strings.Index(body, `id="pending"`):strings.Index(body, `id="freshness"`)]
-	require.NotContains(t, panel, `href="/publish"`)
+	li := panel[strings.Index(panel, "Publish the release"):]
+	li = li[:strings.Index(li, "</li>")]
+	require.NotContains(t, li, "href=")
 	require.NotContains(t, panel, `href="/operations/release-publish"`)
 }
 
@@ -125,7 +141,7 @@ func TestPendingUpToDateOnlyWhenClean(t *testing.T) {
 	}
 	_, h, c := newPendingEnv(t, maintenance.PendingView{State: maintenance.PendingClean, Stages: stages()})
 	body := do(t, h, http.MethodGet, "/operations", withCookie(c)).Body.String()
-	require.Contains(t, body, "Up to date")
+	require.Contains(t, body, "<strong>Local database up to date</strong>")
 	require.Contains(t, body, "Local database up to date")
 	require.Contains(t, body, "Published website updated: not confirmed")
 	require.NotContains(t, body, `class="banner`)
@@ -175,12 +191,60 @@ func TestPendingComputedOncePerRequest(t *testing.T) {
 	require.EqualValues(t, 1, p.calls.Load(), "short TTL cache is reused")
 }
 
-func TestPendingErrorHidesBannerAndShowsNotice(t *testing.T) {
+func TestPendingErrorShowsUnknownBannerAndPanelNotice(t *testing.T) {
 	_, h, c := newPendingEnv(t, maintenance.PendingView{}, func(p *pendingOp) { p.err = errors.New("open /Users/x/db: boom") })
 	rec := do(t, h, http.MethodGet, "/operations", withCookie(c))
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.NotContains(t, rec.Body.String(), "/Users/x")
-	require.NotContains(t, rec.Body.String(), "modified since")
+	body := rec.Body.String()
+	require.NotContains(t, body, "/Users/x")
+	require.Contains(t, body, "Database catalog state unknown — check pending changes")
+	require.Contains(t, body, `href="/operations#pending"`)
+	require.Contains(t, body, "Pending changes could not be read")
+}
+
+func TestPendingFailureComputedOncePerRequest(t *testing.T) {
+	p, h, c := newPendingEnv(t, maintenance.PendingView{}, func(p *pendingOp) { p.err = errors.New("boom") })
+	do(t, h, http.MethodGet, "/operations", withCookie(c))
+	require.EqualValues(t, 1, p.calls.Load(), "banner and panel share one failed result")
+}
+
+func TestPendingHungProviderStillRenders(t *testing.T) {
+	defer httpadmin.SetPendingTimeout(100 * time.Millisecond)()
+	p, h, c := newPendingEnv(t, pendingView(), func(p *pendingOp) {
+		p.hook = func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }
+	})
+	start := time.Now()
+	rec := do(t, h, http.MethodGet, "/artists", withCookie(c))
+	require.Less(t, time.Since(start), 2*time.Second)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "Database catalog state unknown")
+	require.EqualValues(t, 1, p.calls.Load())
+}
+
+func TestPendingCancelledRequestDoesNotPoisonNext(t *testing.T) {
+	p, h, c := newPendingEnv(t, pendingView())
+	release := make(chan struct{})
+	p.hook = func(ctx context.Context) error {
+		select {
+		case <-release:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	req := httptest.NewRequest(http.MethodGet, "/artists", nil).WithContext(ctx)
+	req.Host = host
+	req.AddCookie(c)
+	done := make(chan struct{})
+	go func() { h.ServeHTTP(httptest.NewRecorder(), req); close(done) }()
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	<-done
+	close(release)
+	// the detached computation finishes for the next request
+	body := do(t, h, http.MethodGet, "/artists", withCookie(c)).Body.String()
+	require.Contains(t, body, "2 artists modified since last database reconciliation")
 }
 
 func TestUpdateWebsiteCTADisabledWhenUnavailable(t *testing.T) {
@@ -246,9 +310,11 @@ func TestAPIPending(t *testing.T) {
 	require.Equal(t, "rza", got.Changes[0].Slug)
 	require.Equal(t, []string{"ids_added", "verified"}, got.Changes[0].Kinds)
 	require.True(t, got.Changes[0].NeedsSync)
-	require.Len(t, got.Stages, len(stages()))
-	require.Equal(t, "blocked", got.Stages[5].Status)
-	require.Equal(t, "Prepare the release first", got.Stages[5].BlockedReason)
+	require.Len(t, got.Stages, 12)
+	require.Equal(t, "validate", got.Stages[0].Name)
+	require.Equal(t, "deploy", got.Stages[11].Name)
+	require.Equal(t, "blocked", got.Stages[9].Status)
+	require.Equal(t, "Prepare the release first", got.Stages[9].BlockedReason)
 	require.Equal(t, "db-seed", got.Stages[2].Action)
 
 	// unauthenticated is refused like the other API routes

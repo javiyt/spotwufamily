@@ -20,65 +20,102 @@ const (
 	baselineAction      = "reconcile-all-dry-run"
 )
 
-// pendingCache keeps the last PendingView; run serialises computations so
-// concurrent pages share one.
+// pendingTimeout bounds one Pending computation. It runs detached from any
+// request, so one slow or cancelled request cannot hang or poison the others.
+var pendingTimeout = 2 * time.Second
+
+// pendingErrTTL is how long a failed computation is reused.
+const pendingErrTTL = 2 * time.Second
+
+type pendingCall struct {
+	done chan struct{}
+	v    maintenance.PendingView
+	ok   bool
+}
+
+// pendingCache keeps the last result (success or failure) and the computation
+// in flight (single flight). The mutex is never held while Pending runs.
 type pendingCache struct {
-	run sync.Mutex
-	mu  sync.Mutex
-	val maintenance.PendingView
-	at  time.Time
-	ok  bool
-	gen uint64
+	mu       sync.Mutex
+	val      maintenance.PendingView
+	valid    bool // a result is cached
+	failed   bool
+	at       time.Time
+	gen      uint64
+	inflight *pendingCall
 }
 
-func (c *pendingCache) get() (maintenance.PendingView, time.Time, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.val, c.at, c.ok
-}
-
-// invalidate drops the cached view (the catalog was just written by the admin).
+// invalidate drops the cached result (the catalog was just written by the
+// admin); a computation already running will not be cached.
 func (c *pendingCache) invalidate() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ok = false
+	c.valid = false
 	c.gen++
-}
-
-func (c *pendingCache) generation() uint64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.gen
-}
-
-func (c *pendingCache) set(v maintenance.PendingView, at time.Time, gen uint64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.gen == gen {
-		c.val, c.at, c.ok = v, at, true
-	}
+	c.inflight = nil
 }
 
 // pendingView returns the (cached) pending view; ok is false when the
-// operator cannot report it or computing it failed. It is computed lazily, so
-// pages that never ask do not pay for it.
+// operator cannot report it, computing it failed or timed out. It is computed
+// lazily, so pages that never ask do not pay for it.
 func (s *Server) pendingView(ctx context.Context) (maintenance.PendingView, bool) {
 	if s.pend == nil {
 		return maintenance.PendingView{}, false
 	}
-	s.pendCache.run.Lock()
-	defer s.pendCache.run.Unlock()
-	if v, at, ok := s.pendCache.get(); ok && s.now().Sub(at) < pendingTTL {
-		return v, true
+	c := &s.pendCache
+	c.mu.Lock()
+	if c.valid {
+		ttl := pendingTTL
+		if c.failed {
+			ttl = pendingErrTTL
+		}
+		if s.now().Sub(c.at) < ttl {
+			v, ok := c.val, !c.failed
+			c.mu.Unlock()
+			return v, ok
+		}
 	}
-	gen := s.pendCache.generation()
+	call := c.inflight
+	if call == nil {
+		call = &pendingCall{done: make(chan struct{})}
+		c.inflight = call
+		gen := c.gen
+		go s.computePending(call, gen)
+	}
+	c.mu.Unlock()
+	select {
+	case <-call.done:
+		return call.v, call.ok
+	case <-ctx.Done():
+		return maintenance.PendingView{}, false
+	}
+}
+
+func (s *Server) computePending(call *pendingCall, gen uint64) {
+	ctx, cancel := context.WithTimeout(context.Background(), pendingTimeout)
+	defer cancel()
 	v, err := s.pend.Pending(ctx)
 	if err != nil {
 		s.logger.Printf("pending changes: %s", maintenance.LogText(err))
-		return maintenance.PendingView{}, false
+		v = maintenance.PendingView{}
 	}
-	s.pendCache.set(v, s.now(), gen)
-	return v, true
+	call.v, call.ok = v, err == nil
+	c := &s.pendCache
+	c.mu.Lock()
+	if c.gen == gen {
+		c.val, c.valid, c.failed, c.at = v, true, err != nil, s.now()
+		c.inflight = nil
+	}
+	c.mu.Unlock()
+	close(call.done)
+}
+
+// registerPending wires the pending-changes provider and its API route.
+func (s *Server) registerPending() {
+	if p, ok := s.op.(PendingProvider); ok {
+		s.pend = p
+		s.routes["/api/v1/pending"] = route{methods: []string{http.MethodGet}, handler: s.apiPending}
+	}
 }
 
 // banner is the site-wide notice about catalog edits the database has not
@@ -90,13 +127,16 @@ type banner struct {
 // pendingBanner computes the banner for an HTML page. It is only reached for
 // authenticated pages, so login, static files and API calls never trigger it.
 func (s *Server) pendingBanner(ctx context.Context) *banner {
+	if s.pend == nil {
+		return nil
+	}
 	v, ok := s.pendingView(ctx)
 	if !ok {
-		return nil
+		return &banner{Text: unknownBanner}
 	}
 	switch {
 	case v.State == maintenance.PendingUnknown:
-		return &banner{Text: "Database catalog state unknown — check pending changes"}
+		return &banner{Text: unknownBanner}
 	case v.State == maintenance.PendingChanges && len(v.Changes) > 0:
 		return &banner{Text: fmt.Sprintf("%d %s modified since last database reconciliation", len(v.Changes), plural(len(v.Changes), "artist", "artists"))}
 	}
@@ -282,7 +322,7 @@ func (s *Server) pendingPanel(ctx context.Context) pendingPanel {
 		p.Database = "Local database state unknown"
 	}
 	if p.Build == "" {
-		p.Build = "Local site rebuilt: not tracked from here (build it with make site-build)"
+		p.Build = "Local site build: not tracked from here (build it with make site-build)"
 	}
 	if p.Release == "" {
 		p.Release = "Release not published yet"
@@ -295,6 +335,8 @@ func (s *Server) pendingPanel(ctx context.Context) pendingPanel {
 	p.Deploy = "Published website updated: not confirmed — check GitHub Pages after merging. Merging and the Pages deploy happen on GitHub."
 	return p
 }
+
+const unknownBanner = "Database catalog state unknown — check pending changes"
 
 const stageMissing = "This step is not available in this admin"
 

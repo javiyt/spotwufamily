@@ -22,7 +22,7 @@ func TestFlashShowsRefreshNeededAfterYamlEdit(t *testing.T) {
 	body := e.get(rec.Header().Get("Location")).Body.String()
 	require.Contains(t, body, "Saved RZA.")
 	require.Contains(t, body, refreshHint)
-	require.Contains(t, body, `<a href="/operations">Review in Operations</a>`)
+	require.Contains(t, body, `<a href="/operations#pending">Review in Operations</a>`)
 	require.NotContains(t, e.get("/artists/rza").Body.String(), refreshHint, "the hint shows once")
 
 	// A preview writes nothing and gives no hint.
@@ -45,7 +45,7 @@ func TestFlashShowsRefreshNeededAfterYamlEdit(t *testing.T) {
 	require.NoError(t, json.Unmarshal(fr.Body.Bytes(), &got))
 	require.Equal(t, "Saved RZA.", got["message"])
 	require.Contains(t, got["hint"], "Catalog changed")
-	require.Equal(t, "/operations", got["hint_link"])
+	require.Equal(t, "/operations#pending", got["hint_link"])
 	require.Contains(t, e.get("/artists/rza").Body.String(), refreshHint)
 
 	// A failed save gives no hint.
