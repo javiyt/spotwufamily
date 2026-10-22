@@ -355,12 +355,12 @@ func TestReconcileAllApplyLocksMigratesAndBacksUpOnce(t *testing.T) {
 		t.Fatalf("associations %v", fx.db.associations)
 	}
 
-	// Provenance: gza and meth are applied; rza awaits its resync.
-	if fx.prov.appliedN != 1 {
-		t.Fatalf("one merged record, got %d", fx.prov.appliedN)
+	// Provenance: reconcile only checkpoints; seed and sync apply.
+	if fx.prov.appliedN != 0 {
+		t.Fatalf("reconcile recorded the catalog as applied %d times", fx.prov.appliedN)
 	}
-	if cp, ok := fx.prov.checkpoints[artists.StageReconcile]; !ok || cp.CatalogDigest != fx.prov.applied.Digest {
-		t.Fatalf("reconcile checkpoint %+v", cp)
+	if _, ok := fx.prov.checkpoints[artists.StageReconcile]; !ok {
+		t.Fatal("no reconcile checkpoint")
 	}
 	if fx.db.cleared != 0 {
 		t.Fatal("a committed run keeps provenance")
@@ -499,9 +499,8 @@ func TestReconcileAllApplyCleanPlanIsNoOp(t *testing.T) {
 	if len(fx.db.backups) != 0 || fx.db.batches != 0 || len(fx.port.applyAlls) != 0 || fx.db.cleared != 0 {
 		t.Fatal("a clean plan takes no backup and changes nothing")
 	}
-	// As a no-op reconcile-apply, the clean plans vouch for the artists'
-	// Spotify state.
-	if fx.prov.appliedN != 1 {
+	// A clean plan checkpoints the reconcile and never applies the catalog.
+	if fx.prov.appliedN != 0 {
 		t.Fatalf("applied records %d", fx.prov.appliedN)
 	}
 }

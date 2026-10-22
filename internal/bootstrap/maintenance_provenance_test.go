@@ -141,7 +141,7 @@ func TestReconcileThenSyncMergesTheArtist(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
 	applied, _ := readApplied(t, paths.db)
-	require.Equal(t, old.Digest, applied.Digest, "awaiting its resync, the artist is not applied yet")
+	require.Equal(t, old.Digest, applied.Digest, "reconcile never records the catalog as applied: only seed and sync write the configured artists")
 
 	out, err = runSpec(t, syncActionsByName(cfg)["sync"], maintenance.Params{"scope": "artist", "artists": "wu-tang-clan"})
 	require.NoError(t, err)

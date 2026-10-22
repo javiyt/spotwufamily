@@ -307,14 +307,16 @@ func reconcileApplied(fx *reconcileFixture, used artists.AppliedCatalog, resync 
 	}
 }
 
-func TestReconcileApplyMergesArtistSpotifyState(t *testing.T) {
+// Reconcile rewrites associations and sync state only, never the configured
+// artists the export reads: it checkpoints itself and never records the
+// catalog as applied (db-seed and sync do).
+func TestReconcileApplyCheckpointsButNeverApplies(t *testing.T) {
 	fx := newReconcileFixture()
 	prov := newFakeProvenance()
 	fx.deps.Provenance = prov
 	prev := fingerprintOf(provCatalog(provArtist("gza", "old"), provArtist("rza", "r1")))
 	prov.applied = prev
 	edited := provCatalog(provArtist("gza", "new"), provArtist("rza", "r1", "r2"))
-	edited.Artists[0].Notes = "edited"
 	used := artists.FingerprintCatalog(edited)
 	reconcileApplied(fx, used, false)
 
@@ -322,20 +324,13 @@ func TestReconcileApplyMergesArtistSpotifyState(t *testing.T) {
 	if err != nil || out.Status != jobs.StatusSucceeded {
 		t.Fatalf("apply: %+v %v", out, err)
 	}
-	if prov.applied == prev || prov.applied.AppliedAt == "" {
-		t.Fatal("a committed reconcile must merge the artist")
+	if prov.appliedN != 0 || prov.applied != prev {
+		t.Fatal("reconcile recorded the catalog as applied")
 	}
-	byslug := map[string]artists.ArtistChange{}
-	for _, ch := range artists.DiffCatalog(*prov.applied, used) {
-		byslug[ch.Slug] = ch
+	if ch := artists.DiffCatalog(*prov.applied, used); len(ch) == 0 || !ch[0].NeedsSync {
+		t.Fatalf("gza must still need its seed/sync: %+v", ch)
 	}
-	if ch := byslug["gza"]; ch.NeedsReconcile || len(ch.Kinds) != 1 || ch.Kinds[0] != artists.ChangeMetadata {
-		t.Fatalf("gza: Spotify state applied, metadata still pending: %+v", ch)
-	}
-	if !byslug["rza"].NeedsReconcile {
-		t.Fatalf("rza was not reconciled: %+v", byslug)
-	}
-	if cp := prov.checkpoints[artists.StageReconcile]; cp.CatalogDigest != prov.applied.Digest || cp.DBDigest != "db-1" {
+	if cp := prov.checkpoints[artists.StageReconcile]; cp.CatalogDigest != used.Digest || cp.DBDigest != "db-1" {
 		t.Fatalf("reconcile checkpoint %+v", cp)
 	}
 }
@@ -350,8 +345,8 @@ func TestReconcileApplyAwaitingResyncRecordsNothing(t *testing.T) {
 	if _, out, _, err := runAction(t, NewReconcileApply(fx.deps), Params{"artist": "gza"}); err != nil || out.Status != jobs.StatusSucceeded {
 		t.Fatalf("apply: %+v %v", out, err)
 	}
-	if prov.appliedN != 0 || len(prov.checkpoints) != 0 {
-		t.Fatalf("an artist awaiting its resync is not applied yet: %+v", prov.checkpoints)
+	if prov.appliedN != 0 {
+		t.Fatalf("an artist awaiting its resync is not applied: %d", prov.appliedN)
 	}
 }
 
@@ -366,7 +361,9 @@ func TestReconcileApplyStillPendingRecordsNothing(t *testing.T) {
 	if _, out, _, err := runAction(t, NewReconcileApply(fx.deps), Params{"artist": "gza"}); err != nil || out.Status != jobs.StatusSucceeded {
 		t.Fatalf("apply: %+v %v", out, err)
 	}
-	prov.assertNothing(t)
+	if prov.appliedN != 0 {
+		t.Fatalf("reconcile recorded the catalog as applied")
+	}
 }
 
 func TestReconcileApplyFailureRecordsNothing(t *testing.T) {
@@ -391,7 +388,9 @@ func TestReconcileApplyWithoutPreviousRecordStaysUnknown(t *testing.T) {
 	if _, out, _, err := runAction(t, NewReconcileApply(fx.deps), Params{"artist": "gza"}); err != nil || out.Status != jobs.StatusSucceeded {
 		t.Fatalf("apply: %+v %v", out, err)
 	}
-	prov.assertNothing(t)
+	if prov.appliedN != 0 {
+		t.Fatalf("reconcile recorded the catalog as applied")
+	}
 }
 
 func TestReconcileDryRunRecordsNothing(t *testing.T) {

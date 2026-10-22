@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
+	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
 	"github.com/javiyt/spotwufamily/internal/application/admin/maintenance"
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
 )
@@ -172,4 +173,164 @@ func TestStandaloneSeedRefusesWhileTheBulkReconcileHasChanges(t *testing.T) {
 	require.NoError(t, err)
 	_, err = s.Run(context.Background(), "db-seed", maintenance.Params{}, tok, "")
 	require.ErrorContains(t, err, "Reconcile the artists first")
+}
+
+// configuredRow reads what the export reads for an artist.
+func configuredRow(t *testing.T, dbPath, slug string) (string, int, []string) {
+	t.Helper()
+	database, err := sqliteadapter.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, database.Close()) }()
+	var sid string
+	var enabled int
+	require.NoError(t, database.DB().QueryRow(
+		`SELECT COALESCE(spotify_id, ''), enabled FROM configured_artists WHERE slug = ?`, slug).Scan(&sid, &enabled))
+	rows, err := database.DB().Query(
+		`SELECT spotify_id FROM configured_artist_spotify_ids WHERE artist_slug = ? ORDER BY position`, slug)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	var ids []string
+	for rows.Next() {
+		var id string
+		require.NoError(t, rows.Scan(&id))
+		ids = append(ids, id)
+	}
+	require.NoError(t, rows.Err())
+	return sid, enabled, ids
+}
+
+// websiteEdit runs update-website after a baseline full sync and an edit
+// of the catalog, and returns the job and the pending state after it.
+func websiteEdit(t *testing.T, edit func(string) string) (jobs.Job, maintenance.PendingView, MaintenanceActionsConfig) {
+	t.Helper()
+	return websiteEditFrom(t, "", edit)
+}
+
+// websiteEditFrom starts from catalogYAML ("" keeps the fixture).
+func websiteEditFrom(t *testing.T, catalogYAML string, edits ...func(string) string) (jobs.Job, maintenance.PendingView, MaintenanceActionsConfig) {
+	t.Helper()
+	s, m, cfg, _ := websiteService(t)
+	if catalogYAML != "" {
+		require.NoError(t, os.WriteFile(cfg.CatalogPath, []byte(catalogYAML), 0o600))
+	}
+	migrateDB(t, cfg.DBPath)
+	out, err := runSpec(t, syncActionsByName(cfg)["sync"], maintenance.Params{"scope": "all"})
+	require.NoError(t, err)
+	require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
+	var j jobs.Job
+	for i, edit := range edits {
+		if i > 0 {
+			// Reconcile backups are named to the second: a second bulk
+			// reconcile within the same second refuses to overwrite one.
+			time.Sleep(time.Until(time.Now().Truncate(time.Second).Add(time.Second)))
+		}
+		body, err := os.ReadFile(cfg.CatalogPath)
+		require.NoError(t, err)
+		edited := edit(string(body))
+		require.NotEqual(t, string(body), edited)
+		require.NoError(t, os.WriteFile(cfg.CatalogPath, []byte(edited), 0o600))
+		j = runWebsite(t, s, m)
+		require.Equal(t, jobs.StatusSucceeded, j.Status, "%s", j.Message)
+	}
+	v, err := s.Pending(context.Background())
+	require.NoError(t, err)
+	return j, v, cfg
+}
+
+func TestUpdateWebsiteNeverPublishesADatabaseThatDisagreesWithTheCatalog(t *testing.T) {
+	j, v, cfg := websiteEditLenient(t, func(body string) string {
+		body = strings.Replace(body, "spotify_id: 34EP7KEpOjXcM2TCat1ISk", "spotify_id: 4gzpq5DPGxSnKTe4SA8HAU", 1)
+		return strings.Replace(body, "enabled: true", "enabled: false", 1)
+	})
+	sid, enabled, ids := configuredRow(t, cfg.DBPath, "wu-tang-clan")
+	matches := sid == "4gzpq5DPGxSnKTe4SA8HAU" && enabled == 0 && len(ids) == 1 && ids[0] == "4gzpq5DPGxSnKTe4SA8HAU"
+	if !matches {
+		require.NotEqual(t, jobs.StatusSucceeded, j.Status, "succeeded with spotify_id=%s enabled=%d ids=%v", sid, enabled, ids)
+		require.NotEqual(t, maintenance.PendingClean, v.State)
+		return
+	}
+	require.Equal(t, jobs.StatusSucceeded, j.Status, "%s", j.Message)
+	require.Equal(t, maintenance.PendingClean, v.State, "%+v", v.Stages)
+}
+
+func TestUpdateWebsiteConvergesForEveryKindOfEdit(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		edit func(string) string
+		sid  string
+		on   int
+	}{
+		{"spotify id change", func(b string) string {
+			return strings.Replace(b, "spotify_id: 34EP7KEpOjXcM2TCat1ISk", "spotify_id: 4gzpq5DPGxSnKTe4SA8HAU", 1)
+		}, "4gzpq5DPGxSnKTe4SA8HAU", 1},
+		{"disabled toggle", func(b string) string { return strings.Replace(b, "enabled: true", "enabled: false", 1) },
+			"34EP7KEpOjXcM2TCat1ISk", 0},
+		{"metadata only", func(b string) string { return strings.Replace(b, `notes: ""`, `notes: "edited"`, 1) },
+			"34EP7KEpOjXcM2TCat1ISk", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			j, v, cfg := websiteEdit(t, tc.edit)
+			require.Equal(t, jobs.StatusSucceeded, j.Status, "%s", j.Message)
+			require.Equal(t, maintenance.PendingClean, v.State, "%+v", v.Stages)
+			sid, enabled, ids := configuredRow(t, cfg.DBPath, "wu-tang-clan")
+			require.Equal(t, tc.sid, sid)
+			require.Equal(t, tc.on, enabled)
+			require.Equal(t, []string{tc.sid}, ids)
+		})
+	}
+}
+
+// websiteEditLenient is websiteEdit without requiring the run to succeed.
+func websiteEditLenient(t *testing.T, edit func(string) string) (jobs.Job, maintenance.PendingView, MaintenanceActionsConfig) {
+	t.Helper()
+	s, m, cfg, _ := websiteService(t)
+	migrateDB(t, cfg.DBPath)
+	out, err := runSpec(t, syncActionsByName(cfg)["sync"], maintenance.Params{"scope": "all"})
+	require.NoError(t, err)
+	require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
+	body, err := os.ReadFile(cfg.CatalogPath)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(cfg.CatalogPath, []byte(edit(string(body))), 0o600))
+	j := runWebsite(t, s, m)
+	v, err := s.Pending(context.Background())
+	require.NoError(t, err)
+	return j, v, cfg
+}
+
+const twoArtistCatalogYAML = maintenanceCatalogYAML + `  - slug: gza
+    name: GZA
+    spotify_id: 6UZjVTlh5AgyGUAcwS3Kny
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: true
+    editorial_order: 2
+    notes: ""
+`
+
+func TestUpdateWebsiteConvergesForARevertedIDSetAndARemovedArtist(t *testing.T) {
+	t.Run("reverted id set", func(t *testing.T) {
+		to := func(b string) string {
+			return strings.Replace(b, "spotify_id: 34EP7KEpOjXcM2TCat1ISk", "spotify_id: 4gzpq5DPGxSnKTe4SA8HAU", 1)
+		}
+		back := func(b string) string {
+			return strings.Replace(b, "spotify_id: 4gzpq5DPGxSnKTe4SA8HAU", "spotify_id: 34EP7KEpOjXcM2TCat1ISk", 1)
+		}
+		_, v, cfg := websiteEditFrom(t, "", to, back)
+		require.Equal(t, maintenance.PendingClean, v.State, "%+v", v.Stages)
+		sid, _, ids := configuredRow(t, cfg.DBPath, "wu-tang-clan")
+		require.Equal(t, "34EP7KEpOjXcM2TCat1ISk", sid)
+		require.Equal(t, []string{"34EP7KEpOjXcM2TCat1ISk"}, ids)
+	})
+	t.Run("removed artist", func(t *testing.T) {
+		remove := func(b string) string { return b[:strings.Index(b, "  - slug: gza")] }
+		_, v, cfg := websiteEditFrom(t, twoArtistCatalogYAML, remove)
+		require.Equal(t, maintenance.PendingClean, v.State, "%+v", v.Stages)
+		database, err := sqliteadapter.Open(cfg.DBPath)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, database.Close()) }()
+		var active int
+		require.NoError(t, database.DB().QueryRow(`SELECT active FROM configured_artists WHERE slug = 'gza'`).Scan(&active))
+		require.Equal(t, 0, active)
+	})
 }

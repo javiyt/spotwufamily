@@ -150,18 +150,9 @@ func (f *stageFake) effect(ctx context.Context) (jobs.Outcome, error) {
 	ok := jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: f.name + " ok."}}
 	switch f.name {
 	case "reconcile-all-apply":
-		prev, has, _ := w.prov.AppliedCatalog(ctx)
-		if has {
-			var runs []appliedRun
-			for _, c := range artists.DiffCatalog(prev, cur) {
-				// New Spotify IDs await their resync: only the sync records them.
-				if c.NeedsReconcile && !c.NeedsSync {
-					runs = append(runs, appliedRun{slug: c.Slug, used: cur})
-				}
-			}
-			w.changeDB()
-			_ = mergeApplied(ctx, w.prov, artists.StageReconcile, runs, artists.MergeReconciled)
-		}
+		// Reconcile rewrites associations only: it checkpoints, never applies.
+		w.changeDB()
+		_ = recordCheckpoint(ctx, w.prov, artists.StageReconcile, cur.Digest)
 	case "db-seed":
 		w.changeDB()
 		_ = recordSeeded(ctx, w.prov, cur)

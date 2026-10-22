@@ -330,21 +330,19 @@ func (a *reconcileAllAction) rolledBack(ctx context.Context, changes []artists.R
 	return out, &SafeError{Code: "reconcile_failed", Message: summary, cause: err}
 }
 
-// recordProvenance merges, from the catalog the run read, the Spotify state
-// of every artist the run applied (or found already reconciled). Artists
-// still awaiting their resync are not applied yet: their sync records them.
+// recordProvenance checkpoints the bulk reconcile against the catalog the
+// run read. Like reconcile-apply it never records the catalog as applied:
+// the configured artists are written only by db-seed and sync.
 func (a *reconcileAllAction) recordProvenance(ctx context.Context, reports []artists.ReconcileReport) error {
 	if a.deps.Provenance == nil {
 		return nil
 	}
-	var runs []appliedRun
 	for _, rep := range reports {
-		if rep.ResyncRequired || rep.Catalog.Digest == "" {
-			continue
+		if rep.Catalog.Digest != "" {
+			return recordCheckpoint(ctx, a.deps.Provenance, artists.StageReconcile, rep.Catalog.Digest)
 		}
-		runs = append(runs, appliedRun{slug: rep.Slug, used: rep.Catalog})
 	}
-	return mergeApplied(ctx, a.deps.Provenance, artists.StageReconcile, runs, artists.MergeReconciled)
+	return nil
 }
 
 func slugsOf(reports []artists.ReconcileReport) []string {

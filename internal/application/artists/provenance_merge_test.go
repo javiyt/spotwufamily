@@ -50,29 +50,3 @@ func TestMergeAppliedAddsAndDropsArtists(t *testing.T) {
 	}
 }
 
-func TestMergeReconciledKeepsMetadataAndRelationships(t *testing.T) {
-	prev := roundTrip(t, FingerprintCatalog(diffCatalog(diffArtist("a", "id1"), diffArtist("b", "id2"))))
-	edited := diffCatalog(diffArtist("a", "id1", "id9"), diffArtist("b", "id2"))
-	edited.Artists[0].Notes = "edited note"
-	used := FingerprintCatalog(edited)
-
-	merged, ok := MergeReconciled(prev, used, "a")
-	if !ok {
-		t.Fatal("merge refused")
-	}
-	changes := DiffCatalog(merged, used)
-	if len(changes) != 1 || changes[0].Slug != "a" || len(changes[0].Kinds) != 1 || changes[0].Kinds[0] != ChangeMetadata {
-		t.Fatalf("reconcile must apply the Spotify state but leave metadata pending: %+v", changes)
-	}
-}
-
-func TestMergeReconciledRefusesUnknownArtist(t *testing.T) {
-	prev := roundTrip(t, FingerprintCatalog(diffCatalog(diffArtist("a", "id1"))))
-	used := FingerprintCatalog(diffCatalog(diffArtist("a", "id1"), diffArtist("c", "id3")))
-	if _, ok := MergeReconciled(prev, used, "c"); ok {
-		t.Fatal("an artist without an applied entry has no metadata baseline; merge must be refused")
-	}
-	if _, ok := MergeReconciled(prev, used, "zz"); ok {
-		t.Fatal("an artist missing from the used catalog must be refused")
-	}
-}

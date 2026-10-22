@@ -286,15 +286,15 @@ func (a *reconcileAction) runApply(ctx context.Context, r jobs.Reporter, slug, c
 	return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: summary, Report: reconcileReport(a.Name(), rep)}}, nil
 }
 
-// recordProvenance merges the artist's Spotify state, from the catalog the
-// apply read, into the applied record. An artist still awaiting its resync is
-// not applied yet: its sync records it.
+// recordProvenance checkpoints the reconcile against the catalog the apply
+// read. It never records the catalog as applied: reconcile only rewrites
+// associations and sync state, never the configured artists the export
+// reads, so only db-seed and sync (which write them) record what is applied.
 func (a *reconcileAction) recordProvenance(ctx context.Context, rep artists.ReconcileReport) error {
-	if a.deps.Provenance == nil || rep.ResyncRequired || rep.Catalog.Digest == "" {
+	if a.deps.Provenance == nil || rep.Catalog.Digest == "" {
 		return nil
 	}
-	return mergeApplied(ctx, a.deps.Provenance, artists.StageReconcile,
-		[]appliedRun{{slug: rep.Slug, used: rep.Catalog}}, artists.MergeReconciled)
+	return recordCheckpoint(ctx, a.deps.Provenance, artists.StageReconcile, rep.Catalog.Digest)
 }
 
 func countReconcile(r jobs.Reporter, rep artists.ReconcileReport) {

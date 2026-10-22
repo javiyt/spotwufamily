@@ -110,35 +110,6 @@ func MergeApplied(prev, used AppliedCatalog, slugs []string) AppliedCatalog {
 	return AppliedCatalog{Digest: fingerprintsDigest(out), Artists: out}
 }
 
-// MergeReconciled merges what a reconcile applies for one artist: its
-// Spotify IDs and verified/enabled state. Metadata and relationships keep
-// their previously applied values, since reconcile does not write them.
-// ok=false when either catalog lacks the artist (no baseline to keep).
-func MergeReconciled(prev, used AppliedCatalog, slug string) (AppliedCatalog, bool) {
-	var (
-		before, after ArtistFingerprint
-		hasBefore     bool
-		hasAfter      bool
-	)
-	for _, a := range prev.Artists {
-		if a.Slug == slug {
-			before, hasBefore = a, true
-		}
-	}
-	for _, a := range used.Artists {
-		if a.Slug == slug {
-			after, hasAfter = a, true
-		}
-	}
-	if !hasBefore || !hasAfter {
-		return AppliedCatalog{}, false
-	}
-	after.Metadata = before.Metadata
-	after.Relationships = before.Relationships
-
-	return MergeApplied(prev, AppliedCatalog{Artists: []ArtistFingerprint{after}}, []string{slug}), true
-}
-
 func normalizeRelationship(rel catalog.Relationship) catalog.Relationship {
 	if (rel.Type == catalog.RelCollaboratedWith || rel.Type == catalog.RelAssociatedWith) && rel.From > rel.To {
 		rel.From, rel.To = rel.To, rel.From
