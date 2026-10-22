@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 )
 
 type fakeFreshness struct {
@@ -15,7 +17,11 @@ type fakeFreshness struct {
 	pinned, local                    string
 	state                            *DatabaseState
 	pinnedOK, localOK                bool
+	changes                          []artists.ArtistChange
+	applied                          bool
 }
+
+func (f fakeFreshness) AppliedChanges() ([]artists.ArtistChange, bool) { return f.changes, f.applied }
 
 func (f fakeFreshness) CatalogDigest() string          { return f.catalog }
 func (f fakeFreshness) SeededDigest() (string, bool)   { return f.seeded, f.seededOK }
@@ -39,7 +45,7 @@ func (f fakeFreshness) LocalContentSHA() (string, bool) { return f.local, f.loca
 // freshSource is a fully up-to-date source.
 func freshSource() fakeFreshness {
 	return fakeFreshness{
-		catalog: "c", seeded: "c", seededOK: true,
+		catalog: "c", seeded: "c", seededOK: true, applied: true,
 		snapshot: "d", snapOK: true, db: "d", dbOK: true,
 		export: "d", exportOK: true,
 		pinned: "p", pinnedOK: true, local: "p", localOK: true,
@@ -160,7 +166,7 @@ func TestNoDatabaseWithSnapshotNeedsRebuild(t *testing.T) {
 
 func TestReasonsDeterministicAndPathFree(t *testing.T) {
 	src := fakeFreshness{
-		catalog: "c", seeded: "x", seededOK: true,
+		catalog: "c", seeded: "x", seededOK: true, applied: true,
 		snapshot: "s", snapOK: true, db: "d", dbOK: true,
 		export: "e", exportOK: true,
 		pinned: "p", pinnedOK: true, local: "q", localOK: true,
@@ -232,5 +238,36 @@ func TestFreshnessReadsFromOneSessionPerCall(t *testing.T) {
 		if n != i {
 			t.Fatalf("want one session per call, got %d after %d calls", n, i)
 		}
+	}
+}
+
+func TestLegacyDBIsUnknown(t *testing.T) {
+	src := freshSource()
+	src.seededOK, src.applied = false, false
+	f := freshnessOf(t, src)
+	if !f.SeedUnknown || f.SeedNeeded || f.Pending != nil {
+		t.Fatalf("got %+v", f)
+	}
+	if len(f.Reasons) != 1 || f.Reasons[0] != "Catalog state of the database is unknown; run a check" {
+		t.Fatalf("reasons %v", f.Reasons)
+	}
+}
+
+func TestPendingComesFromAppliedChanges(t *testing.T) {
+	src := freshSource()
+	src.catalog = "changed"
+	src.changes = []artists.ArtistChange{{Slug: "a"}}
+	f := freshnessOf(t, src)
+	if !f.SeedNeeded || f.SeedUnknown || len(f.Pending) != 1 || f.Pending[0].Slug != "a" {
+		t.Fatalf("got %+v", f)
+	}
+}
+
+func TestExportWithoutReconcileStaysStale(t *testing.T) {
+	src := freshSource()
+	src.catalog = "changed" // export and snapshot match the database, catalog does not
+	f := freshnessOf(t, src)
+	if !f.SeedNeeded || f.SnapshotNeeded || f.ExportNeeded {
+		t.Fatalf("export must never mark content fresh: %+v", f)
 	}
 }

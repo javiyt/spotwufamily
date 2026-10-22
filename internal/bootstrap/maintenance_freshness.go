@@ -3,16 +3,14 @@ package bootstrap
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
-	"errors"
-	"os"
 	"sync"
-	"time"
 
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
 	sqliteadapter "github.com/javiyt/spotwufamily/internal/adapters/outbound/sqlite"
+	yamlcatalog "github.com/javiyt/spotwufamily/internal/adapters/outbound/yaml"
 	"github.com/javiyt/spotwufamily/internal/application/admin/maintenance"
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 )
 
 // FreshnessConfig locates the files whose freshness is compared. It mirrors
@@ -83,43 +81,61 @@ func sum(data []byte) string {
 	return hex.EncodeToString(h[:])
 }
 
-// CatalogDigest hashes the catalog file content (absent hashes as absent).
+// CatalogDigest is the canonical fingerprint digest of the editorial catalog
+// as it is now, comparable with the digest recorded in catalog_applied. It
+// never depends on file times.
 func (s freshnessSource) CatalogDigest() string {
-	d, err := fileDigest(s.cfg.CatalogPath)(context.Background())
+	current, err := s.currentFingerprint()
 	if err != nil {
 		return "unreadable"
 	}
-	return d
+	return current.Digest
 }
 
-// SeededDigest: the database records no catalog digest, so the rule is
-// timestamp based. The latest successful or partial sync run read the catalog when it
-// started; if the catalog file was not modified after that start, the seeded
-// digest is the current catalog digest, otherwise a marker that never equals
-// it. The heuristic can read fresh while stale in two narrow cases: an
-// mtime-preserving restore of the catalog, and an edit between the sync
-// reading the catalog and BeginSyncRun. ok=false when no sync run has completed.
-func (s freshnessSource) SeededDigest() (string, bool) {
+func (s freshnessSource) currentFingerprint() (artists.AppliedCatalog, error) {
+	c, err := yamlcatalog.NewStore().Load(context.Background(), s.cfg.CatalogPath)
+	if err != nil {
+		return artists.AppliedCatalog{}, err
+	}
+	return artists.FingerprintCatalog(c), nil
+}
+
+// appliedCatalog reads the recorded provenance without creating or migrating
+// anything; ok=false for a missing, unreadable or legacy database.
+func (s freshnessSource) appliedCatalog() (artists.AppliedCatalog, bool) {
 	database, err := openExisting(s.cfg.DBPath)
 	if err != nil {
-		return "", false
+		return artists.AppliedCatalog{}, false
 	}
 	defer func() { _ = database.Close() }()
-	var started string
-	err = database.DB().QueryRowContext(context.Background(),
-		`SELECT started_at FROM sync_runs WHERE status IN ('success','partial') ORDER BY id DESC LIMIT 1`).Scan(&started)
-	if errors.Is(err, sql.ErrNoRows) || err != nil {
+	applied, ok, err := database.AppliedCatalog(context.Background())
+	if err != nil || !ok {
+		return artists.AppliedCatalog{}, false
+	}
+	return applied, true
+}
+
+// SeededDigest is the digest recorded when the catalog was last applied to
+// the database; ok=false when none was recorded or there is no database.
+func (s freshnessSource) SeededDigest() (string, bool) {
+	applied, ok := s.appliedCatalog()
+	if !ok {
 		return "", false
 	}
-	at, err := time.Parse(time.RFC3339, started)
+	return applied.Digest, true
+}
+
+// AppliedChanges diffs the recorded applied catalog against the current one.
+func (s freshnessSource) AppliedChanges() ([]artists.ArtistChange, bool) {
+	applied, ok := s.appliedCatalog()
+	if !ok {
+		return nil, false
+	}
+	current, err := s.currentFingerprint()
 	if err != nil {
-		return "", false
+		return nil, true
 	}
-	info, err := os.Stat(s.cfg.CatalogPath)
-	if err != nil || info.ModTime().After(at) {
-		return "catalog-modified-after-seed", true
-	}
-	return s.CatalogDigest(), true
+	return artists.DiffCatalog(applied, current), true
 }
 
 // SnapshotDigest hashes the decompressed snapshot content.
