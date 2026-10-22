@@ -17,6 +17,7 @@ import (
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/filesystem"
 	"github.com/javiyt/spotwufamily/internal/adapters/outbound/release"
 	"github.com/javiyt/spotwufamily/internal/application/admin/maintenance"
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
 )
 
@@ -71,6 +72,7 @@ exit 0
 `), 0o755))
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+"/usr/bin:/bin")
 	migrateDB(t, filepath.Join(r.root, "data", "catalog.db"))
+	require.NoError(t, os.WriteFile(filepath.Join(r.root, "data", "artists.yaml"), []byte(maintenanceCatalogYAML), 0o644))
 	return r
 }
 
@@ -81,6 +83,7 @@ func (r releaseRepo) service(t *testing.T, timeout time.Duration) (*maintenance.
 	journal := filepath.Join(r.root, "build", "admin", "jobs.jsonl")
 	actions, err := NewReleaseActions(ReleaseActionsConfig{
 		RepoRoot: r.root, Repo: "javiyt/spotwufamily", DBPath: filepath.Join(r.root, "data", "catalog.db"),
+		CatalogPath: filepath.Join(r.root, "data", "artists.yaml"),
 		JournalPath: journal, Releaser: script,
 	})
 	require.NoError(t, err)
@@ -173,4 +176,29 @@ func TestReleasePublishTimeoutMidUploadReportsPartialRelease(t *testing.T) {
 	_, err := os.Stat(filepath.Join(r.root, "data", "catalog.release.json"))
 	require.True(t, os.IsNotExist(err), "an interrupted publish never pins the manifest")
 	require.True(t, strings.HasPrefix(tag, "catalog-"))
+}
+
+// The release checkpoints written into the database after prepare and
+// publish must not change the script's content hash: otherwise publishing
+// would be refused after prepare, and every re-run would see new content and
+// publish a second release.
+func TestReleaseCheckpointsDoNotChangeContentHash(t *testing.T) {
+	r := newReleaseRepo(t)
+	svc, m := r.service(t, 0)
+	dbPath := filepath.Join(r.root, "data", "catalog.db")
+	tag := r.prepare(t, svc, m)
+	_, ok := readCheckpoint(t, dbPath, artists.StageReleasePrepare)
+	require.True(t, ok, "prepare checkpointed itself")
+
+	j := finished(t, m, start(t, svc, "release-publish", "publish release"))
+	require.Equal(t, jobs.StatusSucceeded, j.Status, "%+v", j)
+	require.Equal(t, "Published catalog release "+tag+".", j.Result.Summary)
+	_, ok = readCheckpoint(t, dbPath, artists.StageRelease)
+	require.True(t, ok, "publish checkpointed itself")
+
+	script, err := release.New(release.Config{RepoRoot: r.root, Repo: "javiyt/spotwufamily"})
+	require.NoError(t, err)
+	p, err := script.Preflight(context.Background())
+	require.NoError(t, err)
+	require.True(t, p.PinnedMatchesLocal, "checkpoint writes are not catalog content: %+v", p)
 }
