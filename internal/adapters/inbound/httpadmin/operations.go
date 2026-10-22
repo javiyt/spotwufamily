@@ -128,6 +128,8 @@ var actionSpecs = map[string]actionSpec{
 	"refresh-export":           {Group: "Refresh/Export", Description: "Verify, snapshot, export and audit in one job."},
 	"reconcile-dry-run":        {Group: "Reconcile", Description: "Show the association changes reconciling one artist would make.", Fields: reconcileFields},
 	"reconcile-apply":          {Group: "Reconcile", Description: "Apply one artist's pending association changes to the database.", Fields: reconcileFields},
+	"reconcile-all-dry-run":    {Group: "Reconcile", Description: "Show the association changes reconciling every artist would make. Writes nothing."},
+	"reconcile-all-apply":      {Group: "Reconcile", Description: "Apply every artist's pending association changes in one step: one backup first, and any failure rolls every artist back."},
 	"release-prepare":          {Group: "Release", Description: "Build the catalog release package.", Guided: "/publish"},
 	"release-publish":          {Group: "Release", Description: "Publish the prepared release to GitHub.", Guided: "/publish"},
 }

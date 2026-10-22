@@ -26,9 +26,23 @@ type ReconcilePort interface {
 	// plan in one database transaction. A clean plan changes nothing and
 	// takes no backup.
 	Apply(ctx context.Context, slug, checksum string) (artists.ReconcileReport, error)
+	// PlanAll computes the write-free plan of every catalog artist, like
+	// Plan, from the existing database. It returns ErrNoDatabase when the
+	// database is missing.
+	PlanAll(ctx context.Context) (artists.BulkPlan, error)
+	// ApplyAll runs the bulk use case with ConfirmChecksum=checksum. It
+	// recomputes the bulk plan and refuses a different checksum
+	// (artists.ErrBulkPlanChanged); otherwise, when something needs
+	// changing, it writes one VACUUM INTO backup plus a manifest of every
+	// plan into the admin backup directory and applies every artist's plan
+	// in one database transaction. A failure (*artists.BulkApplyError)
+	// rolled every artist back and cleared provenance. A clean plan changes
+	// nothing, takes no backup and returns no report.
+	ApplyAll(ctx context.Context, checksum string) ([]artists.ReconcileReport, error)
 }
 
-// ReconcileDeps are the ports of reconcile-dry-run and reconcile-apply.
+// ReconcileDeps are the ports of reconcile-dry-run, reconcile-apply,
+// reconcile-all-dry-run and reconcile-all-apply.
 type ReconcileDeps struct {
 	Port           ReconcilePort
 	DatabaseExists func() bool

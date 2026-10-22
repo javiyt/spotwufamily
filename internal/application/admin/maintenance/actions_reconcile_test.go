@@ -125,6 +125,16 @@ func (p *fakeReconcilePort) Apply(ctx context.Context, slug, checksum string) (a
 	})
 }
 
+// PlanAll and ApplyAll are driven by bulkPort; the single-artist fixture
+// never calls them.
+func (p *fakeReconcilePort) PlanAll(context.Context) (artists.BulkPlan, error) {
+	return artists.BulkPlan{}, errors.New("not used by single-artist tests")
+}
+
+func (p *fakeReconcilePort) ApplyAll(context.Context, string) ([]artists.ReconcileReport, error) {
+	return nil, errors.New("not used by single-artist tests")
+}
+
 type reconcileFixture struct {
 	log    *callLog
 	cat    *reconcileCatalog

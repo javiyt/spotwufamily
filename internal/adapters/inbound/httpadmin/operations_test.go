@@ -866,3 +866,32 @@ func TestOperationsPageGenuineLogFailureStaysVisibleAndRetriable(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "Reload", "operators are told how to retry")
 	require.Contains(t, e.log.String(), "operations log")
 }
+
+func TestBulkReconcileActionsAreDescribedUnderReconcile(t *testing.T) {
+	e := newOpsEnv(t, func(f *fakeOp) {
+		f.actions = append(f.actions,
+			maintenance.ActionInfo{Name: "reconcile-all-dry-run", Title: "Reconcile all artists (dry run)", Available: true},
+			maintenance.ActionInfo{Name: "reconcile-all-apply", Title: "Reconcile all artists", Available: true, Destructive: true})
+	})
+	rec := e.get(t, "/api/v1/operations")
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got struct {
+		Items []map[string]any `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	seen := map[string]bool{}
+	for _, it := range got.Items {
+		name, _ := it["name"].(string)
+		if !strings.HasPrefix(name, "reconcile-all-") {
+			continue
+		}
+		seen[name] = true
+		require.Equal(t, "Reconcile", it["group"], name)
+		require.NotEmpty(t, it["description"], name)
+	}
+	require.Equal(t, map[string]bool{"reconcile-all-dry-run": true, "reconcile-all-apply": true}, seen)
+
+	// They take no parameters: the form has no input but the hidden ones.
+	body := e.get(t, "/operations/reconcile-all-apply").Body.String()
+	require.NotContains(t, body, `name="artist"`)
+}
