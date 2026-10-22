@@ -1,0 +1,21 @@
+version: 1
+profile_sync_policy: verified_only
+artists:
+  - slug: alias-act
+    name: Alias Act
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: true
+    editorial_order: 1
+    notes: ""
+    spotify_id: "4444444444444444444444"
+    spotify_profiles:
+      - id: "4444444444444444444444"
+        status: verified
+        evidence:
+          - type: credit
+            release_id: 0000000000000000000000
+            rationale: Appears only under an alias in credits
+        reviewed_at: "2026-10-20T12:00:00Z"
+        reviewer: fixture

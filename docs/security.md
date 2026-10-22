@@ -47,3 +47,19 @@ Threats considered and how the admin answers them (details in [Local admin](admi
 - Hugo renders static HTML from generated JSON.
 - Search uses `site/static/search-index.json` and does not require a backend.
 - `site/hugo.yaml` disables unsafe Goldmark rendering.
+
+## Verification matrix
+
+Every control is covered by offline tests that need no network or credentials:
+
+| Risk | Test |
+| --- | --- |
+| Non-loopback bind, weak token | `httpadmin` `TestValidateListen`, `TestNewRejectsWeakTokenAndNonLoopbackWithoutOptIn` |
+| Missing or wrong session, brute force | `TestUnauthenticatedRequestsAreRejectedWithoutData`, `TestWrongTokenIsRejectedAndRateLimited` |
+| CSRF, Origin, Host (DNS rebinding) | `TestMutationsRequireCSRFAndSameOrigin`, `TestForeignHostHeaderIsRejectedEvenWhenAuthenticated`, `TestDecisionsNeedCSRFAndSameOrigin` |
+| XSS | `TestArtistNamesAreEscaped`, `TestJobFieldsAreEscaped`, `TestProfileDataIsEscapedAndNoCredentialsLeak` |
+| Path traversal | `TestStaticAssetsServedWithSecurityHeaders`, `TestUnsafeReferencesAreNeverFetched` |
+| Oversized bodies | `TestOversizedBodyIsRejected` |
+| Credential and path exposure | `TestDashboardHeadersAndCredentialStatusOnly`, `TestOperationsPageDoesNotRenderSecretsOrPaths` |
+| Admin code in the static site | `TestPublishedSiteContainsNoAdminSurface` |
+| Unverified or rejected IDs used for sync | `artists audit-integrity` fixtures in `cli/audit_integrity_test.go` |

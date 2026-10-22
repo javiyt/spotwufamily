@@ -105,3 +105,5 @@ git add data/catalog.release.json
 ```
 
 The previous release is not modified. To roll the schema back, restore the previous manifest from Git and fetch it; the two tables can simply be left unused.
+
+The catalog database is not touched by `artists audit-integrity`; backup and rollback steps are in `docs/operations.md` ("Local Setup, Backup And Rollback").

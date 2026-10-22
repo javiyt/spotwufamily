@@ -1,0 +1,38 @@
+version: 1
+profile_sync_policy: verified_only
+artists:
+  - slug: wu-tang-clan
+    name: Wu-Tang Clan
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+  - slug: former-member
+    name: Former Member
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 2
+    notes: ""
+  - slug: solo-act
+    name: Solo Act
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: false
+    editorial_order: 3
+    notes: ""
+relationships:
+  - type: member_of
+    from: former-member
+    to: solo-act
+    status: verified
+    confidence: high
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/Solo
+        rationale: Not a group.
+    reviewer: fixture

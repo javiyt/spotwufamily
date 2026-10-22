@@ -1,0 +1,20 @@
+version: 1
+profile_sync_policy: verified_only
+artists:
+  - slug: method-man
+    name: Method Man
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: true
+    editorial_order: 1
+    notes: ""
+    spotify_id: "1111111111111111111111"
+    spotify_profiles:
+      - id: "1111111111111111111111"
+        status: verified
+        evidence:
+          - type: name_match
+            rationale: Same name on Spotify
+        reviewed_at: "2026-10-20T12:00:00Z"
+        reviewer: fixture

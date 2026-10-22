@@ -1,0 +1,28 @@
+version: 1
+profile_sync_policy: verified_only
+artists:
+  - slug: method-man
+    name: Method Man
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: true
+    editorial_order: 1
+    notes: ""
+    spotify_id: "1111111111111111111111"
+    spotify_profiles:
+      - id: "1111111111111111111111"
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/artist/54b44541-9c3f-4801-958e-3f9107c5f724
+            rationale: MusicBrainz artist links this Spotify profile
+        reviewed_at: "2026-10-20T12:00:00Z"
+        reviewer: fixture
+      - id: "2222222222222222222222"
+        status: rejected
+        evidence:
+          - type: name_match
+            rationale: Homonym with no Wu-Tang discography
+        reviewed_at: "2026-10-20T12:00:00Z"
+        reviewer: fixture

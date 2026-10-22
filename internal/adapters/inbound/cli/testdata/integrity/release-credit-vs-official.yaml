@@ -1,0 +1,38 @@
+version: 1
+profile_sync_policy: verified_only
+artists:
+  - slug: wu-tang-clan
+    name: Wu-Tang Clan
+    category: affiliate_group
+    roles: [affiliate_group]
+    aliases: []
+    enabled: false
+    editorial_order: 1
+    notes: ""
+  - slug: former-member
+    name: Former Member
+    category: affiliate_artist
+    roles: [affiliate_artist]
+    aliases: []
+    enabled: false
+    editorial_order: 2
+    notes: ""
+  - slug: solo-act
+    name: Solo Act
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: false
+    editorial_order: 3
+    notes: ""
+relationships:
+  - type: associated_with
+    from: solo-act
+    to: wu-tang-clan
+    status: verified
+    confidence: medium
+    evidence:
+      - type: wikipedia
+        url: https://en.wikipedia.org/wiki/List_of_Wu-Tang_Clan_affiliates
+        rationale: Listed as an affiliate; credits on releases are separate.
+    reviewer: fixture

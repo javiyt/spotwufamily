@@ -24,6 +24,7 @@ make help
 make catalog-fetch
 make init-from-yaml
 make artists-resolve-offline
+make artists-audit-integrity   # offline CI gate for evidence, rejected IDs and relationships
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-apply
 make artists-enable-with-ids
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... make artists-resolve-interactive

@@ -6,6 +6,7 @@ Use this checklist for release or phase-completion verification.
 
 ```bash
 go run ./cmd/spotwufamily artists validate
+go run ./cmd/spotwufamily artists audit-integrity --offline
 go run ./cmd/spotwufamily db verify
 go run ./cmd/spotwufamily export
 go run ./cmd/spotwufamily site build
@@ -17,7 +18,7 @@ go run ./cmd/spotwufamily audit
 
 Expected result:
 
-- Artist YAML is valid.
+- Artist YAML is valid and the integrity gate has no errors (warnings are pending reviews; see `docs/catalog-policy.md`).
 - SQLite integrity, foreign keys, migrations and snapshot freshness pass.
 - Exported JSON is deterministic and leaves no generated diff.
 - Hugo builds under the GitHub Pages subpath.
