@@ -18,9 +18,11 @@ import (
 // repository root: the catalog, its review log and the release manifest.
 var ReleasePRFiles = []string{"data/artists.yaml", "data/artists.yaml.reviews.jsonl", "data/catalog.release.json"}
 
-// releasePRKeyFiles are the files of which at least one must differ from
-// the base branch for a pull request to be worth opening.
-var releasePRKeyFiles = []string{"data/artists.yaml", "data/catalog.release.json"}
+// ReleasePRKeyFiles are the files of which at least one must differ from
+// the base branch for a pull request to be worth opening: the review log
+// alone never opens one. Check (prBlockedReason) and the port's Open both
+// apply this rule.
+var ReleasePRKeyFiles = []string{"data/artists.yaml", "data/catalog.release.json"}
 
 // Sentinel errors of release-pr. PRPort implementations wrap them (never
 // with command output, paths or account details); the action maps them to
@@ -161,7 +163,7 @@ func ValidatePRRequest(req PRRequest) error {
 			return ErrPRInvalidRequest
 		}
 		seen[f] = true
-		key = key || slices.Contains(releasePRKeyFiles, f)
+		key = key || slices.Contains(ReleasePRKeyFiles, f)
 	}
 	if !key {
 		return ErrPRInvalidRequest
@@ -187,6 +189,10 @@ type releasePRAction struct {
 	cached     PRPrereq
 	cacheErr   error
 	refreshing bool
+	// forced makes the next check run even within availabilityTTL. Only a
+	// check that starts after the request clears it, so a check already in
+	// flight (with a stale answer) never satisfies it.
+	forced bool
 }
 
 // NewReleasePR returns release-pr: after release-publish pinned the manifest
@@ -225,7 +231,7 @@ func (a *releasePRAction) Available() (bool, string) {
 // background check when the cached one is missing or expired.
 func (a *releasePRAction) AvailableNow() (bool, string) {
 	a.mu.Lock()
-	expired := a.cachedAt.IsZero() || a.now().Sub(a.cachedAt) >= availabilityTTL
+	expired := a.forced || a.cachedAt.IsZero() || a.now().Sub(a.cachedAt) >= availabilityTTL
 	if expired && !a.refreshing {
 		a.refreshing = true
 		go func() {
@@ -252,7 +258,10 @@ func (a *releasePRAction) refresh() {
 	a.flight.Lock()
 	defer a.flight.Unlock()
 	a.mu.Lock()
-	fresh := !a.cachedAt.IsZero() && a.now().Sub(a.cachedAt) < availabilityTTL
+	fresh := !a.forced && !a.cachedAt.IsZero() && a.now().Sub(a.cachedAt) < availabilityTTL
+	if !fresh {
+		a.forced = false
+	}
 	a.mu.Unlock()
 	if fresh {
 		return
@@ -278,7 +287,7 @@ func (a *releasePRAction) check(ctx context.Context) (p PRPrereq, err error) {
 func (a *releasePRAction) forceRecheck() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.cachedAt = time.Time{}
+	a.forced = true
 }
 
 func (a *releasePRAction) store(p PRPrereq, err error) {
@@ -315,7 +324,7 @@ func prBlockedReason(p PRPrereq) string {
 	if _, ok := PRBranch(p.CatalogDigest, p.ManifestContentSHA256); !ok {
 		return prManifestReason
 	}
-	for _, f := range releasePRKeyFiles {
+	for _, f := range ReleasePRKeyFiles {
 		if slices.Contains(p.FilesChanged, f) {
 			return ""
 		}

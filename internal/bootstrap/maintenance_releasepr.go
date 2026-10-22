@@ -433,13 +433,15 @@ func (g *releasePRPort) Open(ctx context.Context, req maintenance.PRRequest) (ma
 	if err != nil {
 		return maintenance.PRResult{}, err
 	}
+	// Only a key file worth a pull request counts: a review log change
+	// alone opens nothing (it still travels with a key file change).
 	changed := false
 	for _, f := range req.Files {
 		base, err := g.blob(ctx, g.baseRef(), f)
 		if err != nil {
 			return maintenance.PRResult{}, err
 		}
-		changed = changed || want[f] != base
+		changed = changed || (want[f] != base && slices.Contains(maintenance.ReleasePRKeyFiles, f))
 	}
 	if !changed {
 		return maintenance.PRResult{}, maintenance.ErrPRNothingToOpen

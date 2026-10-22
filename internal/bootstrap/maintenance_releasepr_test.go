@@ -636,3 +636,45 @@ func TestReleasePRPortRefusesSecondOriginURLOfAnotherRepo(t *testing.T) {
 	requireOriginRefused(t, r)
 	requireForkUntouched(t, fork)
 }
+
+func TestReleasePRPortOpensNothingWhenNoKeyFileDiffers(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		reviews string
+	}{
+		{name: "only the review log differs", reviews: "{\"slug\":\"gza\"}\n{\"slug\":\"rza\"}\n"},
+		{name: "nothing differs", reviews: "{\"slug\":\"gza\"}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newPRRepo(t)
+			writeFile(t, filepath.Join(r.clone, "data", "artists.yaml"), prCatalogV1)
+			writeFile(t, filepath.Join(r.clone, "data", "catalog.release.json"), manifestJSON(strings.Repeat("b", 64)))
+			writeFile(t, filepath.Join(r.clone, "data", "artists.yaml.reviews.jsonl"), tc.reviews)
+			port := r.port(true)
+			p, err := port.Check(context.Background())
+			require.NoError(t, err)
+			req := r.request(p)
+			_, err = port.Open(context.Background(), req)
+			require.ErrorIs(t, err, maintenance.ErrPRNothingToOpen)
+			require.Empty(t, r.remoteBranches(), "nothing pushed")
+			require.Empty(t, r.ghCalls(), "gh never ran")
+			r.requireClean()
+		})
+	}
+}
+
+func TestReleasePRPortCommitsTheReviewLogWithAKeyFileChange(t *testing.T) {
+	r := newPRRepo(t)
+	// The manifest matches origin; the catalog and its review log differ.
+	writeFile(t, filepath.Join(r.clone, "data", "catalog.release.json"), manifestJSON(strings.Repeat("b", 64)))
+	port := r.port(true)
+	p, err := port.Check(context.Background())
+	require.NoError(t, err)
+	req := r.request(p)
+	res, err := port.Open(context.Background(), req)
+	require.NoError(t, err)
+	require.False(t, res.Reused)
+	require.Equal(t, "{\"slug\":\"gza\"}\n{\"slug\":\"rza\"}\n",
+		gitRun(t, r.bare, "show", req.Branch+":data/artists.yaml.reviews.jsonl"))
+	require.Equal(t, 1, strings.Count(r.ghCalls(), "pr create"))
+}

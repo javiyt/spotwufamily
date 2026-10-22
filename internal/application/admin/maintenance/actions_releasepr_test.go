@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/javiyt/spotwufamily/internal/application/artists"
@@ -406,5 +407,45 @@ func TestReleasePRReportsTheBlockedReasonBeforeTheConfirmedDigest(t *testing.T) 
 	_, err := a.verify(ctx, p, a.fingerprint(p, a.request(ctx, p)))
 	if err == nil || !strings.Contains(err.Error(), prOriginReason) {
 		t.Fatalf("verify with an unresolved origin: %v", err)
+	}
+}
+
+// blockingPRPort holds its first Check until released, then answers with
+// the prerequisites current at that moment's start.
+type blockingPRPort struct {
+	*fakePRPort
+	started chan struct{}
+	release chan struct{}
+	calls   atomic.Int32
+}
+
+func (b *blockingPRPort) Check(ctx context.Context) (PRPrereq, error) {
+	p, err := b.fakePRPort.Check(ctx)
+	if b.calls.Add(1) == 1 {
+		close(b.started)
+		<-b.release
+	}
+	return p, err
+}
+
+func TestReleasePRForcedRecheckIgnoresAStaleInFlightCheck(t *testing.T) {
+	inner := readyPRPort()
+	inner.set(func(p *PRPrereq) { p.ManifestMatchesLocal = false })
+	port := &blockingPRPort{fakePRPort: inner, started: make(chan struct{}), release: make(chan struct{})}
+	a := NewReleasePR(PRDeps{Port: port}).(*releasePRAction)
+
+	_, _ = a.AvailableNow() // starts the pre-publish background check
+	<-port.started
+	inner.set(func(p *PRPrereq) { p.ManifestMatchesLocal = true }) // the publish pinned the manifest
+	a.forceRecheck()
+	close(port.release) // the stale check stores its result after the recheck request
+	// Wait until the in-flight check has stored.
+	a.flight.Lock()
+	a.flight.Unlock()
+	if ok, reason := a.Available(); !ok {
+		t.Fatalf("a stale pre-publish check was reused after forceRecheck: %q", reason)
+	}
+	if port.calls.Load() < 2 {
+		t.Fatalf("checks %d: the forced recheck did not run", port.calls.Load())
 	}
 }

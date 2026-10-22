@@ -163,7 +163,7 @@ func TestStandaloneSeedRefusesWhileTheBulkReconcileHasChanges(t *testing.T) {
 	plan, err := reconcilePort{cfg}.PlanAll(context.Background())
 	require.NoError(t, err)
 	if len(plan.Changes()) == 0 {
-		t.Skip("the fixture's mapping change needs no reconcile; covered by the app-level test")
+		t.Fatal("the fixture must give the bulk reconcile a change; the test would pass vacuously")
 	}
 	info, ok := s.Action("db-seed")
 	require.True(t, ok)
