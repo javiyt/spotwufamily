@@ -36,6 +36,9 @@ var (
 	// ErrPRNotOpened: the branch was pushed but the pull request was not
 	// opened (gh failed or the run was cancelled). Re-running opens it.
 	ErrPRNotOpened = errors.New("branch pushed, pull request not opened")
+	// ErrPROriginMismatch: origin does not point at the configured
+	// repository the pull request would be opened in.
+	ErrPROriginMismatch = errors.New("origin does not point at the configured repository")
 	// ErrGitIdentity: git user.name or user.email is not configured.
 	ErrGitIdentity = errors.New("git identity not configured")
 	// ErrPRGit: a git or gh command failed.
@@ -48,6 +51,7 @@ var (
 const (
 	prTypedPhrase       = "open pull request"
 	prOriginReason      = "The git remote origin or its base branch cannot be resolved in this checkout"
+	prOriginRepoReason  = "The git remote origin does not point at the configured repository"
 	prManifestReason    = "The release manifest is not pinned to the local database content; publish the release first"
 	prNothingReason     = "Nothing to open: the catalog and release manifest already match origin"
 	prCheckReason       = "The pull request prerequisites could not be checked"
@@ -71,7 +75,7 @@ var (
 	prURLPattern    = regexp.MustCompile(`^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/[0-9]+$`)
 	prTagPattern    = regexp.MustCompile(`^[A-Za-z0-9._-]{1,100}$`)
 	prRepoPattern   = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`)
-	prBasePattern   = regexp.MustCompile(`^[A-Za-z0-9._/-]{1,100}$`)
+	prBasePattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$`)
 )
 
 // PRPrereq is what release-pr needs to know before opening a pull request.
@@ -80,6 +84,9 @@ type PRPrereq struct {
 	// OriginResolved: the checkout has an origin remote and a fetched base
 	// branch.
 	OriginResolved bool
+	// OriginMatchesRepo: origin's configured URL names Repo, so the push
+	// and the pull request target the same repository.
+	OriginMatchesRepo bool
 	// Repo is the owner/repo display string, BaseBranch the branch name.
 	Repo       string
 	BaseBranch string
@@ -287,8 +294,10 @@ func prBlockedReason(p PRPrereq) string {
 	switch {
 	case !p.GhAuthenticated:
 		return ghNotAuthenticatedReason
-	case !p.OriginResolved || !prRepoPattern.MatchString(p.Repo) || !prBasePattern.MatchString(p.BaseBranch):
+	case !p.OriginResolved || !prRepoPattern.MatchString(p.Repo) || !validPRBase(p.BaseBranch):
 		return prOriginReason
+	case !p.OriginMatchesRepo:
+		return prOriginRepoReason
 	case !p.ManifestMatchesLocal:
 		return prManifestReason
 	}
@@ -385,7 +394,7 @@ func (a *releasePRAction) fingerprint(p PRPrereq, req PRRequest) string {
 func (a *releasePRAction) Preview(ctx context.Context, _ Params) (Preview, error) {
 	p, err := a.deps.Port.Check(ctx)
 	if err != nil {
-		return Preview{}, err
+		return Preview{}, prFail(ctx, err)
 	}
 	req := a.request(ctx, p)
 	pv := Preview{
@@ -396,7 +405,7 @@ func (a *releasePRAction) Preview(ctx context.Context, _ Params) (Preview, error
 		Fingerprint:   a.fingerprint(p, req),
 		Scope: []ScopeLine{
 			{Label: "Repository", Value: orNone(prSafeValue(p.Repo, prRepoPattern))},
-			{Label: "Base branch", Value: orNone(prSafeValue(p.BaseBranch, prBasePattern))},
+			{Label: "Base branch", Value: orNone(prBaseValue(p.BaseBranch))},
 			{Label: "Branch", Value: orNone(req.Branch)},
 			{Label: "Files", Value: orNone(strings.Join(req.Files, ", "))},
 			{Label: "Title", Value: req.Title},
@@ -412,9 +421,21 @@ func (a *releasePRAction) Preview(ctx context.Context, _ Params) (Preview, error
 	return pv, nil
 }
 
+// validPRBase accepts a plain branch name without "..".
+func validPRBase(b string) bool {
+	return prBasePattern.MatchString(b) && !strings.Contains(b, "..")
+}
+
 func prSafeValue(v string, re *regexp.Regexp) string {
 	if re.MatchString(v) {
 		return v
+	}
+	return ""
+}
+
+func prBaseValue(b string) string {
+	if validPRBase(b) {
+		return b
 	}
 	return ""
 }
@@ -444,7 +465,7 @@ func (a *releasePRAction) Spec(ctx context.Context, _ Params) (jobs.Spec, error)
 	}
 	p, err := a.deps.Port.Check(ctx)
 	if err != nil {
-		return jobs.Spec{}, err
+		return jobs.Spec{}, prFail(ctx, err)
 	}
 	if _, err := a.verify(ctx, p, fp); err != nil {
 		return jobs.Spec{}, err
@@ -528,6 +549,8 @@ func prSafe(err error) error {
 	switch {
 	case errors.Is(err, ErrPROriginNewer):
 		code, msg = "conflict", prOriginNewerMsg
+	case errors.Is(err, ErrPROriginMismatch):
+		code, msg = "conflict", prOriginRepoReason+"; the pull request was not opened."
 	case errors.Is(err, ErrPRBranchDiverged):
 		code, msg = "conflict", prBranchDivergedMsg
 	case errors.Is(err, ErrGitIdentity):

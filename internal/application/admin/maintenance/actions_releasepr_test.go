@@ -58,7 +58,7 @@ func (f *fakePRPort) set(fn func(*PRPrereq)) {
 func readyPRPort() *fakePRPort {
 	return &fakePRPort{
 		prereq: PRPrereq{
-			GhAuthenticated: true, OriginResolved: true, Repo: "javiyt/spotwufamily", BaseBranch: "main",
+			GhAuthenticated: true, OriginResolved: true, OriginMatchesRepo: true, Repo: "javiyt/spotwufamily", BaseBranch: "main",
 			ManifestMatchesLocal: true, ManifestContentSHA256: prManifestSHA, ReleaseTag: "catalog-20261022T100000Z-abcdef12",
 			CatalogDigest: prCatalogDigest,
 			FilesPresent:  slices.Clone(ReleasePRFiles),
@@ -180,10 +180,13 @@ func TestReleasePRAvailability(t *testing.T) {
 	}{
 		{"gh", func(p *PRPrereq) { p.GhAuthenticated = false }, ghNotAuthenticatedReason},
 		{"origin", func(p *PRPrereq) { p.OriginResolved = false }, prOriginReason},
+		{"origin-repo", func(p *PRPrereq) { p.OriginMatchesRepo = false }, prOriginRepoReason},
+		{"base", func(p *PRPrereq) { p.BaseBranch = "../main" }, prOriginReason},
 		{"manifest", func(p *PRPrereq) { p.ManifestMatchesLocal = false }, prManifestReason},
 		{"nothing", func(p *PRPrereq) { p.FilesChanged = []string{"data/artists.yaml.reviews.jsonl"} }, prNothingReason},
 	}
 	seen := map[string]bool{}
+	distinct := 0
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			port := readyPRPort()
@@ -196,9 +199,12 @@ func TestReleasePRAvailability(t *testing.T) {
 				t.Fatalf("reason carries a path: %q", reason)
 			}
 		})
+		if !seen[c.reason] {
+			distinct++
+		}
 		seen[c.reason] = true
 	}
-	if len(seen) != len(cases) {
+	if distinct != len(cases)-1 { // "base" shares the origin reason
 		t.Fatal("reasons are distinct")
 	}
 	ok, reason := NewReleasePR(prDeps(readyPRPort(), nil)).Available()
@@ -343,6 +349,34 @@ func TestValidatePRRequest(t *testing.T) {
 	for i, r := range bad {
 		if err := ValidatePRRequest(r); !errors.Is(err, ErrPRInvalidRequest) {
 			t.Fatalf("case %d accepted: %v", i, err)
+		}
+	}
+}
+
+func TestReleasePRCheckErrorsAreSanitised(t *testing.T) {
+	port := readyPRPort()
+	port.checkErr = errors.New("open /Users/javi/secret/data/artists.yaml: denied")
+	a := NewReleasePR(prDeps(port, nil))
+	_, err := a.Preview(context.Background(), nil)
+	var se *SafeError
+	if !errors.As(err, &se) || strings.Contains(se.Message, "/Users") {
+		t.Fatalf("preview: %v", err)
+	}
+	_, err = a.Spec(WithVerifiedFingerprint(context.Background(), "x"), nil)
+	if !errors.As(err, &se) || strings.Contains(se.Message, "/Users") {
+		t.Fatalf("spec: %v", err)
+	}
+}
+
+func TestReleasePRBaseBranchPattern(t *testing.T) {
+	for _, b := range []string{"main", "release/2026", "v1.2"} {
+		if !validPRBase(b) {
+			t.Fatalf("%q rejected", b)
+		}
+	}
+	for _, b := range []string{"", "-main", "/main", "a..b", "../main", "main branch", ".hidden"} {
+		if validPRBase(b) {
+			t.Fatalf("%q accepted", b)
 		}
 	}
 }

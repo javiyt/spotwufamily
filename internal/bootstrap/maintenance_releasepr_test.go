@@ -56,6 +56,8 @@ case "$1 $2" in
 esac
 `
 
+const prOriginURL = "https://github.com/owner/repo.git"
+
 type prRepo struct {
 	t                       *testing.T
 	bare, clone, other, tmp string
@@ -127,6 +129,10 @@ func newPRRepo(t *testing.T) *prRepo {
 		gitRun(t, root, "clone", "--quiet", r.bare, dir)
 		identity(t, dir)
 	}
+	// origin is configured as the GitHub repository and rewritten to the
+	// temp bare repository, so fetch and push never leave the temp dir.
+	gitRun(t, r.clone, "config", "remote.origin.url", prOriginURL)
+	gitRun(t, r.clone, "config", "url."+r.bare+".insteadOf", prOriginURL)
 	// The operator's uncommitted edits, plus unrelated dirt that must never
 	// be committed.
 	writeFile(t, filepath.Join(r.clone, "data", "artists.yaml"), prCatalogV2)
@@ -433,6 +439,125 @@ func TestReleasePRActionEndToEnd(t *testing.T) {
 	require.Contains(t, out.Result.Summary, "https://github.com/owner/repo/pull/7")
 	requireNoPaths(t, r, out.Result.Summary)
 	require.Contains(t, r.ghCalls(), "--title Update catalog: rza")
+	require.Equal(t, before, r.state())
+	r.requireClean()
+}
+
+func TestOriginRepoParsing(t *testing.T) {
+	for url, want := range map[string]string{
+		"https://github.com/Owner/Repo.git":      "Owner/Repo",
+		"https://github.com/owner/repo":          "owner/repo",
+		"git@github.com:owner/repo.git":          "owner/repo",
+		"ssh://git@github.com/owner/repo.git":    "owner/repo",
+		"https://gitlab.com/owner/repo.git":      "",
+		"https://github.com/owner/repo/extra":    "",
+		"https://user:tok@github.com/owner/repo": "",
+	} {
+		require.Equal(t, want, originRepo(url), url)
+	}
+}
+
+func TestReleasePRPortRefusesOriginOfAnotherRepo(t *testing.T) {
+	r := newPRRepo(t)
+	gitRun(t, r.clone, "config", "remote.origin.url", "git@github.com:someone/fork.git")
+	gitRun(t, r.clone, "config", "url."+r.bare+".insteadOf", "git@github.com:someone/fork.git")
+	port := r.port(true)
+	p, err := port.Check(context.Background())
+	require.NoError(t, err)
+	require.True(t, p.OriginResolved)
+	require.False(t, p.OriginMatchesRepo)
+	ok, reason := maintenance.NewReleasePR(maintenance.PRDeps{Port: port}).Available()
+	require.False(t, ok)
+	require.Contains(t, reason, "does not point at the configured repository")
+	require.NotContains(t, reason, "fork")
+
+	p.CatalogDigest, p.ManifestContentSHA256 = strings.Repeat("c", 64), r.manifestSHA
+	_, err = port.Open(context.Background(), r.request(p))
+	require.ErrorIs(t, err, maintenance.ErrPROriginMismatch)
+	require.NotContains(t, err.Error(), "fork")
+	require.Empty(t, r.remoteBranches())
+	require.Empty(t, r.ghCalls())
+}
+
+func TestReleasePRPortRefusesBranchWithOtherChanges(t *testing.T) {
+	r := newPRRepo(t)
+	port := r.port(true)
+	p, err := port.Check(context.Background())
+	require.NoError(t, err)
+	req := r.request(p)
+	// The same three files as the operator's, plus a README change.
+	for _, f := range maintenance.ReleasePRFiles {
+		data, err := os.ReadFile(filepath.Join(r.clone, filepath.FromSlash(f)))
+		require.NoError(t, err)
+		writeFile(t, filepath.Join(r.other, filepath.FromSlash(f)), string(data))
+	}
+	writeFile(t, filepath.Join(r.other, "README.md"), "smuggled\n")
+	gitRun(t, r.other, "commit", "--quiet", "-am", "catalog plus extra")
+	gitRun(t, r.other, "push", "--quiet", "origin", "HEAD:refs/heads/"+req.Branch)
+
+	_, err = port.Open(context.Background(), req)
+	require.ErrorIs(t, err, maintenance.ErrPRBranchDiverged)
+	require.Empty(t, r.ghCalls(), "gh never ran")
+	r.requireClean()
+}
+
+func TestReleasePRPortRefusesBranchWithTwoCommits(t *testing.T) {
+	r := newPRRepo(t)
+	port := r.port(true)
+	p, err := port.Check(context.Background())
+	require.NoError(t, err)
+	req := r.request(p)
+	writeFile(t, filepath.Join(r.other, "data", "artists.yaml"), prCatalogV1+"# step\n")
+	gitRun(t, r.other, "commit", "--quiet", "-am", "first")
+	for _, f := range maintenance.ReleasePRFiles {
+		data, err := os.ReadFile(filepath.Join(r.clone, filepath.FromSlash(f)))
+		require.NoError(t, err)
+		writeFile(t, filepath.Join(r.other, filepath.FromSlash(f)), string(data))
+	}
+	gitRun(t, r.other, "commit", "--quiet", "-am", "second")
+	gitRun(t, r.other, "push", "--quiet", "origin", "HEAD:refs/heads/"+req.Branch)
+
+	_, err = port.Open(context.Background(), req)
+	require.ErrorIs(t, err, maintenance.ErrPRBranchDiverged)
+	require.Empty(t, r.ghCalls())
+}
+
+func TestReleasePRPortChecksBranchBeforeReusingOpenPR(t *testing.T) {
+	r := newPRRepo(t)
+	port := r.port(true)
+	p, err := port.Check(context.Background())
+	require.NoError(t, err)
+	req := r.request(p)
+	writeFile(t, os.Getenv("FAKE_GH_STATE"), "") // gh reports an open PR
+	port.afterPush = func() {
+		// Someone adds a commit to the branch before the PR is looked up.
+		gitRun(t, r.other, "fetch", "--quiet", "origin")
+		gitRun(t, r.other, "checkout", "--quiet", "-B", "x", "origin/"+req.Branch)
+		writeFile(t, filepath.Join(r.other, "README.md"), "smuggled\n")
+		gitRun(t, r.other, "commit", "--quiet", "-am", "extra")
+		gitRun(t, r.other, "push", "--quiet", "origin", "HEAD:refs/heads/"+req.Branch)
+	}
+	_, err = port.Open(context.Background(), req)
+	require.ErrorIs(t, err, maintenance.ErrPRBranchDiverged)
+	require.NotContains(t, r.ghCalls(), "pr create")
+	r.requireClean()
+}
+
+func TestReleasePRPortSkipsOperatorHooks(t *testing.T) {
+	r := newPRRepo(t)
+	marker := filepath.Join(t.TempDir(), "hook-ran")
+	for _, name := range []string{"post-checkout", "pre-commit", "commit-msg", "post-commit", "pre-push"} {
+		hook := filepath.Join(r.clone, ".git", "hooks", name)
+		writeFile(t, hook, "#!/bin/sh\necho "+name+" >> '"+marker+"'\n")
+		require.NoError(t, os.Chmod(hook, 0o755))
+	}
+	before := r.state()
+	port := r.port(true)
+	p, err := port.Check(context.Background())
+	require.NoError(t, err)
+	_, err = port.Open(context.Background(), r.request(p))
+	require.NoError(t, err)
+	require.NoFileExists(t, marker, "no operator hook ran")
 	require.Equal(t, before, r.state())
 	r.requireClean()
 }
