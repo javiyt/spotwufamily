@@ -511,3 +511,32 @@ func TestSubmitJournalFailureIsHonest(t *testing.T) {
 	}
 	m.Wait(j.ID)
 }
+
+// A job that fails or is cancelled may still return a result (an
+// all-or-nothing operation listing what it rolled back); it is kept.
+func TestFailedOrCancelledJobKeepsItsResult(t *testing.T) {
+	rep := &jobs.Report{Name: "r", Columns: []string{"artist", "outcome"}, Rows: [][]string{{"a", "rolled_back"}}}
+	m := newManager(&fakeStore{})
+	j, _ := m.Submit(context.Background(), jobs.Spec{Kind: "a", Run: func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
+		return jobs.Outcome{Result: jobs.Result{Summary: "rolled back", Report: rep}}, safeErr{}
+	}})
+	m.Wait(j.ID)
+	got, _ := m.Get(j.ID)
+	if got.Status != jobs.StatusFailed || got.Result == nil || got.Result.Summary != "rolled back" || got.Result.Report == nil {
+		t.Fatalf("got %+v", got)
+	}
+
+	started := make(chan struct{})
+	j, _ = m.Submit(context.Background(), jobs.Spec{Kind: "b", Run: func(ctx context.Context, _ jobs.Reporter) (jobs.Outcome, error) {
+		close(started)
+		<-ctx.Done()
+		return jobs.Outcome{Result: jobs.Result{Summary: "cancelled, rolled back", Report: rep}}, ctx.Err()
+	}})
+	<-started
+	_ = m.Cancel(j.ID)
+	m.Wait(j.ID)
+	got, _ = m.Get(j.ID)
+	if got.Status != jobs.StatusCancelled || got.Result == nil || got.Result.Summary != "cancelled, rolled back" {
+		t.Fatalf("got %+v", got)
+	}
+}

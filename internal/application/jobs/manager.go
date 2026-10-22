@@ -195,9 +195,11 @@ func (m *Manager) run(ctx context.Context, id string, fn Func, done chan struct{
 	case cancelled:
 		job.Status = StatusCancelled
 		job.Resumable = outcome.Resumable
+		keepResult(job, outcome)
 	case err != nil:
 		job.Status = StatusFailed
 		job.Message = m.sanitize(err)
+		keepResult(job, outcome)
 	case outcome.Status == StatusSucceeded || outcome.Status == StatusPartial:
 		job.Status = outcome.Status
 		res := outcome.Result
@@ -223,6 +225,17 @@ func (m *Manager) run(ctx context.Context, id string, fn Func, done chan struct{
 		m.onFinish(final)
 	}
 	close(done)
+}
+
+// keepResult records the result a failed or cancelled job still returned
+// (an all-or-nothing job listing what it rolled back). Its text must be as
+// user-safe as a successful result.
+func keepResult(job *Job, outcome Outcome) {
+	if outcome.Result.Summary == "" && outcome.Result.Report == nil {
+		return
+	}
+	res := outcome.Result
+	job.Result = &res
 }
 
 func (m *Manager) invoke(ctx context.Context, fn Func, r Reporter) (out Outcome, err error) {
