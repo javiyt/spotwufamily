@@ -443,3 +443,71 @@ func TestSubmitConflictsWithAnAcquiredResource(t *testing.T) {
 	}
 	m.Wait(j.ID)
 }
+
+// ctxStore mimics the filesystem journal: it refuses a canceled context.
+type ctxStore struct {
+	fakeStore
+	failFirst error
+}
+
+func (s *ctxStore) Save(ctx context.Context, j jobs.Job) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.failFirst != nil {
+		err := s.failFirst
+		s.failFirst = nil
+		return err
+	}
+	return s.fakeStore.Save(ctx, j)
+}
+
+func TestSubmitSurvivesCanceledRequestContext(t *testing.T) {
+	store := &ctxStore{}
+	m := newManager(store)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // the client disconnected before the queued state was journaled
+
+	j, err := m.Submit(ctx, jobs.Spec{Kind: "k", Run: func(ctx context.Context, _ jobs.Reporter) (jobs.Outcome, error) {
+		return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: "ok"}}, ctx.Err()
+	}})
+	if err != nil {
+		t.Fatalf("accepted submit must not depend on the request context: %v", err)
+	}
+	m.Wait(j.ID)
+	got, ok := m.Get(j.ID)
+	if !ok || got.Status != jobs.StatusSucceeded {
+		t.Fatalf("job = %+v, %v", got, ok)
+	}
+	st := store.statuses(j.ID)
+	if len(st) < 2 || st[0] != jobs.StatusQueued {
+		t.Fatalf("journal states = %v", st)
+	}
+}
+
+func TestSubmitJournalFailureIsHonest(t *testing.T) {
+	store := &ctxStore{failFirst: errors.New("disk full")}
+	m := newManager(store)
+	ran := make(chan struct{}, 1)
+	spec := jobs.Spec{Kind: "k", Resources: []string{"db"}, Run: func(context.Context, jobs.Reporter) (jobs.Outcome, error) {
+		ran <- struct{}{}
+		return jobs.Outcome{Status: jobs.StatusSucceeded}, nil
+	}}
+	if _, err := m.Submit(context.Background(), spec); err == nil {
+		t.Fatal("want an error when the queued state cannot be journaled")
+	}
+	if got := m.List(); len(got) != 0 {
+		t.Fatalf("no phantom job expected, got %+v", got)
+	}
+	select {
+	case <-ran:
+		t.Fatal("job ran although it was never accepted")
+	default:
+	}
+	// The resource was not leaked: a retry is accepted.
+	j, err := m.Submit(context.Background(), spec)
+	if err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	m.Wait(j.ID)
+}

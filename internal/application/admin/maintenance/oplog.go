@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -97,7 +98,7 @@ func (s *Service) record(e OperationEntry) {
 	}()
 	e.Summary = SanitizeSummary(e.Summary)
 	if err := s.oplog.Append(context.Background(), e); err != nil {
-		s.reportLogErr(err)
+		s.reportLogErr(fmt.Errorf("write operation log: %w", err))
 	}
 }
 

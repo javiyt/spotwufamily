@@ -850,3 +850,19 @@ func TestDashboardReturnsWhileReleasePreflightHangs(t *testing.T) {
 	}
 	require.LessOrEqual(t, rel.calls.Load(), int32(2), "one background check per release action at most")
 }
+
+func TestOperationsPageCanceledLogReadIsNotLoggedAsFailure(t *testing.T) {
+	e := newOpsEnv(t, func(f *fakeOp) { f.recentErr = context.Canceled })
+	rec := e.get(t, "/operations")
+	require.NotContains(t, e.log.String(), "operations log", "a canceled request is not a log failure")
+	require.NotContains(t, rec.Body.String(), "could not be read")
+}
+
+func TestOperationsPageGenuineLogFailureStaysVisibleAndRetriable(t *testing.T) {
+	e := newOpsEnv(t, func(f *fakeOp) { f.recentErr = errors.New("permission denied") })
+	rec := e.get(t, "/operations")
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "could not be read")
+	require.Contains(t, rec.Body.String(), "Reload", "operators are told how to retry")
+	require.Contains(t, e.log.String(), "operations log")
+}

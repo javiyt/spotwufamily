@@ -118,3 +118,49 @@ func TestUnknownActionErrorIsExported(t *testing.T) {
 		t.Fatalf("want ErrUnknownAction, got %v", err)
 	}
 }
+
+func TestRecentOperationsCanceledRequestIsNotALogFailure(t *testing.T) {
+	var reported []error
+	l := &cancelAwareLog{}
+	s, _ := logService(t, l, func(err error) { reported = append(reported, err) }, newFake("fake"))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := s.RecentOperations(ctx, 10)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("want the cancellation to be visible to the caller, got %v", err)
+	}
+	if len(reported) != 0 {
+		t.Fatalf("a canceled request must not be reported as a log failure: %v", reported)
+	}
+}
+
+func TestRecentOperationsRealFailureIsReportedAsRead(t *testing.T) {
+	var reported []error
+	s, _ := logService(t, &failingLog{err: errors.New("permission denied")},
+		func(err error) { reported = append(reported, err) }, newFake("fake"))
+	_, err := s.RecentOperations(context.Background(), 10)
+	var se *SafeError
+	if !errors.As(err, &se) || errors.Is(err, context.Canceled) {
+		t.Fatalf("want a safe unreadable error, got %v", err)
+	}
+	if len(reported) != 1 || !strings.Contains(reported[0].Error(), "read operation log") {
+		t.Fatalf("reported = %v", reported)
+	}
+}
+
+func TestOperationLogWriteFailureIsReportedAsWrite(t *testing.T) {
+	var reported []error
+	l := &memLog{err: errors.New("disk full")}
+	s, m := logService(t, l, func(err error) { reported = append(reported, err) }, newFake("fake"))
+	j := runFake(t, s, m, Params{"scope": "all"})
+	if j.ID == "" || len(reported) == 0 || !strings.Contains(reported[0].Error(), "write operation log") {
+		t.Fatalf("job %+v reported %v", j, reported)
+	}
+}
+
+type cancelAwareLog struct{}
+
+func (cancelAwareLog) Append(context.Context, OperationEntry) error { return nil }
+func (cancelAwareLog) Recent(ctx context.Context, _ int) ([]OperationEntry, error) {
+	return nil, ctx.Err()
+}

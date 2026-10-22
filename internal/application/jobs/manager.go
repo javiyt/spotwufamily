@@ -119,7 +119,10 @@ func (m *Manager) Submit(ctx context.Context, s Spec) (Job, error) {
 		ResumeOf:  s.ResumeOf,
 		CreatedAt: m.now(),
 	}
-	if err := m.store.Save(ctx, snapshot(job)); err != nil {
+	// The queued state is journaled on a detached context: once the request
+	// passed every check the job is accepted, and a client that disconnects
+	// now must not turn that into a phantom or failed submission.
+	if err := m.store.Save(context.WithoutCancel(ctx), snapshot(job)); err != nil {
 		m.mu.Unlock()
 		return Job{}, fmt.Errorf("persist job: %w", err)
 	}

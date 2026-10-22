@@ -40,3 +40,18 @@ func TestJobErrorSanitizerLogsTheCauseRedacted(t *testing.T) {
 	require.NotContains(t, out, "level=ERROR")
 	require.True(t, strings.Contains(out, "context canceled"), out)
 }
+
+func TestOperationLogErrorHandlerLevels(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	h := operationLogErrorHandler(logger)
+
+	h(fmt.Errorf("read operation log: %w", context.Canceled))
+	require.NotContains(t, buf.String(), "level=ERROR", "cancellation is not an error")
+	require.NotContains(t, buf.String(), "write failed")
+
+	buf.Reset()
+	h(errors.New("read operation log: permission denied"))
+	require.Contains(t, buf.String(), "level=ERROR")
+	require.NotContains(t, buf.String(), "write failed", "a read failure is not labeled a write failure")
+}

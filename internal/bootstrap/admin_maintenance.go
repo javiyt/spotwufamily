@@ -255,9 +255,7 @@ func NewAdmin(ctx context.Context, cfg AdminConfig) (*Admin, func(), error) {
 	svc := maintenance.NewService(manager, actions, secret, cfg.now,
 		maintenance.WithFreshness(freshness),
 		maintenance.WithOperationLog(filesystem.NewOperationLog(paths.OperationLog)),
-		maintenance.WithOperationLogErrorHandler(func(err error) {
-			logger.Error("admin operation log write failed", "err", err)
-		}),
+		maintenance.WithOperationLogErrorHandler(operationLogErrorHandler(logger)),
 	)
 	svcRef.Store(svc)
 	// Jobs a previous process left running end as interrupted: record that
@@ -386,4 +384,16 @@ func newJobID() string {
 	b[8] = b[8]&0x3f | 0x80
 	h := hex.EncodeToString(b[:])
 	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:32]
+}
+
+// operationLogErrorHandler logs operation log failures. The error says
+// whether it was a read or a write; a canceled context is not a failure.
+func operationLogErrorHandler(logger *slog.Logger) func(error) {
+	return func(err error) {
+		if errors.Is(err, context.Canceled) {
+			logger.Info("admin operation log request canceled", "err", err)
+			return
+		}
+		logger.Error("admin operation log failed", "err", err)
+	}
 }
