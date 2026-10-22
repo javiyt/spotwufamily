@@ -895,3 +895,28 @@ func TestBulkReconcileActionsAreDescribedUnderReconcile(t *testing.T) {
 	body := e.get(t, "/operations/reconcile-all-apply").Body.String()
 	require.NotContains(t, body, `name="artist"`)
 }
+
+func TestUpdateWebsiteAndSeedAreDescribed(t *testing.T) {
+	e := newOpsEnv(t, func(f *fakeOp) {
+		f.actions = append(f.actions,
+			maintenance.ActionInfo{Name: "update-website", Title: "Update website", Available: true, Destructive: true, UsesNetwork: true},
+			maintenance.ActionInfo{Name: "db-seed", Title: "Seed database from the catalog", Available: true})
+	})
+	rec := e.get(t, "/api/v1/operations")
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got struct {
+		Items []map[string]any `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	want := map[string]string{"update-website": "Release", "db-seed": "Refresh/Export"}
+	seen := 0
+	for _, it := range got.Items {
+		name, _ := it["name"].(string)
+		if group, ok := want[name]; ok {
+			seen++
+			require.Equal(t, group, it["group"], name)
+			require.NotEmpty(t, it["description"], name)
+		}
+	}
+	require.Equal(t, 2, seen)
+}

@@ -130,7 +130,7 @@ func WithPending(d PendingDeps) Option {
 
 type stageDef struct {
 	name, title, action string
-	params          Params
+	params              Params
 }
 
 var stageDefs = []stageDef{
