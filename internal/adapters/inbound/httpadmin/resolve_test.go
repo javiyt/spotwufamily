@@ -506,6 +506,39 @@ func TestProfileDataIsEscapedAndNoCredentialsLeak(t *testing.T) {
 	require.NotContains(t, rec.Body.String(), rzSecretVal)
 }
 
+func TestSinglesLinkToSpotifyLikeAlbums(t *testing.T) {
+	const (
+		spark    = "4eSQgbY6VJglgaRVlNPa8Q"
+		rebel    = "S1111111111111111111aa"
+		holiday  = "S2222222222222222222bb"
+		evilID   = "S3333333333333333333cc"
+		noLink   = "not-a-spotify-id"
+		albumURL = "https://open.spotify.com/album/"
+	)
+	env := newResolveEnv(t, func(e *resolveEnv, _ *admin.ResolutionDeps) {
+		e.spotify.albums[rzNewcomer] = []catalog.Release{
+			{SpotifyID: spark, Name: "The Spark", ReleaseDate: "2017-10-31", AlbumGroup: "album", URL: albumURL + spark},
+			{SpotifyID: rebel, Name: "Rebel on the Roof", ReleaseDate: "2022-09-30", AlbumGroup: "single", URL: albumURL + rebel + "?si=x"},
+			{SpotifyID: holiday, Name: "Block Holiday", ReleaseDate: "2013-07-15", AlbumGroup: "single"},
+			{SpotifyID: evilID, Name: "Hostile", AlbumGroup: "single", URL: "javascript:alert(1)"},
+			{SpotifyID: noLink, Name: "No Link", AlbumGroup: "single", URL: "https://evil.example/album/" + evilID},
+		}
+	})
+	body := env.get("/resolve/newcomer?q=" + rzNewcomer).Body.String()
+
+	link := func(id string) string {
+		return `<a href="` + albumURL + id + `" rel="noopener noreferrer" target="_blank">open</a>`
+	}
+	require.Contains(t, body, "The Spark <span class=\"muted\">2017-10-31</span> "+link(spark))
+	require.Contains(t, body, "Rebel on the Roof <span class=\"muted\">2022-09-30</span> "+link(rebel))
+	require.Contains(t, body, "Block Holiday <span class=\"muted\">2013-07-15</span> "+link(holiday))
+	require.Contains(t, body, link(evilID), "a hostile URL falls back to the canonical link of a valid ID")
+	require.NotContains(t, body, "javascript:")
+	require.NotContains(t, body, "evil.example")
+	require.NotContains(t, body, "?si=x")
+	require.Contains(t, body, "<li>No Link</li>", "no safe destination means no link")
+}
+
 func TestImagesComeOnlyFromTheSpotifyCDNAndCSPAllowsOnlyThat(t *testing.T) {
 	env := newResolveEnv(t, nil)
 	rec := env.get("/resolve/newcomer?q=" + rzNewcomer)

@@ -50,6 +50,34 @@ func IsSpotifyID(id string) bool { return spotifyIDPattern.MatchString(id) }
 // SpotifyArtistURL is the canonical public link of an artist profile.
 func SpotifyArtistURL(id string) string { return spotifyURLForID(id) }
 
+// SpotifyAlbumURL is the canonical public link of a release. Spotify singles
+// are album entities, so they share this form. It returns "" for an id that is
+// not a Spotify ID.
+func SpotifyAlbumURL(id string) string {
+	if !IsSpotifyID(id) {
+		return ""
+	}
+	return "https://open.spotify.com/album/" + id
+}
+
+// SafeSpotifyReleaseURL returns the canonical album link for a release. raw is
+// trusted only when it is an https open.spotify.com/album/<id> link; anything
+// else falls back to the link derived from a valid id, and to "" when neither
+// is safe. The result is rebuilt, so queries and fragments never survive.
+func SafeSpotifyReleaseURL(raw, id string) string {
+	if u, err := url.Parse(strings.TrimSpace(raw)); err == nil && u.Scheme == "https" && u.User == nil &&
+		strings.ToLower(u.Hostname()) == "open.spotify.com" && (u.Port() == "" || u.Port() == "443") {
+		segments := strings.Split(strings.Trim(u.Path, "/"), "/")
+		if len(segments) > 0 && strings.HasPrefix(segments[0], "intl-") {
+			segments = segments[1:]
+		}
+		if len(segments) == 2 && segments[0] == "album" {
+			return SpotifyAlbumURL(segments[1])
+		}
+	}
+	return SpotifyAlbumURL(id)
+}
+
 // SafeSpotifyImageURL returns raw only when it is an https URL on a Spotify
 // image CDN, and "" otherwise, so the admin never points a browser at an
 // arbitrary host.

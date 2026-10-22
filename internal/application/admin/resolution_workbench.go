@@ -302,7 +302,7 @@ func (s Service) buildCard(ctx context.Context, c catalog.EditorialCatalog, arti
 		if len(card.Genres) == 0 {
 			card.Genres = result.Genres
 		}
-		card.Albums = result.Releases
+		card.Albums = withSafeReleaseLinks(result.Releases)
 		card.Suggestions = suggestionsFrom(result)
 	}
 
@@ -393,7 +393,18 @@ func (s Service) singlesOf(ctx context.Context, id string, src *memoSource, card
 		if len(out) >= maxCardReleases {
 			break
 		}
-		out = append(out, artists.ProfileRelease{ID: r.SpotifyID, Name: r.Name, Date: r.ReleaseDate, URL: r.URL})
+		out = append(out, artists.ProfileRelease{ID: r.SpotifyID, Name: r.Name, Date: r.ReleaseDate, URL: catalog.SafeSpotifyReleaseURL(r.URL, r.SpotifyID)})
+	}
+	return out
+}
+
+// withSafeReleaseLinks returns a copy of releases whose URL is a canonical
+// Spotify album link or empty, so templates can link them unconditionally.
+func withSafeReleaseLinks(releases []artists.ProfileRelease) []artists.ProfileRelease {
+	out := make([]artists.ProfileRelease, len(releases))
+	for i, r := range releases {
+		r.URL = catalog.SafeSpotifyReleaseURL(r.URL, r.ID)
+		out[i] = r
 	}
 	return out
 }
