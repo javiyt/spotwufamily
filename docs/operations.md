@@ -179,8 +179,13 @@ The local admin (`make admin`, see [Local admin](admin.md)) runs the same use ca
 | `make db-verify db-snapshot export audit-fast` | `refresh-export` | the four in order |
 | `artists reconcile --artist SLUG` | `reconcile-dry-run` | read-only plan |
 | `artists reconcile --artist SLUG --apply --confirm <checksum>` | `reconcile-apply` | typed `reconcile <slug>`; backup + manifest; one transaction |
+| `artists reconcile --artist SLUG` for every artist | `reconcile-all-dry-run` | read-only plan of every artist |
+| (no CLI equivalent) | `reconcile-all-apply` | typed `reconcile all`; one backup + manifest; one transaction for every artist, all or nothing |
+| `make artists-seed-db` | `db-seed` | database lock + backup; no Spotify; removed artists deactivated |
 | `make catalog-release-prepare` | `release-prepare` (on `/publish`) | builds `build/catalog-release`; uploads nothing |
-| `make catalog-release-publish` | `release-publish` (on `/publish`) | typed `publish release`; the only step that publishes |
+| `make catalog-release-publish` | `release-publish` (on `/publish`) | typed `publish release`; publishes the release |
+| commit + push + `gh pr create` by hand | `release-pr` | typed `open pull request`; only the catalog, review log and manifest, from a temporary worktree; never merges |
+| all of the above, in order | `update-website` | typed `update website`; runs only the required stages and stops once the pull request is open |
 
 Safety properties, all enforced by the server:
 
@@ -189,18 +194,21 @@ Safety properties, all enforced by the server:
 - **Backups first.** Every database write takes a `VACUUM INTO` backup in `build/admin/backups/`. `refresh-metadata` and `discover-import` also copy the catalog there (`artists-<UTC timestamp>.yaml`) before their first write, because `<catalog>.bak` only keeps the state before the last save.
 - **Restartable.** Jobs are journaled in `build/admin/jobs.jsonl`. After a restart, jobs that were running read `interrupted` (never succeeded); a sync interrupted, cancelled or stopped by a Spotify 429 resumes from its last completed artist.
 - **Auditable.** Every confirmed and finished job is appended to `<catalog>.operations.jsonl` (local and git-ignored, never committed); reports download as deterministic CSV/JSON from the job page.
-- **Never automatic publication.** No sync, edit, export or review publishes anything; publishing is only the explicit `/publish` step 2.
+- **Never automatic publication.** No sync, edit, export or review publishes anything; publishing is only the explicit `/publish` step 2 or a confirmed `update-website` run. Neither merges the pull request: that, and the Pages deploy, happen on GitHub.
+- **Content-digest freshness.** What the database applied is recorded in SQLite (`catalog_applied`, `stage_checkpoints`), so pending changes and "seed needed" come from digests, never file modification times. The admin's *Pending changes / Update website* panel lists them (see `docs/admin.md`). CLI runs record nothing, so after one the admin reads pending or unknown until an admin flow runs again.
 - **Offline-safe.** Without credentials, database, `python3` or `gh`, the admin still starts; the actions that need them are disabled with the reason.
 
 ## Publication Checklist
 
 The local admin's `/publish` page is the guided way to publish a catalog release (see `docs/admin.md`, *Publish*). It shows, without running anything on load:
 
-1. **Data readiness**: the cached data freshness check (seed/snapshot/export needed, unreadable database, offline, differs from published). Refresh first if anything other than "differs from published" (expected before a release) is reported.
+1. **Data readiness**: the cached data freshness check (seed/snapshot/export needed, catalog state unknown, unreadable database, offline, differs from published). Refresh first if anything other than "differs from published" (expected before a release) is reported.
 2. **Prerequisites**: python3 and the release script, Go, `gh auth login`, an empty `build/catalog-release`, a local database, each with its fix. **Re-check** refreshes them in the background.
 3. **What will be published**: local vs pinned content hash, last release tag, whether the content differs from what Pages serves, and the prepared package.
 4. **Step 1 – Prepare package** and **Step 2 – Publish release** (typed phrase `publish release`). Step 2 appears only when a prepared package matches the local content and the prerequisites pass.
-5. **Manual follow-up**: commit `data/catalog.release.json` together with the catalog changes (`data/artists.yaml` and, if changed, `data/artists.yaml.reviews.jsonl`) in one pull request, wait for CI and the Pages deploy, verify the site.
+5. **Follow-up**: commit `data/catalog.release.json` together with the catalog changes (`data/artists.yaml` and, if changed, `data/artists.yaml.reviews.jsonl`) in one pull request (by hand, or with the `release-pr` action), wait for CI and the Pages deploy, verify the site.
+
+`update-website` on `/operations` runs the whole sequence (reconcile, seed, sync only if needed, verify, snapshot, export, prepare, publish, pull request) after one confirmation. A release published by it, or by step 2, stays unpinned until its pull request is merged.
 
 Edits and Spotify profile decisions never publish anything; after each one the admin only hints that the database, snapshot and exports may need refreshing. The CLI route (`make catalog-release-prepare` / `make catalog-release-publish`, above) remains available.
 
