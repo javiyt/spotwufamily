@@ -396,3 +396,15 @@ func TestReleasePRRefusesACatalogOtherThanTheConfirmedOne(t *testing.T) {
 		t.Fatal("pull request opened for another catalog")
 	}
 }
+
+func TestReleasePRReportsTheBlockedReasonBeforeTheConfirmedDigest(t *testing.T) {
+	port := readyPRPort()
+	port.set(func(p *PRPrereq) { p.OriginResolved = false; p.CatalogDigest = "" })
+	a := NewReleasePR(prDeps(port, nil)).(*releasePRAction)
+	ctx := WithConfirmedCatalogDigest(context.Background(), prCatalogDigest)
+	p, _ := port.Check(ctx)
+	_, err := a.verify(ctx, p, a.fingerprint(p, a.request(ctx, p)))
+	if err == nil || !strings.Contains(err.Error(), prOriginReason) {
+		t.Fatalf("verify with an unresolved origin: %v", err)
+	}
+}

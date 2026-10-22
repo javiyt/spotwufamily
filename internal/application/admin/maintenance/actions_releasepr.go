@@ -273,6 +273,14 @@ func (a *releasePRAction) check(ctx context.Context) (p PRPrereq, err error) {
 	return a.deps.Port.Check(ctx)
 }
 
+// forceRecheck drops the cached check, so the next one runs fresh (after a
+// publish changed the manifest).
+func (a *releasePRAction) forceRecheck() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cachedAt = time.Time{}
+}
+
 func (a *releasePRAction) store(p PRPrereq, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -449,15 +457,17 @@ func (a *releasePRAction) verify(ctx context.Context, p PRPrereq, fp string) (PR
 	if !p.GhAuthenticated {
 		return PRRequest{}, ErrGhNotAuthenticated
 	}
+	// "Nothing to open" is not a refusal: Open finds it on the fetched base
+	// and the run reports (and checkpoints) it as done.
+	if reason := prBlockedReason(p); reason != "" && reason != prNothingReason {
+		return PRRequest{}, &SafeError{Code: "unavailable", Message: reason + "."}
+	}
 	if confirmed, ok := ConfirmedCatalogDigest(ctx); ok && p.CatalogDigest != confirmed {
 		return PRRequest{}, &SafeError{Code: "stale_preview", Message: msgCatalogChanged}
 	}
 	req := a.request(ctx, p)
 	if a.fingerprint(p, req) != fp {
 		return PRRequest{}, ErrStalePreview
-	}
-	if reason := prBlockedReason(p); reason != "" {
-		return PRRequest{}, &SafeError{Code: "unavailable", Message: reason + "."}
 	}
 	return req, nil
 }

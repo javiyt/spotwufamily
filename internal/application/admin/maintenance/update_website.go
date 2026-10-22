@@ -135,11 +135,15 @@ func (a *updateWebsiteAction) plan(ctx context.Context) (websitePlan, error) {
 		return pl, nil
 	}
 	pl.view = a.s.view(f, fullAvailable)
+	// What runs is decided from digests only; the view (availability) only
+	// says whether a stage is blocked. A cached "nothing to open" never
+	// skips the pull request.
+	need := needs(f)
 	runsAny := false
 	for i, st := range pl.view.Stages {
 		def := stageDefs[i]
-		ps := plannedStage{def: def, need: st.Need}
-		ps.run = st.Need == NeedRequired && (def.name == PlanValidate || def.action != "")
+		ps := plannedStage{def: def, need: need[def.name]}
+		ps.run = ps.need == NeedRequired && (def.name == PlanValidate || def.action != "")
 		if ps.run && pl.blocked == "" && (st.Status == StageBlocked || (st.Status == StageUnknown && st.BlockedReason != "")) {
 			pl.blocked = st.Title + ": " + st.BlockedReason
 		}
@@ -369,17 +373,18 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 			}
 			return rs.failed(i, &SafeError{Code: "unavailable", Message: reason + "."})
 		}
-		// The same view the plan was computed from, so plan and run agree.
-		v := a.s.view(f, fullAvailable)
+		// The same digest rule the plan was computed from, so plan and run
+		// agree; availability never decides what runs.
+		need := needs(f)
 		if st.def.name == PlanReleasePublish || st.def.name == PlanPR {
 			// Nothing is published while a stage that already ran is needed
 			// again (another process wrote the database between stages, or
 			// a stage's record was not written).
-			if again := requiredStages(v, i, false); len(again) > 0 {
+			if again := requiredStages(need, i, false); len(again) > 0 {
 				return rs.failed(i, &SafeError{Code: "stale_preview", Message: msgNeededAgain + strings.Join(again, ", ") + "."})
 			}
 		}
-		live := v.Stages[i].Need == NeedRequired
+		live := need[st.def.name] == NeedRequired
 		switch {
 		case !live && st.run:
 			rs.set(i, OutcomeSkipped, msgSkippedDone)
@@ -409,6 +414,11 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 				Result: jobs.Result{Summary: summary, Report: rs.report()}}, nil
 		}
 		rs.set(i, OutcomeDone, out.Result.Summary)
+		if st.def.name == PlanReleasePublish {
+			// The publish changed the manifest: cached release and pull
+			// request checks are stale.
+			a.recheckAvailability()
+		}
 		if st.def.name == PlanPR {
 			rs.pr = out.Result.Summary
 		}
@@ -422,7 +432,7 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 	if !f.usable() {
 		return rs.incomplete([]string{databaseUnreadableNote})
 	}
-	if left := requiredStages(a.s.view(f, fullAvailable), len(pl.stages), true); len(left) > 0 {
+	if left := requiredStages(needs(f), len(pl.stages), true); len(left) > 0 {
 		return rs.incomplete(left)
 	}
 	summary := "Website update finished for catalog " + pl.view.CatalogDigest + "." + rs.progressLine()
@@ -436,13 +446,13 @@ func (a *updateWebsiteAction) run(ctx context.Context, r jobs.Reporter, pl websi
 // requiredStages lists the titles of the admin-run stages before index end
 // that the view still requires. The verify stage is derived from the
 // others and only counted when withVerify is set.
-func requiredStages(v PendingView, end int, withVerify bool) []string {
+func requiredStages(need map[string]StageNeed, end int, withVerify bool) []string {
 	var out []string
-	for i, st := range v.Stages {
+	for i, st := range stageDefs {
 		if i >= end {
 			break
 		}
-		switch st.Name {
+		switch st.name {
 		case PlanValidate, PlanBuild, PlanDeploy:
 			continue
 		case PlanVerify:
@@ -450,8 +460,8 @@ func requiredStages(v PendingView, end int, withVerify bool) []string {
 				continue
 			}
 		}
-		if st.Need == NeedRequired && st.Status != StageDone {
-			out = append(out, st.Title)
+		if need[st.name] == NeedRequired {
+			out = append(out, st.title)
 		}
 	}
 	return out
@@ -529,7 +539,8 @@ func (a *updateWebsiteAction) runStage(ctx context.Context, r jobs.Reporter, st 
 	if err := sub.Validate(params); err != nil {
 		return jobs.Outcome{}, validationErr(err)
 	}
-	if ok, reason := sub.Available(); !ok {
+	// release-pr decides "nothing to open" itself, in its own run.
+	if ok, reason := sub.Available(); !ok && !(st.def.name == PlanPR && reason == prNothingReason) {
 		return jobs.Outcome{}, &SafeError{Code: "unavailable", Message: reason + "."}
 	}
 	fp := ""
@@ -555,6 +566,18 @@ func (a *updateWebsiteAction) runStage(ctx context.Context, r jobs.Reporter, st 
 		return jobs.Outcome{}, err
 	}
 	return spec.Run(ctx, stageReporter{r: r, prefix: st.def.name})
+}
+
+// availabilityRechecker is implemented by actions caching an availability
+// check that a later stage makes stale.
+type availabilityRechecker interface{ forceRecheck() }
+
+func (a *updateWebsiteAction) recheckAvailability() {
+	for _, act := range a.s.actions {
+		if r, ok := act.(availabilityRechecker); ok {
+			r.forceRecheck()
+		}
+	}
 }
 
 // sameCatalog fails with the fixed message when the catalog digest is no

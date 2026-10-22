@@ -844,3 +844,62 @@ func TestUpdateWebsitePassesTheConfirmedDigestToEveryStage(t *testing.T) {
 		t.Fatalf("release-pr saw confirmed digest %q", got)
 	}
 }
+
+// recheckableFake reports "nothing to open" from a stale availability cache
+// until the run forces a re-check, as release-pr's 30 s cache would.
+type recheckableFake struct {
+	*stageFake
+	rechecked atomic.Int32
+}
+
+func (f *recheckableFake) forceRecheck() {
+	f.rechecked.Add(1)
+	f.mu.Lock()
+	f.available, f.reason = true, ""
+	f.mu.Unlock()
+}
+
+func TestUpdateWebsiteRunsThePRStageDespiteACachedNothingToOpen(t *testing.T) {
+	// A database-only update: the catalog is applied, the database changed.
+	w := newWorld(baseCatalog(), baseCatalog())
+	h := newHarness(t, w, nil)
+	pr := &recheckableFake{stageFake: h.stages["release-pr"]}
+	pr.setUnavailable(prNothingReason)
+	actions := []Action{}
+	for _, n := range stageActionNames {
+		if n == "release-pr" {
+			actions = append(actions, pr)
+		} else {
+			actions = append(actions, h.stages[n])
+		}
+	}
+	h.s = NewService(h.m, actions, []byte("secret"), time.Now, WithPending(w.deps()))
+	if st := stageOf(t, h.pending(t), PlanPR); st.Need != NeedRequired {
+		t.Fatalf("pr before the publish %+v", st)
+	}
+	j := h.runToEnd(t)
+	if j.Status != jobs.StatusSucceeded {
+		t.Fatalf("status %s %q", j.Status, j.Message)
+	}
+	if pr.runs.Load() != 1 || pr.rechecked.Load() == 0 {
+		t.Fatalf("pr runs %d, rechecks %d", pr.runs.Load(), pr.rechecked.Load())
+	}
+	if got := stageOutcomes(t, j); got["pr"] != OutcomeDone {
+		t.Fatalf("outcomes %v", got)
+	}
+}
+
+func TestUpdateWebsiteLetsThePRStageDecideNothingToOpen(t *testing.T) {
+	w := newWorld(baseCatalog(), baseCatalog())
+	h := newHarness(t, w, nil)
+	// The availability keeps saying "nothing to open": the stage still runs
+	// and records its checkpoint; the run never skips it.
+	h.stages["release-pr"].setUnavailable(prNothingReason)
+	j := h.runToEnd(t)
+	if j.Status != jobs.StatusSucceeded || h.stages["release-pr"].runs.Load() != 1 {
+		t.Fatalf("status %s, pr runs %d: %q", j.Status, h.stages["release-pr"].runs.Load(), j.Message)
+	}
+	if _, ok := w.prov.checkpoints[artists.StagePR]; !ok {
+		t.Fatal("no pr checkpoint")
+	}
+}

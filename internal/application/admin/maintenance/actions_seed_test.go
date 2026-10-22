@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/artists"
+	"github.com/javiyt/spotwufamily/internal/application/jobs"
 	"github.com/javiyt/spotwufamily/internal/domain/catalog"
 )
 
@@ -110,23 +113,42 @@ func TestReleasePRCheckpointsTheOpenedPullRequest(t *testing.T) {
 	prov2.assertNothing(t)
 }
 
-func TestSeedIsUnavailableUntilTheArtistsAreReconciled(t *testing.T) {
+func TestSeedRefusesAtSpecUntilTheArtistsAreReconciled(t *testing.T) {
 	deps, _, log := seedFixture(baseCatalog(), metadataEdited())
-	deps.Unreconciled = func(context.Context) ([]string, error) { return []string{"gza"}, nil }
+	var plans atomic.Int32
+	unreconciled := []string{"gza"}
+	deps.Unreconciled = func(context.Context) ([]string, error) { plans.Add(1); return unreconciled, nil }
 	a := NewSeed(deps)
-	ok, reason := a.Available()
-	if ok || reason != seedUnreconciledReason {
-		t.Fatalf("available %v %q", ok, reason)
+	// Listing and availability never run the bulk plan.
+	if ok, _ := a.Available(); !ok {
+		t.Fatal("seed availability must not depend on the bulk plan")
 	}
-	if _, err := a.Spec(confirmedCtx(t, a, Params{}), Params{}); err == nil {
-		t.Fatal("spec accepted while artists are not reconciled")
+	if ok, _ := a.(QuickAvailability).AvailableNow(); !ok {
+		t.Fatal("quick availability")
+	}
+	s := NewService(jobs.NewManager(&memStore{}, time.Now, func() string { return "j" }), []Action{a}, []byte("s"), time.Now)
+	_ = s.Actions()
+	if n := plans.Load(); n != 0 {
+		t.Fatalf("listing ran the bulk plan %d times", n)
+	}
+	_, err := a.Spec(confirmedCtx(t, a, Params{}), Params{})
+	var se *SafeError
+	if !errors.As(err, &se) || se.Message != seedUnreconciledReason+"." {
+		t.Fatalf("spec while artists are not reconciled: %v", err)
 	}
 	if len(log.get()) != 0 {
 		t.Fatalf("calls %v", log.get())
 	}
-	deps.Unreconciled = func(context.Context) ([]string, error) { return nil, nil }
-	if ok, _ := NewSeed(deps).Available(); !ok {
-		t.Fatal("seed unavailable with nothing to reconcile")
+	// A plan error has its own reason, not "reconcile first".
+	deps.Unreconciled = func(context.Context) ([]string, error) { return nil, errors.New("database is locked (SQLITE_BUSY)") }
+	_, err = NewSeed(deps).Spec(confirmedCtx(t, NewSeed(deps), Params{}), Params{})
+	if !errors.As(err, &se) || se.Message != seedCheckFailedReason+"." {
+		t.Fatalf("plan error: %v", err)
+	}
+	unreconciled = nil
+	deps.Unreconciled = func(context.Context) ([]string, error) { return unreconciled, nil }
+	if _, _, _, err := runAction(t, NewSeed(deps), Params{}); err != nil {
+		t.Fatalf("seed with nothing to reconcile: %v", err)
 	}
 }
 

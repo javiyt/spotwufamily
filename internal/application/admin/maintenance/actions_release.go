@@ -482,6 +482,11 @@ func (a *releaseAction) run(ctx context.Context, r jobs.Reporter, fp string) (jo
 	}
 	summary := "Prepared catalog release " + info.Tag + " in " + a.deps.PackageName +
 		". Nothing was uploaded; run release-publish to publish it."
+	if rec, ok := a.deps.Prepared.(PreparedRecorder); ok {
+		if err := rec.RecordPrepared(info.ContentSHA256); err != nil {
+			summary += " The prepared release could not be recorded; run release-prepare again before publishing."
+		}
+	}
 	if err := a.recordProvenance(ctx, artists.StageReleasePrepare, catalogDigest, catalogErr); err != nil {
 		summary += provenanceWarning
 	}

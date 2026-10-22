@@ -2,7 +2,10 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"regexp"
 	"time"
@@ -103,10 +106,62 @@ type journalPrepared struct{ path string }
 
 var _ maintenance.PreparedStore = journalPrepared{}
 
+var _ maintenance.PreparedRecorder = journalPrepared{}
+
+// preparedRecord is the sidecar of the job journal naming the latest
+// successful prepare, whichever job ran it.
+type preparedRecord struct {
+	ContentSHA256 string    `json:"content_sha256"`
+	At            time.Time `json:"at"`
+}
+
+func (s journalPrepared) recordPath() string { return s.path + ".prepared.json" }
+
+// RecordPrepared writes the sidecar atomically.
+func (s journalPrepared) RecordPrepared(sha string) error {
+	if !contentSHAPattern.MatchString(sha) {
+		return errors.New("invalid prepared content hash")
+	}
+	data, err := json.Marshal(preparedRecord{ContentSHA256: sha, At: time.Now().UTC()})
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
+		return err
+	}
+	tmp := s.recordPath() + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, s.recordPath())
+}
+
+func (s journalPrepared) recorded() (preparedRecord, bool) {
+	data, err := os.ReadFile(s.recordPath())
+	if err != nil {
+		return preparedRecord{}, false
+	}
+	var rec preparedRecord
+	if json.Unmarshal(data, &rec) != nil || !contentSHAPattern.MatchString(rec.ContentSHA256) {
+		return preparedRecord{}, false
+	}
+	return rec, true
+}
+
+// LastPrepared is the content hash of the latest successful prepare: the
+// newer of the journal's last release-prepare job and the sidecar.
 func (s journalPrepared) LastPrepared() (string, bool) {
+	sha, at, ok := s.journalPrepared()
+	if rec, has := s.recorded(); has && (!ok || !rec.At.Before(at)) {
+		return rec.ContentSHA256, true
+	}
+	return sha, ok
+}
+
+func (s journalPrepared) journalPrepared() (string, time.Time, bool) {
 	all, err := filesystem.NewJobJournal(s.path).Load(context.Background())
 	if err != nil {
-		return "", false
+		return "", time.Time{}, false
 	}
 	var (
 		latest jobs.Job
@@ -121,17 +176,17 @@ func (s journalPrepared) LastPrepared() (string, bool) {
 		}
 	}
 	if !found || latest.Result == nil || latest.Result.Report == nil {
-		return "", false
+		return "", time.Time{}, false
 	}
 	rep := latest.Result.Report
 	if len(rep.Columns) < 2 || rep.Columns[1] != "content_sha256" || len(rep.Rows) != 1 || len(rep.Rows[0]) < 2 {
-		return "", false
+		return "", time.Time{}, false
 	}
 	sha := rep.Rows[0][1]
 	if !contentSHAPattern.MatchString(sha) {
-		return "", false
+		return "", time.Time{}, false
 	}
-	return sha, true
+	return sha, latest.FinishedAt, true
 }
 
 // releaseHashes runs one preflight for a freshness session.

@@ -2,9 +2,7 @@ package maintenance
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
@@ -56,21 +54,22 @@ func (a *seedAction) Describe() Description {
 // seedUnreconciledReason is why db-seed waits for the bulk reconcile.
 const seedUnreconciledReason = "Reconcile the artists first: some Spotify ID, verified or enabled changes are not reconciled yet"
 
+// seedCheckFailedReason is shown when the bulk reconcile plan could not be
+// computed (a busy or unmigrated database, for example).
+const seedCheckFailedReason = "The reconcile state of the artists could not be checked; try again"
+
+// Available only needs the database: whether the artists are reconciled is
+// checked when the seed is confirmed (Spec) and again under the lock, so a
+// listing or a composite plan never runs the bulk reconcile plan.
 func (a *seedAction) Available() (bool, string) {
 	if !a.deps.DatabaseExists() {
 		return false, noDatabaseReason
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), availabilityTimeout)
-	defer cancel()
-	if err := a.reconciled(ctx); err != nil {
-		var se *SafeError
-		if errors.As(err, &se) {
-			return false, strings.TrimSuffix(se.Message, ".")
-		}
-		return false, seedUnreconciledReason
-	}
 	return true, ""
 }
+
+// AvailableNow is Available: it is already cheap.
+func (a *seedAction) AvailableNow() (bool, string) { return a.Available() }
 
 // reconciled fails while the bulk reconcile still has changes to make.
 func (a *seedAction) reconciled(ctx context.Context) error {
@@ -79,7 +78,10 @@ func (a *seedAction) reconciled(ctx context.Context) error {
 	}
 	slugs, err := a.deps.Unreconciled(ctx)
 	if err != nil {
-		return err
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return &SafeError{Code: "unavailable", Message: seedCheckFailedReason + ".", cause: err}
 	}
 	if len(slugs) > 0 {
 		return &SafeError{Code: "unavailable", Message: seedUnreconciledReason + "."}
