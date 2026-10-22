@@ -88,6 +88,20 @@ func (p databaseProvenance) DatabaseDigest(ctx context.Context) (string, error) 
 	return digest, err
 }
 
+// PendingReconciliations lists the artists whose reconciliation journal row
+// is not completed.
+func (p databaseProvenance) PendingReconciliations(ctx context.Context) ([]string, error) {
+	var slugs []string
+	err := p.with(func(database *sqliteadapter.Database) error {
+		rows, err := database.PendingReconciliations(ctx)
+		for _, r := range rows {
+			slugs = append(slugs, r.Slug)
+		}
+		return err
+	})
+	return slugs, err
+}
+
 func (p databaseProvenance) CatalogDigest(ctx context.Context) (string, error) {
 	if p.catalogPath == "" {
 		return "", errors.New("no catalog configured")

@@ -23,6 +23,7 @@ type fakeProvenance struct {
 	appliedN    int
 	db          string
 	catalog     string
+	pending     []string
 	recordErr   error
 }
 
@@ -65,6 +66,10 @@ func (f *fakeProvenance) RecordCheckpoint(_ context.Context, cp artists.StageChe
 	}
 	f.checkpoints[cp.Stage] = cp
 	return nil
+}
+
+func (f *fakeProvenance) PendingReconciliations(context.Context) ([]string, error) {
+	return f.pending, nil
 }
 
 func (f *fakeProvenance) DatabaseDigest(context.Context) (string, error) { return f.db, nil }
@@ -237,6 +242,58 @@ func TestSyncRecordFailureKeepsSuccessWithWarning(t *testing.T) {
 	}
 }
 
+func TestSyncAllKeepsPendingReconciliationArtistsUnapplied(t *testing.T) {
+	fx := newSyncFixture(true)
+	prov := newFakeProvenance()
+	prov.pending = []string{"rza"}
+	fx.deps.Provenance = prov
+	prev := fingerprintOf(provCatalog(provArtist("gza", "g1"), provArtist("rza", "r1", "r2")))
+	prov.applied = prev
+	// rza lost a Spotify ID: the sync succeeds but its orphans wait for a reconcile.
+	used := fingerprintOf(provCatalog(provArtist("gza", "g1", "g2"), provArtist("rza", "r1")))
+	fx.runner.results[""] = SyncRunResult{Report: catalogsync.Report{ArtistsPlanned: 2, ArtistsProcessed: 2}, Catalog: used}
+
+	if _, out, _, err := runAction(t, NewSync(fx.deps), Params{"scope": "all"}); err != nil || out.Status != jobs.StatusSucceeded {
+		t.Fatalf("run: %+v %v", out, err)
+	}
+	changes := artists.DiffCatalog(*prov.applied, *used)
+	if len(changes) != 1 || changes[0].Slug != "rza" || !changes[0].NeedsReconcile {
+		t.Fatalf("rza must still need its reconcile, gza is applied: %+v", changes)
+	}
+	if cp := prov.checkpoints[artists.StageSync]; cp.CatalogDigest != prov.applied.Digest {
+		t.Fatalf("checkpoint %+v", cp)
+	}
+}
+
+func TestSyncAllWithoutPreviousRecordAndPendingStaysUnknown(t *testing.T) {
+	fx := newSyncFixture(true)
+	prov := newFakeProvenance()
+	prov.pending = []string{"rza"}
+	fx.deps.Provenance = prov
+	fx.runner.results[""] = SyncRunResult{Report: catalogsync.Report{ArtistsPlanned: 2, ArtistsProcessed: 2},
+		Catalog: fingerprintOf(provCatalog(provArtist("gza", "g1"), provArtist("rza", "r1")))}
+
+	if _, out, _, err := runAction(t, NewSync(fx.deps), Params{"scope": "all"}); err != nil || out.Status != jobs.StatusSucceeded {
+		t.Fatalf("run: %+v %v", out, err)
+	}
+	prov.assertNothing(t)
+}
+
+func TestSyncArtistWithPendingReconciliationRecordsNothing(t *testing.T) {
+	fx := newSyncFixture(true)
+	prov := newFakeProvenance()
+	prov.pending = []string{"gza"}
+	fx.deps.Provenance = prov
+	prov.applied = fingerprintOf(provCatalog(provArtist("gza", "g1", "g2")))
+	fx.runner.results["gza"] = SyncRunResult{Report: catalogsync.Report{ArtistsPlanned: 1, ArtistsProcessed: 1},
+		Catalog: fingerprintOf(provCatalog(provArtist("gza", "g1")))}
+
+	if _, out, _, err := runAction(t, NewSync(fx.deps), Params{"scope": "artist", "artists": "gza"}); err != nil || out.Status != jobs.StatusSucceeded {
+		t.Fatalf("run: %+v %v", out, err)
+	}
+	prov.assertNothing(t)
+}
+
 // --- reconcile-apply ---
 
 func reconcileApplied(fx *reconcileFixture, used artists.AppliedCatalog, resync bool) {
@@ -296,6 +353,20 @@ func TestReconcileApplyAwaitingResyncRecordsNothing(t *testing.T) {
 	if prov.appliedN != 0 || len(prov.checkpoints) != 0 {
 		t.Fatalf("an artist awaiting its resync is not applied yet: %+v", prov.checkpoints)
 	}
+}
+
+func TestReconcileApplyStillPendingRecordsNothing(t *testing.T) {
+	fx := newReconcileFixture()
+	prov := newFakeProvenance()
+	prov.pending = []string{"gza"}
+	fx.deps.Provenance = prov
+	prov.applied = fingerprintOf(provCatalog(provArtist("gza", "old")))
+	reconcileApplied(fx, artists.FingerprintCatalog(provCatalog(provArtist("gza", "new"))), false)
+
+	if _, out, _, err := runAction(t, NewReconcileApply(fx.deps), Params{"artist": "gza"}); err != nil || out.Status != jobs.StatusSucceeded {
+		t.Fatalf("apply: %+v %v", out, err)
+	}
+	prov.assertNothing(t)
 }
 
 func TestReconcileApplyFailureRecordsNothing(t *testing.T) {

@@ -221,3 +221,113 @@ func TestReleaseActionsCheckpoint(t *testing.T) {
 	_, ok = readApplied(t, rcfg.DBPath)
 	require.False(t, ok)
 }
+
+// A sync seeds a removed Spotify ID's new mapping but leaves the orphaned
+// associations for reconcile: until reconcile runs the catalog must not read
+// as applied.
+func TestFullSyncWithoutReconcileAfterIDRemovalStaysPending(t *testing.T) {
+	cfg, paths := newSyncActionsConfig(t, credentials, withSyncFetcher(okSyncFetcher{}))
+	twoIDs := bytes.Replace([]byte(maintenanceCatalogYAML), []byte("    spotify_id: "+wuTangID+"\n"),
+		[]byte("    spotify_id: "+wuTangID+"\n    spotify_ids:\n      - 0H8YCcvC3MPLKnbDRasGiG\n"), 1)
+	require.NotEqual(t, maintenanceCatalogYAML, string(twoIDs))
+	require.NoError(t, os.WriteFile(paths.catalog, twoIDs, 0o600))
+	syncAll := func() {
+		t.Helper()
+		out, err := runSpec(t, syncActionsByName(cfg)["sync"], maintenance.Params{"scope": "all"})
+		require.NoError(t, err)
+		require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
+	}
+	syncAll()
+	f := freshnessOf(t, cfg)
+	require.False(t, f.SeedNeeded || f.SeedUnknown, "%+v", f)
+
+	// Remove the second ID and sync without reconciling.
+	require.NoError(t, os.WriteFile(paths.catalog, []byte(maintenanceCatalogYAML), 0o600))
+	syncAll()
+	f = freshnessOf(t, cfg)
+	require.True(t, f.SeedNeeded || f.SeedUnknown, "a pending reconciliation must not read as clean: %+v", f)
+	require.True(t, f.SeedNeeded, "the previous record is kept for the pending artist")
+
+	out, err := runSpec(t, reconcileActionsByName(cfg)["reconcile-apply"], maintenance.Params{"artist": "wu-tang-clan"})
+	require.NoError(t, err)
+	require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
+	syncAll()
+	f = freshnessOf(t, cfg)
+	require.False(t, f.SeedNeeded || f.SeedUnknown, "reconcile then sync applies the change: %+v", f)
+}
+
+// A whole-catalog sync on a database without a record, with a reconciliation
+// still pending, records nothing: the database stays unknown.
+func TestFullSyncWithPendingReconciliationAndNoRecordStaysUnknown(t *testing.T) {
+	cfg, paths := newSyncActionsConfig(t, credentials, withSyncFetcher(okSyncFetcher{}))
+	seedHomonymAlbum(t, paths.db)
+	database, err := sqliteadapter.Open(paths.db)
+	require.NoError(t, err)
+	// The last-synced mapping pointed at the homonym, so the sync keeps the
+	// drift open.
+	_, err = database.DB().Exec(`INSERT INTO artist_mapping_snapshots(artist_slug, spotify_ids, checksum, recorded_at, source)
+VALUES ('wu-tang-clan', '["homonym"]', 'x', 'now', 'sync')`)
+	require.NoError(t, err)
+	_, err = database.DB().Exec(`INSERT INTO artist_reconciliations(artist_slug, status, previous_ids, target_ids, detected_at, updated_at)
+VALUES ('wu-tang-clan', 'drifted', '["homonym"]', '["` + wuTangID + `"]', 'now', 'now')`)
+	require.NoError(t, err)
+	require.NoError(t, database.Close())
+
+	out, err := runSpec(t, syncActionsByName(cfg)["sync"], maintenance.Params{"scope": "all"})
+	require.NoError(t, err)
+	require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
+	_, ok := readApplied(t, paths.db)
+	require.False(t, ok)
+	require.True(t, freshnessOf(t, cfg).SeedUnknown)
+}
+
+// A whole-catalog sync only fetches enabled artists with a syncable profile,
+// but it seeds the configured row (metadata, IDs, enabled flag) of every
+// catalog artist, so recording the skipped ones as applied is truthful:
+// nothing else in the pipeline writes them.
+func TestFullSyncSeedsArtistsItDoesNotFetch(t *testing.T) {
+	cfg, paths := newSyncActionsConfig(t, credentials, withSyncFetcher(okSyncFetcher{}))
+	extra := maintenanceCatalogYAML + `  - slug: disabled-artist
+    name: Disabled Artist
+    spotify_id: 0H8YCcvC3MPLKnbDRasGiG
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: false
+    editorial_order: 2
+    notes: ""
+  - slug: no-profile
+    name: No Profile
+    category: core
+    roles: [core]
+    aliases: []
+    enabled: false
+    archived: true
+    editorial_order: 3
+    notes: ""
+`
+	require.NoError(t, os.WriteFile(paths.catalog, []byte(extra), 0o600))
+	out, err := runSpec(t, syncActionsByName(cfg)["sync"], maintenance.Params{"scope": "all"})
+	require.NoError(t, err)
+	require.Equal(t, jobs.StatusSucceeded, out.Status, out.Result.Summary)
+
+	database, err := sqliteadapter.Open(paths.db)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, database.Close()) }()
+	got := map[string]int{}
+	rows, err := database.DB().Query(`SELECT slug, enabled FROM configured_artists`)
+	require.NoError(t, err)
+	for rows.Next() {
+		var slug string
+		var enabled int
+		require.NoError(t, rows.Scan(&slug, &enabled))
+		got[slug] = enabled
+	}
+	require.NoError(t, rows.Close())
+	require.Equal(t, map[string]int{"wu-tang-clan": 1, "disabled-artist": 0, "no-profile": 0}, got)
+
+	applied, ok := readApplied(t, paths.db)
+	require.True(t, ok)
+	require.Len(t, applied.Artists, 3)
+	require.Equal(t, currentFingerprint(t, paths.catalog).Digest, applied.Digest)
+}

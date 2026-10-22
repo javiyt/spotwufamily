@@ -433,7 +433,7 @@ func (a *syncAction) recordProvenance(ctx context.Context, runs []appliedRun) er
 		return nil
 	}
 	if len(runs) == 1 && runs[0].slug == "" {
-		return recordApplied(ctx, p, artists.StageSync, runs[0].used)
+		return recordWholeCatalog(ctx, p, artists.StageSync, runs[0].used)
 	}
 	return mergeApplied(ctx, p, artists.StageSync, runs, mergeSynced)
 }
