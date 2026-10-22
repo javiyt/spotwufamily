@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 	"testing"
+	"time"
 
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/jobs"

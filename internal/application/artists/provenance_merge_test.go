@@ -49,4 +49,3 @@ func TestMergeAppliedAddsAndDropsArtists(t *testing.T) {
 		t.Fatalf("dropping b and adding c must match used: %+v", DiffCatalog(merged, used))
 	}
 }
-
