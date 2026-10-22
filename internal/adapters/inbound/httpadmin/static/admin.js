@@ -142,6 +142,8 @@
     set('evidence_type', b.getAttribute('data-fill-type'));
     set('evidence_url', b.getAttribute('data-fill-url'));
     set('evidence_rationale', b.getAttribute('data-fill-rationale'));
+    set('evidence_release_id', b.getAttribute('data-fill-release') || '');
+    set('evidence_track_id', b.getAttribute('data-fill-track') || '');
   });
 })();
 

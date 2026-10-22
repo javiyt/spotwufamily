@@ -40,6 +40,15 @@
 {{if $c.Tracks}}<h4>Representative tracks and credits</h4><ul class="evidence">{{range $c.Tracks}}<li>{{.Name}} <span class="muted">on {{.Release}}</span>{{if .Credits}} — {{join .Credits ", "}}{{end}}</li>{{end}}</ul>{{end}}
 </section>
 
+{{if $c.Credits.Status}}<section aria-label="Credits with verified groups">
+<h4>Credits with verified groups <span class="muted">(supporting evidence only)</span></h4>
+{{if or $c.Credits.Suggestions (ne (printf "%s" $c.Credits.Status) "checked")}}<p class="muted">A shared credit corroborates identity but is not independent evidence and does not prove membership of the group, so it can never verify a profile on its own.</p>{{end}}
+{{if $c.Credits.Suggestions}}<ul class="evidence">{{range $c.Credits.Suggestions}}<li><span class="badge">{{.Classification}}</span> <a href="/resolve/{{.GroupSlug}}"><code>{{.GroupSlug}}</code></a> credited on <a href="{{.URL}}" rel="noopener noreferrer" target="_blank">{{.TrackName}}</a>{{if .ReleaseName}} <span class="muted">on {{.ReleaseName}}</span>{{end}}{{if .ReleaseURL}} <a href="{{.ReleaseURL}}" rel="noopener noreferrer" target="_blank">release</a>{{end}} <span class="muted">· {{.Provenance}}</span></li>{{end}}</ul>
+{{if $c.Credits.Omitted}}<p class="muted">{{$c.Credits.Omitted}} more credit(s) not shown.</p>{{end}}
+{{else if eq (printf "%s" $c.Credits.Status) "checked"}}<p class="muted">{{if $c.Credits.Message}}{{$c.Credits.Message}}{{else}}No credits with verified groups were found in the releases checked.{{end}}</p>{{end}}
+{{if ne (printf "%s" $c.Credits.Status) "checked"}}<p class="notice" role="status"><strong>Not fully checked</strong> ({{$c.Credits.Status}}): {{$c.Credits.Message}}{{if $c.Credits.RetryAfter}} Retry after about {{seconds $c.Credits.RetryAfter}} s.{{end}} This is missing evidence, not proof that there are no credits.</p>{{end}}
+</section>{{end}}
+
 {{if $c.Reviewer}}<p class="muted">Last decision by <strong>{{$c.Reviewer}}</strong>{{if $c.ReviewedAt}} on {{$c.ReviewedAt}}{{end}}.</p>{{end}}
 {{if $c.Evidence}}<details><summary>Stored evidence ({{len $c.Evidence}})</summary><ul class="evidence">{{range $c.Evidence}}<li><span class="badge">{{label (printf "%s" .Type)}}</span> {{.Rationale}}{{if .URL}} <a href="{{.URL}}" rel="noopener noreferrer" target="_blank">source</a>{{end}}</li>{{end}}</ul></details>{{end}}
 
@@ -57,6 +66,10 @@
 <fieldset><legend>Independent evidence (required to verify)</legend>
 {{if $c.Suggestions}}<p class="muted">Found by the audit:
 {{range $c.Suggestions}}<button type="button" class="link" data-fill-type="{{.Type}}" data-fill-url="{{.URL}}" data-fill-rationale="{{.Rationale}}">use {{label (printf "%s" .Type)}}</button> {{end}}</p>{{end}}
+{{if $c.Credits.Suggestions}}<p class="muted">Credits with verified groups (supporting, not independent):
+{{range $c.Credits.Suggestions}}<button type="button" class="link" data-fill-type="credit" data-fill-url="{{.URL}}" data-fill-release="{{.ReleaseID}}" data-fill-track="{{.TrackID}}" data-fill-rationale="{{.Rationale}}">Use as supporting credit</button> <span class="muted">({{.GroupName}} · {{.TrackName}})</span> {{end}}</p>{{end}}
+<input type="hidden" name="evidence_release_id" value="">
+<input type="hidden" name="evidence_track_id" value="">
 <div class="grid">
 <div class="field"><label>Source type</label><select name="evidence_type">{{range $p.EvidenceTypes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
 <div class="field"><label>Source URL (https)</label><input name="evidence_url" type="url" maxlength="2048" autocomplete="off"></div>

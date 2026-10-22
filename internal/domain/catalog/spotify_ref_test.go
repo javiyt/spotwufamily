@@ -85,3 +85,15 @@ func TestSafeSpotifyReleaseURL(t *testing.T) {
 		require.Equal(t, c.want, catalog.SafeSpotifyReleaseURL(c.raw, c.id), name)
 	}
 }
+
+func TestSpotifyTrackURLOnlyForValidIDs(t *testing.T) {
+	require.Equal(t, "https://open.spotify.com/track/7CrVv4zLga71gdlMOMfjXL", catalog.SpotifyTrackURL("7CrVv4zLga71gdlMOMfjXL"))
+	require.Empty(t, catalog.SpotifyTrackURL("T1"))
+	require.Empty(t, catalog.SpotifyTrackURL("../album/7CrVv4zLga71gdlMOMfjXL"))
+}
+
+func TestCreditEvidenceIsNeverIndependent(t *testing.T) {
+	credit := catalog.Evidence{Type: catalog.EvidenceCredit, URL: "https://open.spotify.com/track/7CrVv4zLga71gdlMOMfjXL", TrackID: "7CrVv4zLga71gdlMOMfjXL", Rationale: "shared credit"}
+	require.Empty(t, catalog.ValidateEvidence(credit))
+	require.False(t, credit.Independent())
+}

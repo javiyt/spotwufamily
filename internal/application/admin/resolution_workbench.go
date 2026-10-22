@@ -85,9 +85,12 @@ type Card struct {
 	Singles     []artists.ProfileRelease
 	Tracks      []TrackSample
 	Suggestions []EvidenceSuggestion
-	Warnings    []string
-	Notices     []Notice
-	Actions     []ActionOption
+	// Credits are tracks shared with verified editorial groups: supporting,
+	// non-independent evidence the reviewer may attach.
+	Credits  CreditReport
+	Warnings []string
+	Notices  []Notice
+	Actions  []ActionOption
 }
 
 // Workbench is everything shown for one artist's profile review.
@@ -308,6 +311,13 @@ func (s Service) buildCard(ctx context.Context, c catalog.EditorialCatalog, arti
 
 	card.Singles = s.singlesOf(ctx, in.id, src, &card)
 	card.Tracks = s.tracksOf(ctx, in.id, src, result)
+	if in.match != nil {
+		// Ranked search results are not scanned: that would fan out one tracklist
+		// read per candidate. Opening a profile by ID checks its credits.
+		card.Credits = CreditReport{Status: CreditsNotChecked, Message: "Credits are not checked for search results. Look the profile up by its link or ID to check them."}
+	} else {
+		card.Credits = s.creditsOf(ctx, c, artist, card, src)
+	}
 	card.Warnings = cardWarnings(c, artist, card)
 	if card.Audit.SpotifyStatus == artists.SourceRateLimited {
 		card.Notices = append(card.Notices, Notice{Level: "warn", Source: "spotify", Message: "Spotify is rate limiting requests, so this card is incomplete.", RetryAfter: src.retryAfter()})
@@ -625,6 +635,12 @@ func (m *memoSource) GetAlbumTracks(ctx context.Context, id string) ([]catalog.T
 		}
 		return source.GetAlbumTracks(ctx, id)
 	})
+}
+
+func (m *memoSource) isLimited() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.limited
 }
 
 func (m *memoSource) retryAfter() time.Duration {
