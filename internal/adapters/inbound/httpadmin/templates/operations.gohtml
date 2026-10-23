@@ -7,6 +7,53 @@
 <div><dt>Last sync</dt><dd>{{if .LastSyncAt}}{{.LastSyncStatus}} · {{.LastSyncAt}}{{else}}never{{end}}</dd></div>
 </dl>
 {{if .Operator}}
+{{with .Pending}}{{if .Available}}
+<section id="pending" aria-labelledby="pending-h">
+<h2 id="pending-h">Pending changes / Update website</h2>
+{{if .Failed}}<p class="notice warn" role="status">Pending changes could not be read. Reload the page to retry.</p>
+{{else}}
+{{if .Clean}}<p class="notice"><strong>Local database up to date</strong> — the local database matches the catalog.</p>
+{{else if .Unknown}}<p class="notice warn" role="status"><strong>The database's catalog state is unknown / needs check.</strong> Run the baseline check to compare the database with the catalog.
+{{if .BaselinePage}}<a class="button" href="{{.BaselinePage}}">Run the baseline check</a>{{end}}</p>
+{{else if .Offline}}<p class="notice bad" role="alert"><strong>No local database.</strong> Create it with a sync or rebuild it from the snapshot first.</p>
+{{else}}<p class="notice warn" role="status"><strong>{{.Count}} {{if eq .Count 1}}artist{{else}}artists{{end}} modified since last database reconciliation.</strong></p>{{end}}
+{{if .Rows}}<div class="table-wrap"><table>
+<caption class="sr">Artists changed in the catalog since the database last applied it</caption>
+<thead><tr><th scope="col">Artist</th><th scope="col">Changes</th><th scope="col">Needs</th></tr></thead>
+<tbody>
+{{range .Rows}}<tr><td><a href="/artists/{{.Slug}}">{{.Slug}}</a></td><td>{{range $i, $l := .Labels}}{{if $i}}, {{end}}{{$l}}{{end}}</td>
+<td class="badges">{{if .Reconcile}}<span class="badge warn">needs reconcile</span>{{end}}{{if .Sync}}<span class="badge warn">needs Spotify sync</span>{{end}}{{if .SeedOnly}}<span class="badge">database seed only</span>{{end}}</td></tr>
+{{end}}</tbody></table></div>
+{{end}}
+<p class="muted">Not every edit needs a Spotify API call: only Spotify ID, verified or enabled changes are synced; other edits only need the database seeded.</p>
+
+<h3>Status</h3>
+<ul class="status-lines">
+<li class="status-db">{{.Database}}</li>
+<li class="status-build">{{.Build}}</li>
+<li class="status-release">{{.Release}}</li>
+<li class="status-pr">{{.PR}}</li>
+<li class="status-deploy">{{.Deploy}}</li>
+</ul>
+
+<h3>Update checklist</h3>
+<ol class="stage-list">
+{{range .Stages}}<li class="stage">
+<p class="badges"><strong>{{.Title}}</strong> <span class="badge {{.NeedClass}}">{{.Need}}</span> <span class="badge {{.StatusClass}}">{{.Status}}</span></p>
+{{if .Reason}}<p class="notice warn">{{.Reason}}</p>{{end}}
+{{if .Note}}<p class="muted">{{.Note}}</p>{{end}}
+{{if .Page}}<p><a class="button" href="{{.Page}}" aria-label="Review {{.Title}}">Review…</a></p>
+{{else if .CTADisabled}}<p><span class="button disabled" aria-disabled="true" aria-describedby="stage-why-{{.Name}}" aria-label="Review {{.Title}} (unavailable)">{{.CTADisabled}}</span> <span class="muted" id="stage-why-{{.Name}}">{{.CTAReason}}</span></p>{{end}}
+</li>
+{{end}}</ol>
+
+<p>
+{{if .UpdatePage}}<a class="button primary" href="{{.UpdatePage}}">Review plan and update website</a>
+{{else}}<span class="button disabled" aria-disabled="true" aria-describedby="update-why">Review plan and update website</span> <span class="muted" id="update-why">{{.UpdateReason}}</span>{{end}}
+</p>
+{{end}}
+</section>
+{{end}}{{end}}
 <section id="freshness" aria-labelledby="fresh-h">
 <h2 id="fresh-h">Data freshness</h2>
 {{with .Fresh}}{{if .Checked}}

@@ -1,0 +1,53 @@
+package artists
+
+import "context"
+
+// Publication stages whose last successful run is checkpointed.
+const (
+	StageReconcile = "reconcile"
+	StageSync      = "sync"
+	StageSnapshot  = "snapshot"
+	StageExport    = "export"
+	// StageReleasePrepare is a prepared (not yet published) release package;
+	// StageRelease is a published (or already current) release.
+	StageReleasePrepare = "release-prepare"
+	StageRelease        = "release"
+	// StageSeed is a database seed from the catalog (no Spotify call);
+	// StagePR is an opened (or already open) catalog pull request.
+	StageSeed = "seed"
+	StagePR   = "release-pr"
+)
+
+// ArtistFingerprint summarises the editorial inputs of one artist. Metadata is
+// a hash of the non-Spotify editorial fields.
+type ArtistFingerprint struct {
+	Slug          string   `json:"slug"`
+	SpotifyIDs    []string `json:"spotify_ids"`
+	Verified      bool     `json:"verified"`
+	Enabled       bool     `json:"enabled"`
+	Relationships []string `json:"relationships"`
+	Metadata      string   `json:"metadata"`
+}
+
+// AppliedCatalog is the catalog state last applied to the database.
+type AppliedCatalog struct {
+	Digest    string              `json:"digest"`
+	Artists   []ArtistFingerprint `json:"artists"`
+	AppliedAt string              `json:"applied_at"`
+}
+
+// StageCheckpoint records the digests a stage last completed against.
+type StageCheckpoint struct {
+	Stage         string `json:"stage"`
+	CatalogDigest string `json:"catalog_digest"`
+	DBDigest      string `json:"db_digest"`
+	At            string `json:"at"`
+}
+
+// ProvenanceStore persists what the database was built from.
+type ProvenanceStore interface {
+	AppliedCatalog(ctx context.Context) (AppliedCatalog, bool, error)
+	RecordApplied(ctx context.Context, applied AppliedCatalog) error
+	Checkpoint(ctx context.Context, stage string) (StageCheckpoint, bool, error)
+	RecordCheckpoint(ctx context.Context, checkpoint StageCheckpoint) error
+}

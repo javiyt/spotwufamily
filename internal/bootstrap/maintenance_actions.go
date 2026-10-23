@@ -82,8 +82,9 @@ func NewSyncActions(cfg MaintenanceActionsConfig) []maintenance.Action {
 		Credentials: func() bool {
 			return cfg.Env("SPOTIFY_CLIENT_ID") != "" && cfg.Env("SPOTIFY_CLIENT_SECRET") != ""
 		},
-		Locker:   databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
-		Backuper: databaseBackuper{dbPath: cfg.DBPath, dir: cfg.BackupDir},
+		Locker:     databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
+		Backuper:   databaseBackuper{dbPath: cfg.DBPath, dir: cfg.BackupDir},
+		Provenance: newProvenance(cfg.DBPath, cfg.CatalogPath),
 	}
 	return []maintenance.Action{maintenance.NewSyncDryRun(deps), maintenance.NewSync(deps)}
 }
@@ -105,7 +106,12 @@ func (p syncPort) Run(ctx context.Context, o catalogsync.Options) (maintenance.S
 	}
 	defer closeFn()
 	result, err := runner.Run(ctx, o)
-	return maintenance.SyncRunResult{Report: result.Report, SnapshotErr: result.SnapshotErr}, err
+	out := maintenance.SyncRunResult{Report: result.Report, SnapshotErr: result.SnapshotErr}
+	if result.Catalog != nil {
+		used := artists.FingerprintCatalog(*result.Catalog)
+		out.Catalog = &used
+	}
+	return out, err
 }
 
 // syncableArtists lists enabled artists with a Spotify profile the catalog's

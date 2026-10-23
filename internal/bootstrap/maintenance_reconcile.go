@@ -9,10 +9,11 @@ import (
 	"github.com/javiyt/spotwufamily/internal/application/artists"
 )
 
-// NewReconcileActions wires reconcile-dry-run and reconcile-apply to the
-// artists reconcile use case over the YAML catalog and the existing SQLite
-// database, the database lock and the admin backup directory (the use case's
-// own VACUUM INTO backup and manifest, as the CLI's --backup-dir).
+// NewReconcileActions wires reconcile-dry-run, reconcile-apply,
+// reconcile-all-dry-run and reconcile-all-apply to the artists reconcile use
+// cases over the YAML catalog and the existing SQLite database, the database
+// lock and the admin backup directory (the use cases' own VACUUM INTO backup
+// and manifest, as the CLI's --backup-dir).
 func NewReconcileActions(cfg MaintenanceActionsConfig) []maintenance.Action {
 	deps := maintenance.ReconcileDeps{
 		Port:           reconcilePort{cfg},
@@ -20,8 +21,12 @@ func NewReconcileActions(cfg MaintenanceActionsConfig) []maintenance.Action {
 		Artists:        catalogSlugs(cfg.CatalogPath),
 		Locker:         databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
 		BackupName:     displayName(cfg.BackupDir),
+		Provenance:     newProvenance(cfg.DBPath, cfg.CatalogPath),
 	}
-	return []maintenance.Action{maintenance.NewReconcileDryRun(deps), maintenance.NewReconcileApply(deps)}
+	return []maintenance.Action{
+		maintenance.NewReconcileDryRun(deps), maintenance.NewReconcileApply(deps),
+		maintenance.NewReconcileAllDryRun(deps), maintenance.NewReconcileAllApply(deps),
+	}
 }
 
 // catalogSlugs lists every artist in the catalog.
@@ -82,6 +87,33 @@ func (p reconcilePort) Apply(ctx context.Context, slug, checksum string) (artist
 		CatalogPath:     p.cfg.CatalogPath,
 		Slug:            slug,
 		Apply:           true,
+		ConfirmChecksum: checksum,
+		BackupDir:       p.cfg.BackupDir,
+	})
+}
+
+// PlanAll runs the bulk use case's plan of every catalog artist. It never
+// migrates or creates the database.
+func (p reconcilePort) PlanAll(ctx context.Context) (artists.BulkPlan, error) {
+	database, err := openExisting(p.cfg.DBPath)
+	if err != nil {
+		return artists.BulkPlan{}, err
+	}
+	defer func() { _ = database.Close() }()
+	return artists.NewReconcileAll(yamlcatalog.NewStore(), database).Plan(ctx, p.cfg.CatalogPath)
+}
+
+// ApplyAll runs the bulk use case's apply into the admin backup directory:
+// it re-checks the bulk checksum, writes one VACUUM INTO backup and manifest
+// and applies every artist in one transaction, all or nothing.
+func (p reconcilePort) ApplyAll(ctx context.Context, checksum string) ([]artists.ReconcileReport, error) {
+	database, err := openExisting(p.cfg.DBPath)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = database.Close() }()
+	return artists.NewReconcileAll(yamlcatalog.NewStore(), database).Apply(ctx, artists.ReconcileAllInput{
+		CatalogPath:     p.cfg.CatalogPath,
 		ConfirmChecksum: checksum,
 		BackupDir:       p.cfg.BackupDir,
 	})

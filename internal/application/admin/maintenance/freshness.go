@@ -1,6 +1,10 @@
 package maintenance
 
-import "context"
+import (
+	"context"
+
+	"github.com/javiyt/spotwufamily/internal/application/artists"
+)
 
 // FreshnessSource supplies the digests Freshness compares. Every method that
 // can be unknown returns ok=false so "absent" is explicit, never an empty
@@ -8,9 +12,13 @@ import "context"
 type FreshnessSource interface {
 	// CatalogDigest is the digest of the editorial catalog as it is now.
 	CatalogDigest() string
-	// SeededDigest is the catalog digest the database was last seeded or
-	// synced from; ok=false when the database was never seeded.
+	// SeededDigest is the canonical catalog digest recorded when the editorial
+	// catalog was last applied to the database; ok=false when none was
+	// recorded (legacy database) or there is no database.
 	SeededDigest() (string, bool)
+	// AppliedChanges are the editorial changes between the applied catalog
+	// and the catalog as it is now; applied=false when nothing was recorded.
+	AppliedChanges() (changes []artists.ArtistChange, applied bool)
 	// SnapshotDigest is the digest of the database content the snapshot file
 	// reflects; ok=false when there is no (readable) snapshot.
 	SnapshotDigest() (string, bool)
@@ -50,7 +58,12 @@ const (
 // Freshness reports which derived data is out of date. Reasons are fixed
 // strings in a fixed order and never contain paths.
 type Freshness struct {
-	SeedNeeded           bool
+	SeedNeeded bool
+	// SeedUnknown means the database is readable but records no applied
+	// catalog (legacy); it is neither fresh nor known to need a seed.
+	SeedUnknown bool
+	// Pending are the editorial changes not yet applied to the database.
+	Pending              []artists.ArtistChange
 	SnapshotNeeded       bool
 	ExportNeeded         bool
 	RebuildNeeded        bool
@@ -76,8 +89,10 @@ func WithFreshness(src FreshnessSource) Option {
 //   - No database (DatabaseDigest ok=false): Offline, no seed/snapshot/export
 //     comparison is made (offline is not stale). RebuildNeeded is set only if
 //     a snapshot exists, since the database can then be rebuilt from it.
-//   - SeedNeeded: the database was never seeded or the catalog digest differs
-//     from the seeded digest.
+//   - SeedUnknown: the database records no applied catalog (legacy); never
+//     reported as fresh or as needing a seed.
+//   - SeedNeeded: the catalog digest differs from the applied digest. Export
+//     and snapshot never mark content fresh.
 //   - SnapshotNeeded: no snapshot, or its digest differs from the database's.
 //   - ExportNeeded: no export, or its digest differs from the database's.
 //   - DiffersFromPublished: pinned and local content hashes are both known
@@ -112,11 +127,14 @@ func (s *Service) Freshness(ctx context.Context) (Freshness, error) {
 		}
 	default:
 		if seeded, ok := src.SeededDigest(); !ok {
-			f.SeedNeeded = true
-			add("Database has not been seeded from the catalog")
+			f.SeedUnknown = true
+			add("Catalog state of the database is unknown; run a check")
 		} else if seeded != src.CatalogDigest() {
 			f.SeedNeeded = true
 			add("Catalog changed since last database seed/sync")
+		}
+		if changes, applied := src.AppliedChanges(); applied {
+			f.Pending = changes
 		}
 		if !haveSnap {
 			f.SnapshotNeeded = true

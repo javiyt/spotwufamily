@@ -150,7 +150,7 @@ ORDER BY name`)
 
 func isTransientSnapshotTable(table string) bool {
 	switch table {
-	case "artist_metadata_refreshes":
+	case "artist_metadata_refreshes", "catalog_applied", "stage_checkpoints":
 		return true
 	default:
 		return false

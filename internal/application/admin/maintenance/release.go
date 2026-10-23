@@ -81,3 +81,10 @@ type Releaser interface {
 type PreparedStore interface {
 	LastPrepared() (contentSHA string, ok bool)
 }
+
+// PreparedRecorder is optionally implemented by a PreparedStore that is told
+// of every successful prepare, including one run as a stage of another job
+// (update-website), which the job journal does not list as release-prepare.
+type PreparedRecorder interface {
+	RecordPrepared(contentSHA string) error
+}

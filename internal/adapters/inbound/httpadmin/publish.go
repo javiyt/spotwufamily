@@ -1,6 +1,7 @@
 package httpadmin
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -17,6 +18,14 @@ type Publisher interface {
 	// RecheckRelease discards the cached preflight and starts a background
 	// check.
 	RecheckRelease()
+}
+
+// PendingProvider is optionally implemented by an Operator that can report
+// the pending catalog changes and the update-website stages. Pending is
+// computed from digests on request (it reads the database), so callers
+// should cache it.
+type PendingProvider interface {
+	Pending(ctx context.Context) (maintenance.PendingView, error)
 }
 
 const (
@@ -151,7 +160,7 @@ func prereqRows(st maintenance.ReleaseStatus) []prereqRow {
 func (s *Server) publishPageData(r *http.Request) publishPage {
 	page := publishPage{Fresh: s.freshView(), ManifestName: defaultManifestName}
 	f := page.Fresh
-	page.DataWarning = !f.Checked || f.Stale || f.SeedNeeded || f.SnapshotNeeded || f.ExportNeeded || f.RebuildNeeded ||
+	page.DataWarning = !f.Checked || f.Stale || f.SeedNeeded || f.SeedUnknown || f.SnapshotNeeded || f.ExportNeeded || f.RebuildNeeded ||
 		f.Offline || f.Unreadable
 	if s.pub != nil {
 		if st, ok := s.pub.ReleaseStatus(); ok {

@@ -481,7 +481,7 @@ func (s *Server) done(w http.ResponseWriter, r *http.Request, message, location 
 // sentence with a link to refreshHintLink.
 const (
 	refreshHint     = "Catalog changed — the database, snapshot and exports may need refreshing. Review in Operations."
-	refreshHintLink = "/operations"
+	refreshHintLink = "/operations#pending"
 )
 
 // catalogChanged confirms a successful catalog write (an edit or a Spotify
@@ -490,6 +490,7 @@ const (
 // anything.
 func (s *Server) catalogChanged(w http.ResponseWriter, r *http.Request, message, location string) {
 	s.fresh.markStale()
+	s.pendCache.invalidate()
 	if isFetch(r) {
 		// The script follows the redirect, so the page it lands on keeps the
 		// hint after the toast is gone.

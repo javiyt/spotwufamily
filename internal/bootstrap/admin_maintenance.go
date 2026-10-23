@@ -241,6 +241,7 @@ func NewAdmin(ctx context.Context, cfg AdminConfig) (*Admin, func(), error) {
 	actions = append(actions, NewSyncActions(actionsCfg)...)
 	actions = append(actions, NewPublishPrepActions(actionsCfg)...)
 	actions = append(actions, NewReconcileActions(actionsCfg)...)
+	actions = append(actions, NewSeedAction(actionsCfg))
 
 	releaser, releaseActions := adminRelease(cfg, paths, logger)
 	actions = append(actions, releaseActions...)
@@ -254,6 +255,7 @@ func NewAdmin(ctx context.Context, cfg AdminConfig) (*Admin, func(), error) {
 	})
 	svc := maintenance.NewService(manager, actions, secret, cfg.now,
 		maintenance.WithFreshness(freshness),
+		maintenance.WithPending(NewPendingDeps(actionsCfg)),
 		maintenance.WithOperationLog(filesystem.NewOperationLog(paths.OperationLog)),
 		maintenance.WithOperationLogErrorHandler(operationLogErrorHandler(logger)),
 	)
@@ -306,7 +308,7 @@ func adminRelease(cfg AdminConfig, paths AdminPaths, logger *slog.Logger) (maint
 		releaser = script
 	}
 	actions, err := NewReleaseActions(ReleaseActionsConfig{
-		RepoRoot: root, Repo: repo, DBPath: cfg.DBPath,
+		RepoRoot: root, Repo: repo, DBPath: cfg.DBPath, CatalogPath: cfg.CatalogPath,
 		JournalPath: paths.JournalPath, Logger: logger, Releaser: releaser,
 	})
 	if err != nil {

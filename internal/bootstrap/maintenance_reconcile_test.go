@@ -79,7 +79,7 @@ func TestReconcileActionsAreRegistered(t *testing.T) {
 		require.False(t, ok)
 		require.Equal(t, "No database found; run the init workflow first", reason)
 	}
-	require.Equal(t, []string{"reconcile-dry-run", "reconcile-apply"}, names)
+	require.Equal(t, []string{"reconcile-dry-run", "reconcile-apply", "reconcile-all-dry-run", "reconcile-all-apply"}, names)
 	require.NoFileExists(t, paths.db, "checking availability never creates the database")
 }
 

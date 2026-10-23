@@ -161,6 +161,7 @@ func noop() {}
 type SyncRunner struct {
 	sync         catalogsync.SyncCatalog
 	repository   *sqliteadapter.Database
+	catalog      *capturingCatalogStore
 	catalogPath  string
 	snapshotPath string
 	dryRun       bool
@@ -174,6 +175,9 @@ type SyncResult struct {
 	PartialSnapshot bool
 	// SnapshotErr is the snapshot write failure, if any (partial or final).
 	SnapshotErr error
+	// Catalog is the editorial catalog this run loaded; nil when it did not
+	// load one.
+	Catalog *catalog.EditorialCatalog
 }
 
 // NewSyncRunner opens and migrates the database and builds the Spotify
@@ -181,9 +185,10 @@ type SyncResult struct {
 // function releases the database and is safe to call even when err != nil.
 func NewSyncRunner(ctx context.Context, catalogPath, dbPath, snapshotPath string, env EnvLookup, opts ...MaintenanceOption) (SyncRunner, func(), error) {
 	config := resolveMaintenanceConfig(opts)
-	runner := SyncRunner{catalogPath: catalogPath, snapshotPath: snapshotPath, dryRun: config.dryRun}
+	store := &capturingCatalogStore{inner: yamlcatalog.NewStore()}
+	runner := SyncRunner{catalog: store, catalogPath: catalogPath, snapshotPath: snapshotPath, dryRun: config.dryRun}
 	if config.dryRun {
-		runner.sync = catalogsync.NewSyncCatalog(yamlcatalog.NewStore(), nil, runner.repository, catalogsync.SystemClock{})
+		runner.sync = catalogsync.NewSyncCatalog(store, nil, runner.repository, catalogsync.SystemClock{})
 		return runner, noop, nil
 	}
 
@@ -203,7 +208,7 @@ func NewSyncRunner(ctx context.Context, catalogPath, dbPath, snapshotPath string
 	}
 
 	runner.repository = database
-	runner.sync = catalogsync.NewSyncCatalog(yamlcatalog.NewStore(), fetcher, database, catalogsync.SystemClock{})
+	runner.sync = catalogsync.NewSyncCatalog(store, fetcher, database, catalogsync.SystemClock{})
 	return runner, closeFn, nil
 }
 
@@ -221,8 +226,14 @@ func (r SyncRunner) Run(ctx context.Context, o catalogsync.Options) (SyncResult,
 		o.DryRun = true
 	}
 
+	if r.catalog != nil {
+		r.catalog.loaded = nil
+	}
 	report, err := r.sync.Run(ctx, o)
 	result := SyncResult{Report: report}
+	if r.catalog != nil {
+		result.Catalog = r.catalog.loaded
+	}
 	if o.DryRun || r.repository == nil {
 		return result, err
 	}

@@ -83,7 +83,7 @@ func TestReleaseActionsAreRegistered(t *testing.T) {
 	for _, a := range actions {
 		names = append(names, a.Name())
 	}
-	require.Equal(t, []string{"release-prepare", "release-publish"}, names)
+	require.Equal(t, []string{"release-prepare", "release-publish", "release-pr"}, names)
 }
 
 func TestNewReleaseActionsRejectsInvalidRepo(t *testing.T) {

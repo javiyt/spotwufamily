@@ -233,3 +233,21 @@ func TestProfileAuditReportsRejectedHistoryWithoutLinkedProfiles(t *testing.T) {
 	require.Contains(t, markdown, "Rejected profiles (history)")
 	require.Contains(t, markdown, "mixed homonym")
 }
+
+func TestReconcileReportCarriesFingerprintOfCatalogItRead(t *testing.T) {
+	store, cat := driftedFixture()
+	use := artists.NewReconcileArtist(cat, store)
+	ctx := context.Background()
+	want := artists.FingerprintCatalog(cat.c)
+
+	dry, err := use.Run(ctx, artists.ReconcileInput{Slug: "a"})
+	require.NoError(t, err)
+	require.Equal(t, want, dry.Catalog)
+	applied, err := use.Run(ctx, artists.ReconcileInput{Slug: "a", Apply: true, ConfirmChecksum: dry.PlanChecksum, BackupDir: "b"})
+	require.NoError(t, err)
+	require.Equal(t, want, applied.Catalog)
+
+	raw, err := artists.FormatReconcileJSON(applied)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), want.Digest, "the fingerprint is not part of the report or its manifest")
+}

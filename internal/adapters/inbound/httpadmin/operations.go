@@ -62,6 +62,7 @@ func (s *Server) registerOperator() {
 	s.dynamic.HandleFunc("POST /operations/{action}/preview", s.handleOperationPreview)
 	s.dynamic.HandleFunc("POST /operations/{action}/run", s.handleOperationRun)
 	s.registerPublish()
+	s.registerPending()
 }
 
 // --- static per-action UI metadata ---
@@ -128,8 +129,13 @@ var actionSpecs = map[string]actionSpec{
 	"refresh-export":           {Group: "Refresh/Export", Description: "Verify, snapshot, export and audit in one job."},
 	"reconcile-dry-run":        {Group: "Reconcile", Description: "Show the association changes reconciling one artist would make.", Fields: reconcileFields},
 	"reconcile-apply":          {Group: "Reconcile", Description: "Apply one artist's pending association changes to the database.", Fields: reconcileFields},
+	"reconcile-all-dry-run":    {Group: "Reconcile", Description: "Show the association changes reconciling every artist would make. Writes nothing."},
+	"reconcile-all-apply":      {Group: "Reconcile", Description: "Apply every artist's pending association changes in one step: one backup first, and any failure rolls every artist back."},
 	"release-prepare":          {Group: "Release", Description: "Build the catalog release package.", Guided: "/publish"},
 	"release-publish":          {Group: "Release", Description: "Publish the prepared release to GitHub.", Guided: "/publish"},
+	"db-seed":                  {Group: "Refresh/Export", Description: "Write every catalog artist into the database without contacting Spotify. Backs up the database first."},
+	"update-website":           {Group: "Release", Description: "Review the whole plan once, then reconcile, seed, sync (only if needed), verify, snapshot, export, publish the release and open the catalog pull request. Stops at the first failure; merging and the GitHub Pages deploy happen on GitHub."},
+	"release-pr":               {Group: "Release", Description: "Commit the catalog, its review log and the release manifest to a new branch from origin and open a pull request. Your checkout is not changed; nothing is merged."},
 }
 
 func specFor(name string) actionSpec {
@@ -220,6 +226,7 @@ type operationsPage struct {
 	Fresh     freshView
 	Recent    []opEntryRow
 	RecentErr string
+	Pending   pendingPanel
 }
 
 func actionPage(a maintenance.ActionInfo) string {
@@ -271,6 +278,7 @@ func (s *Server) handleOperations(w http.ResponseWriter, r *http.Request) {
 		page.Operator = true
 		page.Groups = s.actionCards()
 		page.Fresh = s.freshView()
+		page.Pending = s.pendingPanel(r.Context())
 		entries, err := s.op.RecentOperations(r.Context(), recentOperations)
 		page.RecentErr = s.recentLogError(err)
 		for i, e := range entries {
@@ -393,7 +401,7 @@ func (s *Server) apiFreshness(w http.ResponseWriter, _ *http.Request) {
 	age := max(s.now().Sub(at), 0)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"checked": true, "checked_at": rfc3339(at), "age_seconds": int(age.Seconds()), "stale": s.fresh.isStale(),
-		"seed_needed": f.SeedNeeded, "snapshot_needed": f.SnapshotNeeded, "export_needed": f.ExportNeeded,
+		"seed_needed": f.SeedNeeded, "seed_unknown": f.SeedUnknown, "pending_changes": len(f.Pending), "snapshot_needed": f.SnapshotNeeded, "export_needed": f.ExportNeeded,
 		"rebuild_needed": f.RebuildNeeded, "differs_from_published": f.DiffersFromPublished,
 		"offline": f.Offline, "unreadable": f.Unreadable, "reasons": nonNilStrings(append([]string(nil), f.Reasons...)),
 	})

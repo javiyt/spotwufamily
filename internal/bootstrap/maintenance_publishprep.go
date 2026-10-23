@@ -35,6 +35,7 @@ func NewPublishPrepActions(cfg MaintenanceActionsConfig) []maintenance.Action {
 		Stager:         exportStager{cfg},
 		Audit:          repoAudit(cfg, export),
 		Locker:         databaseLocker{lock: filesystem.NewResourceLock(cfg.DBPath + ".lock")},
+		Provenance:     newProvenance(cfg.DBPath, cfg.CatalogPath),
 		DatabaseName:   filepath.Base(cfg.DBPath),
 		SnapshotName:   filepath.Base(cfg.SnapshotPath),
 		ExportNames: []string{

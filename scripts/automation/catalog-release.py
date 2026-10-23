@@ -18,6 +18,10 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ("catalog.db.gz", "catalog.snapshot.sql.gz")
+# Local provenance (what the database was built from, which publication
+# stages last ran): rewritten by every admin stage, never catalog content.
+PROVENANCE_TABLES = ("catalog_applied", "stage_checkpoints")
+PROVENANCE_ROWS = tuple(f'INSERT INTO "{t}" VALUES(' for t in PROVENANCE_TABLES)
 
 
 def run(*args):
@@ -49,11 +53,25 @@ def check_database(path):
 def content_hash(path):
     # Includes every table, including refresh and resume checkpoints. Physical
     # SQLite page layout changes alone must not create another release.
+    # Provenance rows are skipped (their schema is kept), so recording a stage
+    # never looks like new content and empty provenance hashes as before.
     digest = hashlib.sha256()
     with closing(connect_readonly(path)) as db:
         for line in db.iterdump():
+            if line.startswith(PROVENANCE_ROWS):
+                continue
             digest.update((line + "\n").encode())
     return digest.hexdigest()
+
+
+def strip_provenance(db):
+    # A fetched database must read as "unknown / needs check" on the machine
+    # that installs it, never trust the publisher's local stage records.
+    tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    for table in PROVENANCE_TABLES:
+        if table in tables:
+            db.execute(f'DELETE FROM "{table}"')
+    db.commit()
 
 
 def write_json(path, value):
@@ -78,6 +96,7 @@ def prepare(args):
         with closing(connect_readonly(source)) as src, closing(sqlite3.connect(backup)) as dst:
             src.backup(dst)
             dst.execute("PRAGMA journal_mode=DELETE")
+            strip_provenance(dst)
         snapshot = output.resolve() / ASSETS[1]
         run("go", "run", "./cmd/spotwufamily", "db", "snapshot",
             "--db", str(backup), "--snapshot", str(snapshot))
@@ -220,6 +239,9 @@ def install(directory, manifest, db_path, snapshot_path, force=False):
         check_database(backup)
         if content_hash(backup) != manifest["content_sha256"]:
             raise ValueError("Catalog content checksum mismatch")
+        # Older packages may still carry the publisher's provenance.
+        with closing(sqlite3.connect(backup)) as db:
+            strip_provenance(db)
         # Validate the gzip stream before replacing either local file.
         with gzip.open(Path(directory) / ASSETS[1], "rb") as stream:
             for _ in iter(lambda: stream.read(1024 * 1024), b""):

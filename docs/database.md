@@ -39,6 +39,7 @@ Sync persistence:
 - `artist_albums` and `artist_tracks` record which configured artist discovered a release or track.
 - `album_tracks`, `album_artists` and `track_artists` preserve album placement and credited artists.
 - `artist_mapping_snapshots` stores the last-synced Spotify ID mapping of each configured artist (migration 0006) and `artist_reconciliations` journals drift between that mapping and `data/artists.yaml`, the applied reconciliation (retire token, backup path and SHA-256, logical snapshot SHA-256) and whether replacement IDs still need syncing. Both tables are part of the logical snapshot. See `docs/operations.md` ("Reconcile A Corrected Spotify Mapping").
+- `catalog_applied` (one row: the per-artist fingerprint of the catalog the database was last built from) and `stage_checkpoints` (per stage: the catalog and database digests it last ran against) record provenance for the admin's pending-changes view (migration 0007). They are written only by admin flows, are **not** part of the logical snapshot or the database digest, are skipped by the release content hash (their schema is kept, so checkpoint writes never create a new release), and are stripped from release packages and fetched databases, so a fetched or restored database reads "unknown" until a full sync records it again.
 - The current policy is conservative: sync upserts observed data and does not delete rows simply because they are absent from one run.
 
 Export:
@@ -81,7 +82,7 @@ make catalog-release-publish RELEASE_PACKAGE=build/catalog-backup-YYYYMMDD-HHMMS
 git add data/catalog.release.json
 ```
 
-Preparation uses SQLite's backup API, including committed WAL data and every table. It generates and verifies a fresh logical snapshot against that copy, then compresses the database. The logical snapshot omits `artist_metadata_refreshes`; restoring the complete database preserves that table too. Packages never overwrite an existing directory. Publishing creates a new dated release without replacing older assets, and updates the local manifest only after upload succeeds. An unchanged complete content hash skips publication. Catalog releases do not become the latest software release.
+Preparation uses SQLite's backup API, including committed WAL data and every table. It generates and verifies a fresh logical snapshot against that copy, then compresses the database. The logical snapshot omits `artist_metadata_refreshes`, `catalog_applied` and `stage_checkpoints`; restoring the complete database preserves the first, and the package carries no provenance rows. Packages never overwrite an existing directory. Publishing creates a new dated release without replacing older assets, and updates the local manifest only after upload succeeds. An unchanged complete content hash skips publication. Catalog releases do not become the latest software release.
 
 Commit the updated manifest through the normal PR flow. The release tag targets remote `main`; the manifest, rather than the tag's source archive, identifies the database version. Retain releases referenced by Git history or open PRs. To roll back, restore an older manifest from Git and fetch it. Keep a second copy of release assets on separate storage for an independent backup.
 
@@ -107,3 +108,7 @@ git add data/catalog.release.json
 The previous release is not modified. To roll the schema back, restore the previous manifest from Git and fetch it; the two tables can simply be left unused.
 
 The catalog database is not touched by `artists audit-integrity`; backup and rollback steps are in `docs/operations.md` ("Local Setup, Backup And Rollback").
+
+## Migration 0007 rollout
+
+Migration `0007_catalog_provenance.sql` is additive (two new tables, `catalog_applied` and `stage_checkpoints`, no change to existing ones), so older binaries keep working with a migrated database. As with 0006, `db verify` requires it, so the pinned release has to be rebuilt once with it applied: the same steps as above (`make db-migrate db-snapshot` on the fetched release, then prepare and publish). The tables' rows never change the release content hash; applying the migration itself does, once. A database migrated without a record reads "unknown / needs check" in the admin until a full sync (or an `update-website` run) records the applied catalog. To roll back, restore the previous manifest; the tables can be left unused.

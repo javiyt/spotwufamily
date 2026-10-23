@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/javiyt/spotwufamily/internal/application/artists"
 	"github.com/javiyt/spotwufamily/internal/application/jobs"
 )
 
@@ -45,6 +46,9 @@ type ReleaseDeps struct {
 	// Logger, when set, receives a fixed line when a background check
 	// panics (never the panic value, which could carry paths).
 	Logger *slog.Logger
+	// Provenance, when set, checkpoints a successful prepare and publish.
+	// They never record the catalog as applied.
+	Provenance Provenance
 }
 
 type releaseAction struct {
@@ -452,8 +456,24 @@ func (a *releaseAction) run(ctx context.Context, r jobs.Reporter, fp string) (jo
 	if err := ctx.Err(); err != nil {
 		return jobs.Outcome{}, err
 	}
+	// The catalog as the release runs against it, read once before it starts.
+	var (
+		catalogDigest string
+		catalogErr    error
+	)
+	if a.deps.Provenance != nil {
+		catalogDigest, catalogErr = a.deps.Provenance.CatalogDigest(ctx)
+	}
 	if a.publish {
-		return a.runPublish(ctx, r, p.PreparedTag)
+		out, err := a.runPublish(ctx, r, p.PreparedTag)
+		if err == nil && out.Status == jobs.StatusSucceeded {
+			// Publishing is not cancellable once started, so neither is
+			// recording that it finished.
+			if err := a.recordProvenance(context.WithoutCancel(ctx), artists.StageRelease, catalogDigest, catalogErr); err != nil {
+				out.Result.Summary += provenanceWarning
+			}
+		}
+		return out, err
 	}
 	r.Step("preparing package")
 	info, err := a.deps.Releaser.Prepare(ctx)
@@ -462,6 +482,14 @@ func (a *releaseAction) run(ctx context.Context, r jobs.Reporter, fp string) (jo
 	}
 	summary := "Prepared catalog release " + info.Tag + " in " + a.deps.PackageName +
 		". Nothing was uploaded; run release-publish to publish it."
+	if rec, ok := a.deps.Prepared.(PreparedRecorder); ok {
+		if err := rec.RecordPrepared(info.ContentSHA256); err != nil {
+			summary += " The prepared release could not be recorded; run release-prepare again before publishing."
+		}
+	}
+	if err := a.recordProvenance(ctx, artists.StageReleasePrepare, catalogDigest, catalogErr); err != nil {
+		summary += provenanceWarning
+	}
 	return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{
 		Summary: summary,
 		Report: &jobs.Report{
@@ -470,6 +498,16 @@ func (a *releaseAction) run(ctx context.Context, r jobs.Reporter, fp string) (jo
 			Rows:    [][]string{{info.Tag, info.ContentSHA256, strings.Join(info.Assets, " ")}},
 		},
 	}}, nil
+}
+
+func (a *releaseAction) recordProvenance(ctx context.Context, stage, catalogDigest string, catalogErr error) error {
+	if a.deps.Provenance == nil {
+		return nil
+	}
+	if catalogErr != nil {
+		return catalogErr
+	}
+	return recordCheckpoint(ctx, a.deps.Provenance, stage, catalogDigest)
 }
 
 // runPublish runs the publish subprocess. Once it has started it cannot be

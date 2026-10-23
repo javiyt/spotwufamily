@@ -26,6 +26,7 @@
 {{end}}
 </header>
 <div id="offline" class="notice offline" role="status" hidden>You appear to be offline. Changes cannot be saved until the connection to the local admin server is back.</div>
+{{with .Banner}}<p class="notice warn pending-banner" role="status"><strong>{{.Text}}</strong> — <a href="/operations#pending">Review pending changes</a></p>{{end}}
 <div id="toasts" class="toasts" role="status" aria-live="polite">{{if or .Flash.Message .Flash.Refresh}}<p class="toast ok" data-toast>{{with .Flash.Message}}{{.}} {{end}}{{if .Flash.Refresh}}<span class="hint-refresh">{{template "refreshhint"}}</span> {{end}}<button type="button" class="link" data-dismiss aria-label="Dismiss">×</button></p>{{end}}</div>
 <main id="main" tabindex="-1">
 <h1>{{.Title}}</h1>
@@ -46,4 +47,4 @@
 </form>{{end}}
 {{define "fielderr"}}{{range .}}<p class="error">{{.}}</p>{{end}}{{end}}
 
-{{define "refreshhint"}}Catalog changed — the database, snapshot and exports may need refreshing. <a href="/operations">Review in Operations</a>.{{end}}
+{{define "refreshhint"}}Catalog changed — the database, snapshot and exports may need refreshing. <a href="/operations#pending">Review in Operations</a>.{{end}}

@@ -21,6 +21,9 @@ type SyncRunResult struct {
 	Report catalogsync.Report
 	// SnapshotErr is the failure to write the (full or partial) snapshot.
 	SnapshotErr error
+	// Catalog fingerprints the editorial catalog this run read; nil when the
+	// run did not load it.
+	Catalog *artists.AppliedCatalog
 }
 
 // SyncPort runs one catalog sync: the whole catalog when o.ArtistSlug is
@@ -51,6 +54,8 @@ type SyncDeps struct {
 	Credentials CredentialsChecker
 	Locker      Locker
 	Backuper    Backuper
+	// Provenance, when set, records what a successful real sync applied.
+	Provenance Provenance
 }
 
 // Sync scopes.
@@ -337,6 +342,8 @@ func (a *syncAction) run(ctx context.Context, r jobs.Reporter, p Params, pl sync
 		limitErr    error
 		otherErr    error
 		snapshotErr error
+		applied     []appliedRun
+		uncaptured  bool
 	)
 	for i, slug := range targets {
 		if ctx.Err() != nil {
@@ -355,6 +362,11 @@ func (a *syncAction) run(ctx context.Context, r jobs.Reporter, p Params, pl sync
 		})
 		if res.SnapshotErr != nil {
 			snapshotErr = res.SnapshotErr
+		}
+		if res.Catalog != nil {
+			applied = append(applied, appliedRun{slug: slug, used: *res.Catalog})
+		} else {
+			uncaptured = true
 		}
 		if ctx.Err() != nil {
 			break
@@ -404,7 +416,26 @@ func (a *syncAction) run(ctx context.Context, r jobs.Reporter, p Params, pl sync
 	case snapshotErr != nil:
 		return jobs.Outcome{Status: jobs.StatusPartial, Result: jobs.Result{Summary: counts + " The database snapshot could not be written.", Report: rep}}, nil
 	}
+	if !uncaptured {
+		if err := a.recordProvenance(ctx, applied); err != nil {
+			counts += provenanceWarning
+		}
+	}
 	return jobs.Outcome{Status: jobs.StatusSucceeded, Result: jobs.Result{Summary: counts, Report: rep}}, nil
+}
+
+// recordProvenance records what a successful sync applied, from the catalog
+// each run read. A whole-catalog run replaces the applied record; per-artist
+// runs only merge their artists into an existing one.
+func (a *syncAction) recordProvenance(ctx context.Context, runs []appliedRun) error {
+	p := a.deps.Provenance
+	if p == nil || len(runs) == 0 {
+		return nil
+	}
+	if len(runs) == 1 && runs[0].slug == "" {
+		return recordWholeCatalog(ctx, p, artists.StageSync, runs[0].used)
+	}
+	return mergeApplied(ctx, p, artists.StageSync, runs, mergeSynced)
 }
 
 func (a *syncAction) runDry(ctx context.Context, r jobs.Reporter, pl syncPlan) (jobs.Outcome, error) {

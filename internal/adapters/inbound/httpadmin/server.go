@@ -51,6 +51,8 @@ type Server struct {
 	maint     Maintenance
 	op        Operator
 	pub       Publisher
+	pend      PendingProvider
+	pendCache pendingCache
 	now       func() time.Time
 	fresh     freshnessCache
 	dynamic   *http.ServeMux

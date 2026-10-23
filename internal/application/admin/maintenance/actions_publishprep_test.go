@@ -474,6 +474,23 @@ func TestDBVerifyReportsStaleSnapshotAsPartial(t *testing.T) {
 	}
 }
 
+// Inside update-website the snapshot stage follows verify, so a snapshot
+// made stale by the seed or the sync must not stop the run at verify.
+func TestDBVerifyInsideUpdateWebsiteLeavesTheSnapshotToItsStage(t *testing.T) {
+	fx := newPrepFixture(t)
+	spec, err := specFor(t, prepActions(fx.deps)["db-verify"], Params{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := spec.Run(withSnapshotFollows(context.Background()), &recReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Status == jobs.StatusPartial || len(fx.verifier.calls) != 1 || fx.verifier.calls[0] {
+		t.Fatalf("verify compared the snapshot inside update-website: calls %v outcome %+v", fx.verifier.calls, out)
+	}
+}
+
 func TestAuditActionRowsSortedAndStaleIsPartial(t *testing.T) {
 	fx := newPrepFixture(t)
 	fx.audit.report = catalogaudit.Report{Checks: []catalogaudit.Check{

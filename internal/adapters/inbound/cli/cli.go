@@ -1305,7 +1305,7 @@ func executeArtistsSeedDB(ctx context.Context, args []string, stdout, stderr io.
 		_, _ = fmt.Fprintf(stderr, "artists seed-db: migrate database: %v\n", err)
 		return 1
 	}
-	if err := database.SaveConfiguredArtists(ctx, c.Artists); err != nil {
+	if err := database.SeedCatalog(ctx, c.Artists); err != nil {
 		_, _ = fmt.Fprintf(stderr, "artists seed-db: save configured artists: %v\n", err)
 		return 1
 	}

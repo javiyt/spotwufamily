@@ -2,7 +2,11 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -21,6 +25,9 @@ type ReleaseActionsConfig struct {
 	Repo string
 	// DBPath is the database whose lock the release jobs hold.
 	DBPath string
+	// CatalogPath is the editorial catalog a successful prepare or publish is
+	// checkpointed against. Empty records no provenance.
+	CatalogPath string
 	// JournalPath is the job journal the jobs.Manager persists to; the
 	// latest successful release-prepare recorded there gates publishing.
 	JournalPath string
@@ -42,9 +49,11 @@ func NewReleaseScript(repoRoot, repo string, logger *slog.Logger) (maintenance.R
 	return release.New(release.Config{RepoRoot: repoRoot, Repo: repo, Logger: logger})
 }
 
-// NewReleaseActions wires release-prepare and release-publish to the release
-// script, the job journal and the database lock. These are the only actions
-// that reach the Releaser, and only release-publish publishes.
+// NewReleaseActions wires release-prepare, release-publish and release-pr to
+// the release script, the job journal and the database lock. These are the
+// only actions that reach the Releaser, and only release-publish publishes;
+// release-pr only reads its preflight, then pushes a branch and opens a pull
+// request.
 func NewReleaseActions(cfg ReleaseActionsConfig) ([]maintenance.Action, error) {
 	releaser := cfg.Releaser
 	if releaser == nil {
@@ -65,7 +74,27 @@ func NewReleaseActions(cfg ReleaseActionsConfig) ([]maintenance.Action, error) {
 		ManifestName: releaseManifestName,
 		Logger:       cfg.Logger,
 	}
-	return []maintenance.Action{maintenance.NewReleasePrepare(deps), maintenance.NewReleasePublish(deps)}, nil
+	if cfg.CatalogPath != "" {
+		deps.Provenance = newProvenance(cfg.DBPath, cfg.CatalogPath)
+	}
+	actions := []maintenance.Action{maintenance.NewReleasePrepare(deps), maintenance.NewReleasePublish(deps)}
+	if releasePRApplies(cfg) {
+		port := NewReleasePRPort(ReleasePRConfig{RepoRoot: cfg.RepoRoot, Repo: cfg.Repo, Releaser: releaser, Logger: cfg.Logger})
+		actions = append(actions, maintenance.NewReleasePR(maintenance.PRDeps{Port: port, Changes: port.Changes,
+			Provenance: deps.Provenance}))
+	}
+	return actions, nil
+}
+
+// releasePRApplies reports whether release-pr commits the catalog the admin
+// edits: it always commits the repository's own data/artists.yaml, so an
+// admin configured with another catalog file does not get it.
+func releasePRApplies(cfg ReleaseActionsConfig) bool {
+	if cfg.CatalogPath == "" {
+		return true
+	}
+	want := filepath.Join(cfg.RepoRoot, filepath.FromSlash(prCatalogFile))
+	return filepath.Clean(cfg.CatalogPath) == filepath.Clean(want)
 }
 
 var contentSHAPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -77,10 +106,94 @@ type journalPrepared struct{ path string }
 
 var _ maintenance.PreparedStore = journalPrepared{}
 
+var _ maintenance.PreparedRecorder = journalPrepared{}
+
+// preparedRecord is the sidecar of the job journal naming the latest
+// successful prepare, whichever job ran it.
+type preparedRecord struct {
+	ContentSHA256 string    `json:"content_sha256"`
+	At            time.Time `json:"at"`
+}
+
+func (s journalPrepared) recordPath() string { return s.path + ".prepared.json" }
+
+// RecordPrepared writes the sidecar atomically.
+func (s journalPrepared) RecordPrepared(sha string) error {
+	if !contentSHAPattern.MatchString(sha) {
+		return errors.New("invalid prepared content hash")
+	}
+	data, err := json.Marshal(preparedRecord{ContentSHA256: sha, At: time.Now().UTC()})
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
+		return err
+	}
+	tmp := s.recordPath() + ".tmp"
+	if err := writeSynced(tmp, data); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := os.Rename(tmp, s.recordPath()); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return syncDir(filepath.Dir(s.recordPath()))
+}
+
+// writeSynced writes data to path and flushes it to disk before closing.
+func writeSynced(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
+
+// syncDir flushes a directory entry (the rename) to disk.
+func syncDir(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = d.Close() }()
+	return d.Sync()
+}
+
+func (s journalPrepared) recorded() (preparedRecord, bool) {
+	data, err := os.ReadFile(s.recordPath())
+	if err != nil {
+		return preparedRecord{}, false
+	}
+	var rec preparedRecord
+	if json.Unmarshal(data, &rec) != nil || !contentSHAPattern.MatchString(rec.ContentSHA256) {
+		return preparedRecord{}, false
+	}
+	return rec, true
+}
+
+// LastPrepared is the content hash of the latest successful prepare: the
+// newer of the journal's last release-prepare job and the sidecar.
 func (s journalPrepared) LastPrepared() (string, bool) {
+	sha, at, ok := s.journalPrepared()
+	if rec, has := s.recorded(); has && (!ok || !rec.At.Before(at)) {
+		return rec.ContentSHA256, true
+	}
+	return sha, ok
+}
+
+func (s journalPrepared) journalPrepared() (string, time.Time, bool) {
 	all, err := filesystem.NewJobJournal(s.path).Load(context.Background())
 	if err != nil {
-		return "", false
+		return "", time.Time{}, false
 	}
 	var (
 		latest jobs.Job
@@ -95,17 +208,17 @@ func (s journalPrepared) LastPrepared() (string, bool) {
 		}
 	}
 	if !found || latest.Result == nil || latest.Result.Report == nil {
-		return "", false
+		return "", time.Time{}, false
 	}
 	rep := latest.Result.Report
 	if len(rep.Columns) < 2 || rep.Columns[1] != "content_sha256" || len(rep.Rows) != 1 || len(rep.Rows[0]) < 2 {
-		return "", false
+		return "", time.Time{}, false
 	}
 	sha := rep.Rows[0][1]
 	if !contentSHAPattern.MatchString(sha) {
-		return "", false
+		return "", time.Time{}, false
 	}
-	return sha, true
+	return sha, latest.FinishedAt, true
 }
 
 // releaseHashes runs one preflight for a freshness session.

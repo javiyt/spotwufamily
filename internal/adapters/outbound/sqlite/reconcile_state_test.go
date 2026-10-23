@@ -292,3 +292,77 @@ func TestReconciliationStateSurvivesSnapshotRebuild(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, pending, 1)
 }
+
+func TestReconcileRestoreForgetsProvenance(t *testing.T) {
+	ctx := context.Background()
+	database, _ := seedDriftedFixture(t, ctx, filepath.Join(t.TempDir(), "catalog.db"))
+	use := artists.NewReconcileArtist(replacementCatalog(), database)
+	dry, err := use.Run(ctx, artists.ReconcileInput{Slug: "streetlife"})
+	require.NoError(t, err)
+	applied, err := use.Run(ctx, artists.ReconcileInput{Slug: "streetlife", Apply: true, ConfirmChecksum: dry.PlanChecksum, BackupDir: t.TempDir(), Now: reconcileNow})
+	require.NoError(t, err)
+	require.NoError(t, database.RecordApplied(ctx, artists.AppliedCatalog{Digest: "d", AppliedAt: "2026-10-22T10:00:00Z"}))
+	require.NoError(t, database.RecordCheckpoint(ctx, artists.StageCheckpoint{Stage: artists.StageReconcile, CatalogDigest: "c", DBDigest: "d", At: "2026-10-22T10:00:00Z"}))
+
+	_, err = use.Run(ctx, artists.ReconcileInput{Slug: "streetlife", RestoreRetiredAt: applied.RetiredAt})
+	require.NoError(t, err)
+
+	_, ok, err := database.AppliedCatalog(ctx)
+	require.NoError(t, err)
+	require.False(t, ok, "a restored database must read as unknown, not trusted")
+	_, ok, err = database.Checkpoint(ctx, artists.StageReconcile)
+	require.NoError(t, err)
+	require.False(t, ok)
+}
+
+var _ artists.BulkReconcileStore = (*sqliteadapter.Database)(nil)
+
+func bulkRequests() []artists.ApplyRequest {
+	token := reconcileNow.Format(time.RFC3339)
+	return []artists.ApplyRequest{
+		{Slug: "method-man", Token: token, AlbumIDs: []string{"al-tical"}, TargetIDs: []string{methodManID}, Fingerprint: `["` + methodManID + `"]`, PlanChecksum: "p1"},
+		{Slug: "streetlife", Token: token, AlbumIDs: []string{"al-sidewalk"}, TrackIDs: []string{"tr-sidewalk"}, TargetIDs: []string{streetlifeWuID}, Fingerprint: `["` + streetlifeWuID + `"]`, PlanChecksum: "p2"},
+	}
+}
+
+func TestApplyReconciliationsAppliesEveryArtistInOneTransaction(t *testing.T) {
+	ctx := context.Background()
+	database, count := seedDriftedFixture(t, ctx, filepath.Join(t.TempDir(), "catalog.db"))
+
+	require.NoError(t, database.ApplyReconciliations(ctx, bulkRequests()))
+	require.Equal(t, 0, count(`SELECT COUNT(*) FROM artist_albums WHERE active = 1 AND album_id IN ('al-tical', 'al-sidewalk')`))
+	require.Equal(t, 0, count(`SELECT COUNT(*) FROM artist_tracks WHERE active = 1 AND track_id = 'tr-sidewalk'`))
+	require.Equal(t, 2, count(`SELECT COUNT(*) FROM artist_reconciliations`))
+}
+
+func TestApplyReconciliationsRollsBackEveryArtistOnFailure(t *testing.T) {
+	ctx := context.Background()
+	database, count := seedDriftedFixture(t, ctx, filepath.Join(t.TempDir(), "catalog.db"))
+	// The second artist fails after the first one was applied.
+	_, err := database.DB().ExecContext(ctx, `
+CREATE TRIGGER fail_streetlife BEFORE UPDATE ON artist_albums WHEN NEW.configured_artist_slug = 'streetlife'
+BEGIN SELECT RAISE(ABORT, 'injected failure'); END`)
+	require.NoError(t, err)
+	before, err := database.Snapshot(ctx)
+	require.NoError(t, err)
+
+	err = database.ApplyReconciliations(ctx, bulkRequests())
+	var be *artists.BulkApplyError
+	require.ErrorAs(t, err, &be)
+	require.Equal(t, "streetlife", be.Slug)
+	require.ErrorContains(t, err, "injected failure")
+	after, err := database.Snapshot(ctx)
+	require.NoError(t, err)
+	require.Equal(t, string(before), string(after), "the first artist was rolled back too")
+	require.Equal(t, 0, count(`SELECT COUNT(*) FROM artist_reconciliations`))
+}
+
+func TestApplyReconciliationsStopsOnCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	database, count := seedDriftedFixture(t, context.Background(), filepath.Join(t.TempDir(), "catalog.db"))
+	cancel()
+
+	err := database.ApplyReconciliations(ctx, bulkRequests())
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 5, count(`SELECT COUNT(*) FROM artist_albums WHERE active = 1`))
+}

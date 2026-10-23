@@ -23,6 +23,7 @@ type Service struct {
 	now     func() time.Time
 
 	freshness FreshnessSource
+	pending   *PendingDeps
 	oplog     OperationLog
 	oplogErr  func(error)
 	// confirmMu orders a job's confirmed entry before its finished entry; it
@@ -48,6 +49,14 @@ func NewService(m *jobs.Manager, actions []Action, secret []byte, now func() tim
 	}
 	for _, o := range opts {
 		o(s)
+	}
+	if s.pending != nil {
+		a := newUpdateWebsite(s)
+		if _, dup := s.byName[a.Name()]; dup {
+			panic("maintenance: duplicate action name " + a.Name())
+		}
+		s.actions = append(s.actions, a)
+		s.byName[a.Name()] = a
 	}
 	return s
 }
@@ -215,4 +224,34 @@ func verifiedFingerprint(ctx context.Context) (string, error) {
 		return "", ErrConfirmationRequired
 	}
 	return fp, nil
+}
+
+type confirmedCatalogKey struct{}
+
+// WithConfirmedCatalogDigest returns ctx carrying the catalog digest a
+// composite run (update-website) was confirmed against. Stages that commit
+// the catalog (release-pr) refuse any other catalog.
+func WithConfirmedCatalogDigest(ctx context.Context, digest string) context.Context {
+	return context.WithValue(ctx, confirmedCatalogKey{}, digest)
+}
+
+// ConfirmedCatalogDigest returns the digest set by WithConfirmedCatalogDigest.
+func ConfirmedCatalogDigest(ctx context.Context) (string, bool) {
+	d, ok := ctx.Value(confirmedCatalogKey{}).(string)
+	return d, ok && d != ""
+}
+
+type snapshotFollowsKey struct{}
+
+// withSnapshotFollows marks the context of an update-website stage: the run
+// writes (or already holds) the snapshot of the current database after its
+// verify stage, so db-verify there does not compare the snapshot, as the
+// refresh-export composite does not.
+func withSnapshotFollows(ctx context.Context) context.Context {
+	return context.WithValue(ctx, snapshotFollowsKey{}, true)
+}
+
+func snapshotFollows(ctx context.Context) bool {
+	v, _ := ctx.Value(snapshotFollowsKey{}).(bool)
+	return v
 }

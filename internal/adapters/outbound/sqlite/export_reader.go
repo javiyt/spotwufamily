@@ -143,6 +143,7 @@ SELECT
   )
 FROM configured_artists ca
 LEFT JOIN external_urls eu ON eu.owner_type = 'artist' AND eu.owner_id = ca.spotify_id AND eu.provider = 'spotify'
+WHERE ca.active = 1
 GROUP BY ca.slug
 ORDER BY COALESCE(ca.editorial_order, 999999), ca.name`)
 	if err != nil {

@@ -32,6 +32,20 @@ type Repository interface {
 	SaveArtistSyncCheckpoint(context.Context, int64, catalog.Artist, string, SyncStats, time.Time) error
 }
 
+// CatalogSeeder is optionally implemented by a Repository that can make the
+// configured artists mirror the whole catalog (deactivating the artists the
+// catalog no longer lists). A sync always passes the whole catalog.
+type CatalogSeeder interface {
+	SeedCatalog(context.Context, []catalog.Artist) error
+}
+
+func seedConfiguredArtists(ctx context.Context, repo Repository, artists []catalog.Artist) error {
+	if seeder, ok := repo.(CatalogSeeder); ok {
+		return seeder.SeedCatalog(ctx, artists)
+	}
+	return repo.SaveConfiguredArtists(ctx, artists)
+}
+
 type Clock interface {
 	Now() time.Time
 }
@@ -216,7 +230,7 @@ func (s SyncCatalog) Run(ctx context.Context, options Options) (Report, error) {
 		return report, nil
 	}
 
-	if err := s.repository.SaveConfiguredArtists(ctx, editorialCatalog.Artists); err != nil {
+	if err := seedConfiguredArtists(ctx, s.repository, editorialCatalog.Artists); err != nil {
 		return report, fmt.Errorf("save configured artists: %w", err)
 	}
 	report.Stats.ConfiguredArtistsUpserted = len(editorialCatalog.Artists)

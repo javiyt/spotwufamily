@@ -207,6 +207,55 @@ class CatalogReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unexpected release assets"):
             release.read_manifest(path, "javiyt/spotwufamily")
 
+    def add_provenance(self, digest="d1"):
+        self.connection.executescript("""
+            CREATE TABLE IF NOT EXISTS catalog_applied (id INTEGER PRIMARY KEY, digest TEXT, artists_json TEXT, applied_at TEXT);
+            CREATE TABLE IF NOT EXISTS stage_checkpoints (stage TEXT PRIMARY KEY, catalog_digest TEXT, db_digest TEXT, at TEXT);
+        """)
+        self.connection.execute("INSERT OR REPLACE INTO catalog_applied VALUES (1, ?, '[]', 'now')", (digest,))
+        self.connection.execute("INSERT OR REPLACE INTO stage_checkpoints VALUES ('export', ?, 'db', 'now')", (digest,))
+        self.connection.commit()
+
+    def test_provenance_rows_do_not_change_content_hash(self):
+        self.connection.executescript("""
+            CREATE TABLE catalog_applied (id INTEGER PRIMARY KEY, digest TEXT, artists_json TEXT, applied_at TEXT);
+            CREATE TABLE stage_checkpoints (stage TEXT PRIMARY KEY, catalog_digest TEXT, db_digest TEXT, at TEXT);
+        """)
+        empty = release.content_hash(self.source)
+        self.add_provenance("d1")
+        self.assertEqual(release.content_hash(self.source), empty,
+                         "a checkpoint write must not look like new catalog content")
+        self.add_provenance("d2")
+        self.assertEqual(release.content_hash(self.source), empty)
+        self.connection.execute("INSERT INTO albums VALUES ('other', 'New music')")
+        self.connection.commit()
+        self.assertNotEqual(release.content_hash(self.source), empty, "real content still changes the hash")
+
+    def test_prepared_database_carries_no_provenance(self):
+        self.add_provenance()
+        manifest = self.prepare()
+        restored = self.root / "restored.db"
+        release.install(self.package, manifest, restored, self.root / "snapshot.gz")
+        with sqlite3.connect(restored) as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM catalog_applied").fetchone(), (0,))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM stage_checkpoints").fetchone(), (0,))
+            self.assertEqual(db.execute("SELECT title FROM albums").fetchone(), ("Preserved music",))
+        self.assertEqual(release.content_hash(restored), release.content_hash(self.source))
+        with sqlite3.connect(self.source) as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM catalog_applied").fetchone(), (1,),
+                             "the local database keeps its provenance")
+
+    def test_install_drops_provenance_of_older_packages(self):
+        # A package prepared before provenance was stripped still carries it.
+        self.add_provenance()
+        with patch.object(release, "strip_provenance", side_effect=lambda db: None):
+            manifest = self.prepare()
+        restored = self.root / "restored.db"
+        release.install(self.package, manifest, restored, self.root / "snapshot.gz")
+        with sqlite3.connect(restored) as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM catalog_applied").fetchone(), (0,))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM stage_checkpoints").fetchone(), (0,))
+
 
 if __name__ == "__main__":
     unittest.main()
