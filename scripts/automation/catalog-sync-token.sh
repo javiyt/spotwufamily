@@ -93,10 +93,23 @@ echo ""
 USERNAME=$(gh api /user --jq .login 2>/dev/null || echo "me")
 
 echo "Creating token for user: ${USERNAME}"
-echo "With scopes: repo,workflow,pull,contents"
+echo "Type: Fine-grained Token (recommended)"
+echo "Scopes: repository, workflow, pull, contents, read:organization"
 echo ""
 
-# Generate token using gh auth token
+# Create fine-grained token using GitHub API
+# Fine-grained tokens are created via POST /user/tokens (available for enterprise)
+# OR use the classic method via gh auth token (deprecated but still works)
+
+# For now, use gh auth token which creates a classic token
+# Fine-grained tokens require creating a PAT via GitHub UI or API
+
+echo "⚠️  Note: Fine-grained tokens must be created via GitHub UI or API"
+echo ""
+echo "Creating classic token (gh auth token)... This will be deprecated in the future."
+echo ""
+
+# Create token using gh auth token
 TOKEN=$(gh auth token)
 
 echo "✅ GitHub token generated"
@@ -147,3 +160,23 @@ else
   echo "  rm ./${TOKEN_ENV}"
   echo "  ./scripts/automation/catalog-sync-token.sh --force"
 fi
+
+echo ""
+echo "⚠️  IMPORTANT: This script creates a classic token (deprecated)"
+echo ""
+echo "To create a FINE-GRAINED token instead:"
+echo ""
+echo "  1. Go to: https://github.com/settings/tokens?type=beta"
+echo "  2. Click \"Generate new token (fine-grained)\""
+echo "  3. Configure:"
+echo "     - Token name: spotwufamily-catalog-sync"
+echo "     - Repository access: Select 'spotwufamily' repo (full access)"
+echo "     - Write permissions: 'Contents' and 'Actions'"
+echo "     - Set expiration: 90 days from now"
+echo "  4. Copy the generated token and save as .${TOKEN_ENV}"
+echo ""
+echo "Fine-grained tokens offer:"
+echo "  ✅ Smaller attack surface (only specific repos/permissions)"
+echo "  ✅ Automatic expiration (no manual rotation needed)"
+echo "  ✅ Revocable without affecting other permissions"
+echo "  ✅ Better security model going forward"
