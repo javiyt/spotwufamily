@@ -1,31 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TOKEN_ENV="${1:-}"
-
-if [[ -z "${TOKEN_ENV}" ]]; then
-  echo "Usage: catalog-sync-token.sh [token-file-name]"
-  echo ""
-  echo "Generate a GitHub PAT for catalog sync workflow."
-  echo ""
-  echo "Arguments:"
-  echo "  token-file-name  Name of the file to save the token (default: .github-token)"
-  echo ""
-  echo "Scopes required:"
-  echo "  repo      - full control of private repositories"
-  echo "  workflow  - read and write access to workflows"
-  echo "  pull      - access to public repositories via oauth apps"
-  echo "  contents  - read and write contents"
-  echo ""
-  echo "Steps:"
-  echo "  1. Run this script (it will open a browser or prompt for token creation)"
-  echo "  2. Copy the generated token"
-  echo "  3. Save it as a secret: CATALOG_SYNC_TOKEN in GitHub repository settings"
-  exit 1
-fi
-
-echo "Generating GitHub PAT for catalog sync..."
-echo ""
+TOKEN_ENV="${1:-.github-token}"
+SPOTIFY_CLIENT_ID_ENV="${SPOTIFY_CLIENT_ID:-}"
+SPOTIFY_CLIENT_SECRET_ENV="${SPOTIFY_CLIENT_SECRET:-}"
 
 # Check if gh CLI is installed
 if ! command -v gh &> /dev/null; then
@@ -41,28 +19,67 @@ if ! gh auth status &> /dev/null; then
   exit 1
 fi
 
-echo "You are logged in as: $(gh auth latest-user)"
+echo "Logged in as: $(gh auth latest-user)"
 echo ""
 
-# Generate the token
-echo "Creating Personal Access Token..."
-echo "Please open: $(gh api user)"
-echo "The token will be generated and saved to ./${TOKEN_ENV}"
+# Validate Spotify credentials
+if [[ -z "${SPOTIFY_CLIENT_ID_ENV}" || -z "${SPOTIFY_CLIENT_SECRET_ENV}" ]]; then
+  echo "Error: Spotify credentials not found as environment variables."
+  echo ""
+  echo "Required environment variables:"
+  echo "  SPOTIFY_CLIENT_ID"
+  echo "  SPOTIFY_CLIENT_SECRET"
+  echo ""
+  echo "Set them and run again:"
+  echo "  export SPOTIFY_CLIENT_ID=\"<value>\""
+  echo "  export SPOTIFY_CLIENT_SECRET=\"<value>\""
+  echo "  ./scripts/automation/catalog-sync-token.sh"
+  exit 1
+fi
+
+echo "✅ Spotify credentials found in environment variables"
+echo ""
+
+# Generate the GitHub token
+echo "Creating GitHub PAT for catalog sync..."
+echo "This will be saved as: ${TOKEN_ENV}"
 echo ""
 
 gh auth token --scopes "repo,workflow,pull,contents" > "./${TOKEN_ENV}"
 
+echo "✅ GitHub token generated and saved to ./${TOKEN_ENV}"
 echo ""
-echo "✅ Token generated and saved to ./${TOKEN_ENV}"
+
+# Check if running in GitHub Actions environment
+if [[ -n "${GITHUB_ACTIONS:-}" && "${GITHUB_ACTIONS}" == "true" ]]; then
+  echo "🚀 Running in GitHub Actions!"
+  echo ""
+  echo "Setting secrets via GitHub Actions API..."
+  
+  # Set secrets
+  gh secret set CATALOG_SYNC_TOKEN -f "${TOKEN_ENV}" --private
+  gh secret set SPOTIFY_CLIENT_ID -v "${SPOTIFY_CLIENT_ID_ENV}" --private
+  gh secret set SPOTIFY_CLIENT_SECRET -v "${SPOTIFY_CLIENT_SECRET_ENV}" --private
+  
+  echo "✅ All secrets set successfully in GitHub repository!"
+else
+  echo "ℹ️  Running locally (not in GitHub Actions)"
+  echo ""
+  echo "Next steps:"
+  echo "  1. Read the token: cat ./${TOKEN_ENV}"
+  echo "  2. Create secrets in GitHub:"
+  echo "     https://github.com/javiyt/spotwufamily/settings/secrets/actions"
+  echo ""
+  echo "     Add these secrets:"
+  echo "     - Name: CATALOG_SYNC_TOKEN, Value: [token from ./${TOKEN_ENV}]"
+  echo "     - Name: SPOTIFY_CLIENT_ID, Value: ${SPOTIFY_CLIENT_ID_ENV}"
+  echo "     - Name: SPOTIFY_CLIENT_SECRET, Value: ${SPOTIFY_CLIENT_SECRET_ENV}"
+  echo ""
+  echo "💡 Tip: Run this script from GitHub Actions to auto-set secrets:"
+  echo "     - Add a workflow that runs on push to main"
+  echo "     - This script will auto-set all secrets when run in Actions"
+fi
+
 echo ""
-echo "Next steps:"
-echo "  1. Read the token: cat ./${TOKEN_ENV}"
-echo "  2. Create a secret in GitHub:"
-echo "     - Go to: https://github.com/javiyt/spotwufamily/settings/secrets/actions"
-echo "     - Click 'New repository secret'"
-echo "     - Name: CATALOG_SYNC_TOKEN"
-echo "     - Value: [paste the token]"
-echo ""
-echo "To renew the token when it expires (90 days):"
-echo "  rm ./${TOKEN_ENV}"
-echo "  ./scripts/automation/catalog-sync-token.sh"
+echo "📋 Token expiration: 90 days from now"
+echo "🔄 To renew: rm ${TOKEN_ENV} && ./scripts/automation/catalog-sync-token.sh"

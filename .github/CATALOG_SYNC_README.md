@@ -1,38 +1,97 @@
 # GitHub Token for Catalog Sync
 
-This secret is used by the `catalog-sync` workflow to push changes to GitHub.
+This secret is used by the `catalog-sync` workflow to push changes to GitHub and sync with Spotify.
 
-## Token Generation
+## Quick Setup (GitHub Actions)
 
-Use the provided script to generate a new token:
+Run this script directly from GitHub Actions to automatically set all secrets:
 
 ```bash
-# Generate token and save to .github-token
-./scripts/automation/catalog-sync-token.sh
-
-# Generate token and save to custom name
-./scripts/automation/catalog-sync-token.sh my-super-secret-token
+# Add to your workflow (e.g., .github/workflows/init-secrets.yml)
+- name: Initialize catalog sync secrets
+  run: |
+    ./scripts/automation/catalog-sync-token.sh
 ```
 
-## Requirements
+**Requirements:**
+- Environment variables must be set in GitHub Actions:
+  - `SPOTIFY_CLIENT_ID`
+  - `SPOTIFY_CLIENT_SECRET`
 
-- GitHub CLI installed: `brew install github` (macOS) or `snap install github-cli --classic` (Linux)
-- Logged in to GitHub: `gh auth login`
+The script will automatically:
+1. Generate GitHub PAT token
+2. Save as secret: `CATALOG_SYNC_TOKEN`
+3. Save as secret: `SPOTIFY_CLIENT_ID`
+4. Save as secret: `SPOTIFY_CLIENT_SECRET`
 
-## Scopes
+## Quick Setup (Local)
 
-The token requires the following scopes:
+If you prefer to set secrets manually:
+
+```bash
+# Generate token and save to file
+./scripts/automation/catalog-sync-token.sh
+
+# The script will output instructions for manual setup
+cat .github-token
+```
+
+## Manual Setup
+
+### 1. Generate GitHub Token
+
+```bash
+./scripts/automation/catalog-sync-token.sh
+```
+
+This will:
+- Check if `gh CLI` is installed
+- Verify you're logged in
+- Create a token with scopes: `repo,workflow,pull,contents`
+- Save it to `.github-token`
+
+### 2. Add Secrets to GitHub
+
+Go to: https://github.com/javiyt/spotwufamily/settings/secrets/actions
+
+Add these secrets:
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `CATALOG_SYNC_TOKEN` | [from `.github-token`] | GitHub PAT for workflow |
+| `SPOTIFY_CLIENT_ID` | [from env] | Spotify Client ID |
+| `SPOTIFY_CLIENT_SECRET` | [from env] | Spotify Client Secret |
+
+## Required Scopes
+
+The GitHub PAT requires:
 - `repo` - Full control of private repositories
 - `workflow` - Read and write access to workflows
 - `pull` - Access to public repositories via oauth apps
 - `contents` - Read and write repository contents
 
-## Adding the Secret
+## Environment Variables
 
-1. Open GitHub repository settings: https://github.com/javiyt/spotwufamily/settings/secrets/actions
-2. Click "New repository secret"
-3. Name: `CATALOG_SYNC_TOKEN`
-4. Value: Copy the token from the generated file
+### For Local Script Execution
+
+Set these before running the script:
+
+```bash
+export SPOTIFY_CLIENT_ID="your-spotify-client-id"
+export SPOTIFY_CLIENT_SECRET="your-spotify-client-secret"
+./scripts/automation/catalog-sync-token.sh
+```
+
+### For GitHub Actions
+
+Set these in repository secrets (they can be read by workflows):
+
+```yaml
+# In .github/workflows/ci.yml
+env:
+  SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+  SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+```
 
 ## Token Rotation
 
@@ -42,29 +101,60 @@ GitHub PATs expire after 90 days. To renew:
 # Remove old token
 rm .github-token
 
-# Generate new token
+# Generate new token (will overwrite)
 ./scripts/automation/catalog-sync-token.sh
 
-# Add the new secret value in GitHub settings
+# Add new value in GitHub settings
+```
+
+## Using in Workflows
+
+```yaml
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      CATALOG_SYNC_TOKEN: ${{ secrets.CATALOG_SYNC_TOKEN }}
+      SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+      SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
 ```
 
 ## Troubleshooting
 
 ### Token rejected
 
-- Make sure the token hasn't expired (90 days from creation)
-- Check that all scopes are enabled
-- Delete the old secret in GitHub settings and recreate it with the new token
+- ✅ Make sure token hasn't expired (90 days)
+- ✅ Check all scopes are enabled
+- ✅ Delete old secret in GitHub and recreate with new token
 
-### Permission denied
+### Spotify API errors
 
-- Verify the token has been added to GitHub secrets
-- Check repository visibility (token won't work for organization repositories without proper settings)
-- Ensure the user has access to the repository
+- ✅ Verify Spotify app is active: https://developer.spotify.com/dashboard
+- ✅ Check Client ID matches the app
+- ✅ Verify Client Secret is correct (check app settings)
+
+### gh CLI errors
+
+```bash
+# Install gh CLI
+brew install github
+
+# Login to GitHub
+gh auth login
+
+# Verify login
+gh auth status
+```
 
 ## Security
 
-- **Never share the token** in code, logs, or chat
-- **Rotate the token** regularly (every 60-90 days)
-- Use environment variables when referencing: `CATALOG_SYNC_TOKEN`
-- Store the token file in `.gitignore`: `.github-token`
+- ✅ **Never share the token** in code, logs, or chat
+- ✅ **Rotate the token** every 60-90 days
+- ✅ **Token file is ignored** by git (in `.gitignore`)
+- ✅ **Use environment variables** in code to access values
+
+## Files
+
+- `scripts/automation/catalog-sync-token.sh` - Token generation script
+- `.github/CATALOG_SYNC_README.md` - This documentation
+- `.github-token` - Generated token file (auto-created)
