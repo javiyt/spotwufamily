@@ -12,6 +12,8 @@ done
 TOKEN_ENV="${1:-.github-token}"
 SPOTIFY_CLIENT_ID_ENV="${SPOTIFY_CLIENT_ID:-}"
 SPOTIFY_CLIENT_SECRET_ENV="${SPOTIFY_CLIENT_SECRET:-}"
+REPO_OWNER="${REPO_OWNER:-javiyt}"
+REPO_NAME="${REPO_NAME:-spotwufamily}"
 EXPIRY_DAYS=90
 
 # Check if gh CLI is installed
@@ -93,20 +95,8 @@ echo ""
 USERNAME=$(gh api /user --jq .login 2>/dev/null || echo "me")
 
 echo "Creating token for user: ${USERNAME}"
-echo "Type: Fine-grained Token (recommended)"
-echo "Scopes: repository, workflow, pull, contents, read:organization"
-echo ""
-
-# Create fine-grained token using GitHub API
-# Fine-grained tokens are created via POST /user/tokens (available for enterprise)
-# OR use the classic method via gh auth token (deprecated but still works)
-
-# For now, use gh auth token which creates a classic token
-# Fine-grained tokens require creating a PAT via GitHub UI or API
-
-echo "⚠️  Note: Fine-grained tokens must be created via GitHub UI or API"
-echo ""
-echo "Creating classic token (gh auth token)... This will be deprecated in the future."
+echo "Type: Classic Token (recommended for now)"
+echo "Scopes: repo,workflow,pull,contents"
 echo ""
 
 # Create token using gh auth token
@@ -121,34 +111,78 @@ echo "$TOKEN" > "./${TOKEN_ENV}"
 # Calculate token expiry date
 TOKEN_EXPIRY=$(date -v+${EXPIRY_DAYS}d +"%Y-%m-%d" 2>/dev/null || echo "90 days from now")
 
-# Check if running in GitHub Actions environment
-if [[ -n "${GITHUB_ACTIONS:-}" && "${GITHUB_ACTIONS}" == "true" ]]; then
-  echo "🚀 Running in GitHub Actions!"
+# Set secrets - check if we're in the repo directory
+echo "🔐 Setting secrets in GitHub repository..."
+echo ""
+
+# Check current directory
+CURRENT_DIR=$(pwd)
+CURRENT_REPO=$(basename "$CURRENT_DIR")
+
+echo "Current directory: ${CURRENT_DIR}"
+echo "Repository: ${CURRENT_REPO}"
+echo "Target repository: ${REPO_NAME}"
+echo ""
+
+if [[ "$CURRENT_REPO" == "$REPO_NAME" ]]; then
+  echo "✅ You are in the correct repository"
+  
+  # Delete existing secrets first to allow re-setting
+  gh secret delete CATALOG_SYNC_TOKEN 2>/dev/null || true
+  gh secret delete SPOTIFY_CLIENT_ID 2>/dev/null || true
+  gh secret delete SPOTIFY_CLIENT_SECRET 2>/dev/null || true
+  
+  # Set secrets directly using --body
+  echo "Setting CATALOG_SYNC_TOKEN..."
+  echo "$TOKEN" | gh secret set CATALOG_SYNC_TOKEN --body - 2>/dev/null && echo "  ✓ Added" || echo "  ⚠️  Failed"
+  
+  echo "Setting SPOTIFY_CLIENT_ID..."
+  gh secret set SPOTIFY_CLIENT_ID --body "${SPOTIFY_CLIENT_ID_ENV}" 2>/dev/null && echo "  ✓ Added" || echo "  ⚠️  Failed"
+  
+  echo "Setting SPOTIFY_CLIENT_SECRET..."
+  gh secret set SPOTIFY_CLIENT_SECRET --body "${SPOTIFY_CLIENT_SECRET_ENV}" 2>/dev/null && echo "  ✓ Added" || echo "  ⚠️  Failed"
+  
   echo ""
-  echo "Setting secrets via GitHub Actions API..."
+  echo "✅ All secrets configured!"
   
-  # Set secrets (suppress error if already set)
-  gh secret set CATALOG_SYNC_TOKEN -f "${TOKEN_ENV}" --private 2>/dev/null || true
-  gh secret set SPOTIFY_CLIENT_ID -v "${SPOTIFY_CLIENT_ID_ENV}" --private 2>/dev/null || true
-  gh secret set SPOTIFY_CLIENT_SECRET -v "${SPOTIFY_CLIENT_SECRET_ENV}" --private 2>/dev/null || true
+  echo ""
+  echo "✅ DONE! Go to your GitHub repo to verify:"
+  echo "  https://github.com/${REPO_OWNER}/${REPO_NAME}/settings/secrets/actions"
   
-  echo "✅ All secrets set successfully in GitHub repository!"
+  # Verify secrets were set
+  echo ""
+  echo "Verifying secrets..."
+  gh secret list | grep -E "CATALOG|SPOTIFY" | while read line; do
+    echo "  ✓ ${line}"
+  done
+  
 else
-  echo "ℹ️  Running locally (not in GitHub Actions)"
+  echo "⚠️  You are NOT in the repository directory"
   echo ""
-  echo "Next steps:"
-  echo "  1. Read the token: cat ./${TOKEN_ENV}"
-  echo "  2. Create secrets in GitHub:"
-  echo "     https://github.com/javiyt/spotwufamily/settings/secrets/actions"
+  echo "To automatically configure secrets, run this script from:"
+  echo "  ${PWD}"
   echo ""
-  echo "     Add these secrets:"
-  echo "     - Name: CATALOG_SYNC_TOKEN, Value: [token from ./${TOKEN_ENV}]"
-  echo "     - Name: SPOTIFY_CLIENT_ID, Value: ${SPOTIFY_CLIENT_ID_ENV}"
-  echo "     - Name: SPOTIFY_CLIENT_SECRET, Value: ${SPOTIFY_CLIENT_SECRET_ENV}"
+  echo "For now, add secrets manually:"
   echo ""
-  echo "💡 Tip: Run this script from GitHub Actions to auto-set secrets:"
-  echo "     - Add a workflow that runs on push to main"
-  echo "     - This script will auto-set all secrets when run in Actions"
+  echo "  1. Go to: https://github.com/${REPO_OWNER}/${REPO_NAME}/settings/secrets/actions"
+  echo ""
+  echo "  2. Add 3 secrets:"
+  echo ""
+  echo "     Secret 1:"
+  echo "       Name: CATALOG_SYNC_TOKEN"
+  echo "       Value: [from ./${TOKEN_ENV}]"
+  echo ""
+  echo "     Secret 2:"
+  echo "       Name: SPOTIFY_CLIENT_ID"
+  echo "       Value: ${SPOTIFY_CLIENT_ID_ENV}"
+  echo ""
+  echo "     Secret 3:"
+  echo "       Name: SPOTIFY_CLIENT_SECRET"
+  echo "       Value: ${SPOTIFY_CLIENT_SECRET_ENV}"
+  echo ""
+  echo "💡 After adding, run this command to verify:"
+  echo "   gh secret list"
+  echo ""
 fi
 
 echo ""
