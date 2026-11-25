@@ -33,8 +33,7 @@ jobs:
     name: catalog-sync
     runs-on: ubuntu-latest
     env:
-      CATALOG_SYNC_APP_ID: ${{ secrets.CATALOG_SYNC_APP_ID }}
-      CATALOG_SYNC_APP_PRIVATE_KEY: ${{ secrets.CATALOG_SYNC_APP_PRIVATE_KEY }}
+      CATALOG_SYNC_TOKEN: ${{ secrets.CATALOG_SYNC_TOKEN }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v7
@@ -54,14 +53,6 @@ jobs:
           hugo-version: "0.164.0"
           extended: true
 
-      - name: Create GitHub App token
-        id: app-token
-        if: ${{ env.CATALOG_SYNC_APP_ID != '' && env.CATALOG_SYNC_APP_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ env.CATALOG_SYNC_APP_ID }}
-          private-key: ${{ env.CATALOG_SYNC_APP_PRIVATE_KEY }}
-
       - name: Configure git identity
         run: |
           git config user.name "spotwufamily-catalog-sync[bot]"
@@ -69,7 +60,7 @@ jobs:
 
       - name: Download pinned catalog
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CATALOG_SYNC_TOKEN }}
         run: python3 scripts/automation/catalog-release.py fetch
 
       - name: Validate and migrate
@@ -109,7 +100,7 @@ jobs:
 
       - name: Package and publish catalog backup
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.CATALOG_SYNC_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.CATALOG_SYNC_TOKEN || github.token }}
         run: |
           python3 scripts/automation/catalog-release.py prepare
           python3 scripts/automation/catalog-release.py publish
@@ -140,7 +131,7 @@ jobs:
       - name: Create or update pull request
         if: steps.changes.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.CATALOG_SYNC_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.CATALOG_SYNC_TOKEN || github.token }}
         run: |
           body_file="$(bash scripts/automation/catalog-pr-body.sh)"
           title="chore(catalog): update Spotify catalog - $(date -u +%Y-%m-%d)"
