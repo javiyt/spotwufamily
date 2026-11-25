@@ -1569,6 +1569,16 @@ artists:
   - slug: prodigal-sunn
     name: Prodigal Sunn
     spotify_id: 3QnwfdgJNhOjR1i7jPBGi8
+    spotify_profiles:
+      - id: 3QnwfdgJNhOjR1i7jPBGi8
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/261d6876-d0fc-4903-af09-36310cb6e432
+            rationale: 'MusicBrainz release group "The Spark" (2017) matches releases on this Spotify profile: 2 of 2 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-22T08:08:13Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-22T08:08:13Z"
     category: affiliate_artist
     roles:
       - affiliate_artist
@@ -1581,6 +1591,16 @@ artists:
   - slug: redman
     name: Redman
     spotify_id: 7xTKLpo7UCzXSnlH7fOIoM
+    spotify_profiles:
+      - id: 7xTKLpo7UCzXSnlH7fOIoM
+        status: verified
+        evidence:
+          - type: musicbrainz
+            url: https://musicbrainz.org/release-group/bc239359-3ced-3684-a8b2-c7dfc1d0cb5b
+            rationale: 'MusicBrainz release group "Whut? Thee Album" (1992) matches releases on this Spotify profile: 8 of 9 Spotify albums match MusicBrainz release groups'
+        reviewed_at: "2026-10-22T08:12:54Z"
+        reviewer: javiyt
+        last_checked_at: "2026-10-22T08:12:54Z"
     genres:
       - east coast hip hop
       - hardcore hip hop
