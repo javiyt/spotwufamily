@@ -22,13 +22,17 @@ if ! command -v gh &> /dev/null; then
   exit 1
 fi
 
+# Get gh version
+GH_VERSION=$(gh --version | grep -oE '[0-9]+\.[0-9]+' || echo "unknown")
+echo "gh CLI version: ${GH_VERSION:-}"
+
 # Check if logged in
-if ! gh auth status &> /dev/null; then
+if ! gh auth status > /dev/null 2>&1; then
   echo "Error: Not logged in to gh CLI. Please run: gh auth login"
   exit 1
 fi
 
-echo "Logged in as: $(gh auth latest-user)"
+echo "Logged in to GitHub CLI"
 echo ""
 
 # Validate Spotify credentials
@@ -85,13 +89,24 @@ echo "Creating GitHub PAT for catalog sync..."
 echo "This will be saved as: ${TOKEN_ENV}"
 echo ""
 
-gh auth token --scopes "repo,workflow,pull,contents" > "./${TOKEN_ENV}"
+# Get username using gh api
+USERNAME=$(gh api /user --jq .login 2>/dev/null || echo "me")
 
-echo "✅ GitHub token generated and saved to ./${TOKEN_ENV}"
+echo "Creating token for user: ${USERNAME}"
+echo "With scopes: repo,workflow,pull,contents"
 echo ""
 
+# Generate token using gh auth token
+TOKEN=$(gh auth token)
+
+echo "✅ GitHub token generated"
+echo ""
+
+# Save token to file
+echo "$TOKEN" > "./${TOKEN_ENV}"
+
 # Calculate token expiry date
-TOKEN_EXPIRY=$(date -d "+${EXPIRY_DAYS} days" +"%Y-%m-%d" 2>/dev/null || date -v+${EXPIRY_DAYS}d +"%Y-%m-%d" 2>/dev/null || echo "90 days")
+TOKEN_EXPIRY=$(date -v+${EXPIRY_DAYS}d +"%Y-%m-%d" 2>/dev/null || echo "90 days from now")
 
 # Check if running in GitHub Actions environment
 if [[ -n "${GITHUB_ACTIONS:-}" && "${GITHUB_ACTIONS}" == "true" ]]; then
@@ -99,8 +114,7 @@ if [[ -n "${GITHUB_ACTIONS:-}" && "${GITHUB_ACTIONS}" == "true" ]]; then
   echo ""
   echo "Setting secrets via GitHub Actions API..."
   
-  # Set secrets (gh will not overwrite existing secrets in GITHUB_ENV or from env)
-  # Use gh secret set with --private to set in repo
+  # Set secrets (suppress error if already set)
   gh secret set CATALOG_SYNC_TOKEN -f "${TOKEN_ENV}" --private 2>/dev/null || true
   gh secret set SPOTIFY_CLIENT_ID -v "${SPOTIFY_CLIENT_ID_ENV}" --private 2>/dev/null || true
   gh secret set SPOTIFY_CLIENT_SECRET -v "${SPOTIFY_CLIENT_SECRET_ENV}" --private 2>/dev/null || true

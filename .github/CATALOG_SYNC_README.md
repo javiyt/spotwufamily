@@ -54,12 +54,10 @@ The script intelligently handles existing tokens:
 
 # Check if token needs renewal
 ./scripts/automation/catalog-sync-token.sh
+# Output: "Token is less than 90 days old. Skipping regeneration."
 
 # Force regenerate even if token is recent
 ./scripts/automation/catalog-sync-token.sh --force
-
-# Use custom filename
-./scripts/automation/catalog-sync-token.sh my-secret-token
 ```
 
 ## Manual Setup
