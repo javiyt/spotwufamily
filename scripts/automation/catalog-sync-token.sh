@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Check for force flag
+FORCE_FLAG=false
+for arg in "$@"; do
+  if [[ "$arg" == "--force" || "$arg" == "-f" ]]; then
+    FORCE_FLAG=true
+  fi
+done
+
 TOKEN_ENV="${1:-.github-token}"
 SPOTIFY_CLIENT_ID_ENV="${SPOTIFY_CLIENT_ID:-}"
 SPOTIFY_CLIENT_SECRET_ENV="${SPOTIFY_CLIENT_SECRET:-}"
+EXPIRY_DAYS=90
 
 # Check if gh CLI is installed
 if ! command -v gh &> /dev/null; then
@@ -40,6 +49,37 @@ fi
 echo "✅ Spotify credentials found in environment variables"
 echo ""
 
+# Check if token exists
+if [[ -f "./${TOKEN_ENV}" ]]; then
+  echo "⚠️  Existing token found: ./${TOKEN_ENV}"
+  echo ""
+  
+  # Get token modification time (seconds since epoch)
+  TOKEN_AGE=$(date +%s)
+  TOKEN_FILE_AGE=$(($(date +%s) - $(stat -f%m "${TOKEN_ENV}" 2>/dev/null || stat -c%Y "${TOKEN_ENV}")))
+  SECONDS_IN_90_DAYS=$((EXPIRY_DAYS * 24 * 60 * 60))
+  
+  echo "Token file age: $((TOKEN_FILE_AGE / 86400)) days"
+  echo ""
+  
+  if [[ $FORCE_FLAG == true ]]; then
+    echo "✅ Forcing regeneration with --force flag"
+  elif [[ $TOKEN_FILE_AGE -gt $SECONDS_IN_90_DAYS ]]; then
+    echo "✅ Token file is older than 90 days, regenerating"
+  else
+    echo "Token is less than 90 days old. Skipping regeneration."
+    echo ""
+    echo "Current token:"
+    echo "  Value: $(head -c 8 "${TOKEN_ENV}")..."
+    echo "  Expiry: $((TOKEN_FILE_AGE / 86400)) days remaining"
+    echo ""
+    echo "To regenerate manually:"
+    echo "  rm ./${TOKEN_ENV}"
+    echo "  ./scripts/automation/catalog-sync-token.sh --force"
+    exit 0
+  fi
+fi
+
 # Generate the GitHub token
 echo "Creating GitHub PAT for catalog sync..."
 echo "This will be saved as: ${TOKEN_ENV}"
@@ -50,16 +90,20 @@ gh auth token --scopes "repo,workflow,pull,contents" > "./${TOKEN_ENV}"
 echo "✅ GitHub token generated and saved to ./${TOKEN_ENV}"
 echo ""
 
+# Calculate token expiry date
+TOKEN_EXPIRY=$(date -d "+${EXPIRY_DAYS} days" +"%Y-%m-%d" 2>/dev/null || date -v+${EXPIRY_DAYS}d +"%Y-%m-%d" 2>/dev/null || echo "90 days")
+
 # Check if running in GitHub Actions environment
 if [[ -n "${GITHUB_ACTIONS:-}" && "${GITHUB_ACTIONS}" == "true" ]]; then
   echo "🚀 Running in GitHub Actions!"
   echo ""
   echo "Setting secrets via GitHub Actions API..."
   
-  # Set secrets
-  gh secret set CATALOG_SYNC_TOKEN -f "${TOKEN_ENV}" --private
-  gh secret set SPOTIFY_CLIENT_ID -v "${SPOTIFY_CLIENT_ID_ENV}" --private
-  gh secret set SPOTIFY_CLIENT_SECRET -v "${SPOTIFY_CLIENT_SECRET_ENV}" --private
+  # Set secrets (gh will not overwrite existing secrets in GITHUB_ENV or from env)
+  # Use gh secret set with --private to set in repo
+  gh secret set CATALOG_SYNC_TOKEN -f "${TOKEN_ENV}" --private 2>/dev/null || true
+  gh secret set SPOTIFY_CLIENT_ID -v "${SPOTIFY_CLIENT_ID_ENV}" --private 2>/dev/null || true
+  gh secret set SPOTIFY_CLIENT_SECRET -v "${SPOTIFY_CLIENT_SECRET_ENV}" --private 2>/dev/null || true
   
   echo "✅ All secrets set successfully in GitHub repository!"
 else
@@ -81,5 +125,11 @@ else
 fi
 
 echo ""
-echo "📋 Token expiration: 90 days from now"
-echo "🔄 To renew: rm ${TOKEN_ENV} && ./scripts/automation/catalog-sync-token.sh"
+echo "📋 Token expiration: ${TOKEN_EXPIRY} (90 days from now)"
+echo "🔄 To regenerate:"
+if [[ $FORCE_FLAG == true ]]; then
+  echo "  Already regenerated with --force flag"
+else
+  echo "  rm ./${TOKEN_ENV}"
+  echo "  ./scripts/automation/catalog-sync-token.sh --force"
+fi

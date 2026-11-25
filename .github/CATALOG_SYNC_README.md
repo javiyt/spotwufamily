@@ -7,10 +7,12 @@ This secret is used by the `catalog-sync` workflow to push changes to GitHub and
 Run this script directly from GitHub Actions to automatically set all secrets:
 
 ```bash
-# Add to your workflow (e.g., .github/workflows/init-secrets.yml)
-- name: Initialize catalog sync secrets
-  run: |
-    ./scripts/automation/catalog-sync-token.sh
+# Set environment variables
+export SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}"
+export SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}"
+
+# Run the script (auto-sets all secrets)
+./scripts/automation/catalog-sync-token.sh
 ```
 
 **Requirements:**
@@ -34,6 +36,30 @@ If you prefer to set secrets manually:
 
 # The script will output instructions for manual setup
 cat .github-token
+```
+
+## Smart Token Management
+
+The script intelligently handles existing tokens:
+
+1. **No overwrite** - Existing tokens (< 90 days old) are preserved
+2. **Auto-regenerate** - Old tokens (> 90 days) are regenerated automatically
+3. **Force flag** - Use `--force` to regenerate regardless of age
+
+### Examples
+
+```bash
+# Generate new token
+./scripts/automation/catalog-sync-token.sh
+
+# Check if token needs renewal
+./scripts/automation/catalog-sync-token.sh
+
+# Force regenerate even if token is recent
+./scripts/automation/catalog-sync-token.sh --force
+
+# Use custom filename
+./scripts/automation/catalog-sync-token.sh my-secret-token
 ```
 
 ## Manual Setup
@@ -95,16 +121,18 @@ env:
 
 ## Token Rotation
 
-GitHub PATs expire after 90 days. To renew:
+GitHub PATs expire after 90 days. The script automatically checks and regenerates:
 
 ```bash
-# Remove old token
-rm .github-token
-
-# Generate new token (will overwrite)
+# Script will auto-renew if token is older than 90 days
 ./scripts/automation/catalog-sync-token.sh
 
-# Add new value in GitHub settings
+# Force regenerate even if token is recent
+./scripts/automation/catalog-sync-token.sh --force
+
+# Manual renewal
+rm .github-token
+./scripts/automation/catalog-sync-token.sh
 ```
 
 ## Using in Workflows
