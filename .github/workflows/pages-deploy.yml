@@ -41,6 +41,24 @@ jobs:
         with:
           path: pages-artifact
 
+      # deploy-pages queries the artifact API right after upload; the
+      # artifact can take a short while before it is visible there.
+      - name: Wait for Pages artifact to be visible
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 30); do
+            size="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" --jq '.artifacts[] | select(.name == "github-pages") | .size_in_bytes')"
+            if [[ -n "${size}" && "${size}" -gt 0 ]]; then
+              echo "github-pages artifact visible (size=${size} bytes)"
+              exit 0
+            fi
+            echo "artifact not visible yet, waiting 10s (${i}/30)"
+            sleep 10
+          done
+          echo "github-pages artifact never became visible" >&2
+          exit 1
+
       - name: Deploy assembled site
         id: deployment
         uses: actions/deploy-pages@v5
