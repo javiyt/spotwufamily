@@ -286,8 +286,11 @@ func (f cachedSyncFetcher) GetArtist(ctx context.Context, spotifyID string) (cat
 	return f.remote.GetArtist(ctx, spotifyID)
 }
 
+// GetArtistAlbums always reads the release list from Spotify: it is the sync
+// discovery path, and the database-backed list would be frozen at the last
+// sync and never reveal new releases. Per-release details stay cached below.
 func (f cachedSyncFetcher) GetArtistAlbums(ctx context.Context, spotifyID string, groups []string) ([]catalog.Release, error) {
-	return f.cachedAlbums.GetArtistAlbums(ctx, spotifyID, groups)
+	return f.remote.GetArtistAlbums(ctx, spotifyID, groups)
 }
 
 func (f cachedSyncFetcher) GetAlbum(ctx context.Context, spotifyID string) (catalog.Release, error) {
